@@ -1,0 +1,8 @@
+<Solution>
+  <Folder Name="/plugins/" />
+  <Project Path="src/Orion/Orion.csproj" />
+  <Project Path="src/Binary/Binary.csproj" Id="9d65d42a-1ceb-4be7-b088-32d4b64c0b37" />
+  <Project Path="src/Logger/Logger.csproj" />
+  <Project Path="src/Protocol/Protocol.csproj" />
+  <Project Path="src/RakNet/RakNet.csproj" Id="0f80e604-c0a6-45b4-9cb6-8737297b006d" />
+</Solution>

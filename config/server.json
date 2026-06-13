@@ -1,0 +1,99 @@
+{
+  "Logging": {
+    "LogLevel": {
+      "System": true,
+      "OrionCore": true,
+      "OrionEngine": true,
+      "OrionServer": true,
+      "OrionNet": true,
+      "OrionReplication": true,
+      "OrionWorld": true
+    }
+  },
+  "Server": {
+    "Edition": "MCPE",
+    "Name": "OrionServer",
+    "Motd": "OrionServer",
+    "Elysium": {
+      "Permissions": "./config/permissions.json",
+      "Resources": {
+        "Path": "./resource_packs",
+        "MustAccept": true,
+        "ChunkDownloadTimeout": 1,
+        "ChunkMaxSize": 262144
+      },
+      "SpawnWorldIdentifier": "default",
+      "MovementValidation": true,
+      "MovementHorizontalThreshold": 0.4,
+      "MovementVerticalThreshold": 0.6,
+      "ShutdownMessage": "Server is shutting down...",
+      "TicksPerSecond": 20,
+      "OfflineMode": true
+    },
+    "WorldDefaultSettings": {
+      "identifier": "default",
+      "seed": 2570659193,
+      "gamemode": "survival",
+      "difficulty": "normal",
+      "saveInterval": 5,
+      "dimensions": [
+        {
+          "identifier": "overworld",
+          "type": 0,
+          "generator": "superflat",
+          "viewDistance": 20,
+          "simulationDistance": 10,
+          "spawnPosition": [
+            0,
+            -57,
+            0
+          ],
+          "chunkPregeneration": []
+        }
+      ],
+      "gamerules": {
+        "showCoordinates": true,
+        "showDaysPlayed": false,
+        "doDayLightCycle": true,
+        "doImmediateRespawn": false,
+        "doTileDrops": true,
+        "keepInventory": false,
+        "fallDamage": true,
+        "fireDamage": true,
+        "drowningDamage": true,
+        "randomTickSpeed": 1,
+        "locatorBar": false
+      }
+    },
+    "Network": {
+      "CompressionMethod": 0,
+      "CompressionThreshold": 1,
+      "FrameMonitoring": true,
+      "PacketsPerFrame": 64
+    },
+    "Raknet": {
+      "Address": "0.0.0.0",
+      "PortIPV4": 19132,
+      "PortIPV6": 19133,
+      "Protocol": 975,
+      "Version": "1.26.20",
+      "Message": "Elysium",
+      "MaxConnections": 40,
+      "MtuMaxSize": 1492,
+      "MtuMinSize": 400,
+      "ValidatePort": true
+    }
+  },
+  "Storage": {
+    "Provider": "Redis",
+    "ImportWorldOnStartup": true,
+    "ImportSourceWorldPath": "./worlds/default",
+    "Redis": {
+      "Endpoint": "127.0.0.1:6379",
+      "Database": 0,
+      "KeyPrefix": "orion",
+      "AofRequired": true,
+      "PoolSize": 16
+    }
+  }
+}
