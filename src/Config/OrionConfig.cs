@@ -26,22 +26,92 @@ public sealed class LoggingConfig
 public sealed class LogLevelConfig
 {
     [JsonPropertyName("System")]
-    public bool System { get; init; } = true;
+    public CategoryLogLevel System { get; init; } = new();
 
     [JsonPropertyName("World")]
-    public bool World { get; init; } = true;
+    public CategoryLogLevel World { get; init; } = new();
 
     [JsonPropertyName("Orion")]
-    public bool Orion { get; init; } = true;
+    public CategoryLogLevel Orion { get; init; } = new();
 
     [JsonPropertyName("RakNet")]
-    public bool RakNet { get; init; } = true;
+    public CategoryLogLevel RakNet { get; init; } = new();
 
     [JsonPropertyName("Protocol")]
-    public bool Protocol { get; init; } = true;
+    public CategoryLogLevel Protocol { get; init; } = new();
 
     [JsonPropertyName("Binary")]
-    public bool Binary { get; init; } = true;
+    public CategoryLogLevel Binary { get; init; } = new();
+
+    public bool IsEnabled(string category, LogLevel level) =>
+        IsEnabled(ParseCategory(category), level);
+
+    public bool IsEnabled(LogCategory category, LogLevel level)
+    {
+        CategoryLogLevel settings = GetCategorySettings(category);
+        return level switch
+        {
+            LogLevel.Debug => settings.Debug,
+            LogLevel.Info => settings.Info,
+            LogLevel.Warn => settings.Warn,
+            LogLevel.Err => settings.Err,
+            LogLevel.Chat => settings.Chat,
+            _ => true
+        };
+    }
+
+    private CategoryLogLevel GetCategorySettings(LogCategory category) => category switch
+    {
+        LogCategory.System => System,
+        LogCategory.World => World,
+        LogCategory.Orion => Orion,
+        LogCategory.RakNet => RakNet,
+        LogCategory.Protocol => Protocol,
+        LogCategory.Binary => Binary,
+        _ => System
+    };
+
+    private static LogCategory ParseCategory(string category) =>
+        Enum.TryParse<LogCategory>(category, ignoreCase: true, out LogCategory parsed)
+            ? parsed
+            : LogCategory.System;
+}
+
+public sealed class CategoryLogLevel
+{
+    [JsonPropertyName("Debug")]
+    public bool Debug { get; init; } = true;
+
+    [JsonPropertyName("Info")]
+    public bool Info { get; init; } = true;
+
+    [JsonPropertyName("Warn")]
+    public bool Warn { get; init; } = true;
+
+    [JsonPropertyName("Err")]
+    public bool Err { get; init; } = true;
+
+    [JsonPropertyName("Chat")]
+    public bool Chat { get; init; } = true;
+}
+
+public enum LogCategory
+{
+    System,
+    World,
+    Orion,
+    RakNet,
+    Protocol,
+    Binary
+}
+
+public enum LogLevel
+{
+    Debug,
+    Info,
+    Warn,
+    Err,
+    Chat
 }
 
 public sealed class ServerSection

@@ -1,12 +1,48 @@
 {
   "Logging": {
     "LogLevel": {
-      "System": true,
-      "World": true,
-      "Orion": true,
-      "RakNet": true,
-      "Protocol": true,
-      "Binary": true
+      "System": {
+        "Debug": true,
+        "Info": true,
+        "Warn": true,
+        "Err": true,
+        "Chat": true
+      },
+      "World": {
+        "Debug": true,
+        "Info": true,
+        "Warn": true,
+        "Err": true,
+        "Chat": true
+      },
+      "Orion": {
+        "Debug": true,
+        "Info": true,
+        "Warn": true,
+        "Err": true,
+        "Chat": true
+      },
+      "RakNet": {
+        "Debug": true,
+        "Info": true,
+        "Warn": true,
+        "Err": true,
+        "Chat": true
+      },
+      "Protocol": {
+        "Debug": true,
+        "Info": true,
+        "Warn": true,
+        "Err": true,
+        "Chat": true
+      },
+      "Binary": {
+        "Debug": true,
+        "Info": true,
+        "Warn": true,
+        "Err": true,
+        "Chat": true
+      }
     }
   },
   "Server": {
