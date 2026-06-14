@@ -5,42 +5,42 @@
         "Debug": true,
         "Info": true,
         "Warn": true,
-        "Err": true,
+        "Error": true,
         "Chat": true
       },
       "World": {
         "Debug": true,
         "Info": true,
         "Warn": true,
-        "Err": true,
+        "Error": true,
         "Chat": true
       },
       "Orion": {
         "Debug": true,
         "Info": true,
         "Warn": true,
-        "Err": true,
+        "Error": true,
         "Chat": true
       },
       "RakNet": {
         "Debug": true,
         "Info": true,
         "Warn": true,
-        "Err": true,
+        "Error": true,
         "Chat": true
       },
       "Protocol": {
         "Debug": true,
         "Info": true,
         "Warn": true,
-        "Err": true,
+        "Error": true,
         "Chat": true
       },
       "Binary": {
         "Debug": true,
         "Info": true,
         "Warn": true,
-        "Err": true,
+        "Error": true,
         "Chat": true
       }
     }

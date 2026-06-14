@@ -54,7 +54,7 @@ public sealed class LogLevelConfig
             LogLevel.Debug => settings.Debug,
             LogLevel.Info => settings.Info,
             LogLevel.Warn => settings.Warn,
-            LogLevel.Err => settings.Err,
+            LogLevel.Error => settings.Error,
             LogLevel.Chat => settings.Chat,
             _ => true
         };
@@ -88,8 +88,8 @@ public sealed class CategoryLogLevel
     [JsonPropertyName("Warn")]
     public bool Warn { get; init; } = true;
 
-    [JsonPropertyName("Err")]
-    public bool Err { get; init; } = true;
+    [JsonPropertyName("Error")]
+    public bool Error { get; init; } = true;
 
     [JsonPropertyName("Chat")]
     public bool Chat { get; init; } = true;
@@ -110,7 +110,7 @@ public enum LogLevel
     Debug,
     Info,
     Warn,
-    Err,
+    Error,
     Chat
 }
 
