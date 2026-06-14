@@ -4,13 +4,13 @@
     <TargetFramework>net10.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
-    <RootNamespace>Orion.$(MSBuildProjectName.Replace(" ", "_"))</RootNamespace>
+    <RootNamespace>Orion.Compression</RootNamespace>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
   </PropertyGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\Config\Config.csproj" />
-    <ProjectReference Include="..\Binary\Binary.csproj" />
-    <ProjectReference Include="..\Compression\Compression.csproj" />
+    <ProjectReference Include="..\..\..\..\Downloads\dotnet-span-zlib-main\dotnet-span-zlib\dotnet-span-zlib.csproj" />
   </ItemGroup>
 
 </Project>
