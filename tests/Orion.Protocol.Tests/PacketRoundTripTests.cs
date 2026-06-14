@@ -1,0 +1,122 @@
+using Orion.Protocol.Enums;
+using Orion.Protocol.Packets;
+using Orion.Protocol.Types;
+
+namespace Orion.Protocol.Tests;
+
+public sealed class PacketRoundTripTests
+{
+    [Fact]
+    public void Login_RoundTrip_PreservesFields()
+    {
+        LoginPacket original = new()
+        {
+            Protocol = 975,
+            Identity = "eyJ0ZXN0IjoidGVzdCJ9",
+            Client = "{\"ThirdPartyName\":\"Test\"}"
+        };
+
+        LoginPacket decoded = PacketTestHelper.RoundTrip(original);
+
+        Assert.Equal(original.Protocol, decoded.Protocol);
+        Assert.Equal(original.Identity, decoded.Identity);
+        Assert.Equal(original.Client, decoded.Client);
+    }
+
+    [Fact]
+    public void NetworkSettings_RoundTrip_PreservesFields()
+    {
+        NetworkSettingsPacket original = new()
+        {
+            CompressionThreshold = 256,
+            CompressionMethod = CompressionMethod.Zlib,
+            ClientThrottle = true,
+            ClientThrottleThreshold = 7,
+            ClientThrottleScalar = 0.5f
+        };
+
+        NetworkSettingsPacket decoded = PacketTestHelper.RoundTrip(original);
+
+        Assert.Equal(original.CompressionThreshold, decoded.CompressionThreshold);
+        Assert.Equal(original.CompressionMethod, decoded.CompressionMethod);
+        Assert.Equal(original.ClientThrottle, decoded.ClientThrottle);
+        Assert.Equal(original.ClientThrottleThreshold, decoded.ClientThrottleThreshold);
+        Assert.Equal(original.ClientThrottleScalar, decoded.ClientThrottleScalar);
+    }
+
+    [Fact]
+    public void StartGame_RoundTrip_PreservesCoreFields()
+    {
+        StartGamePacket original = new()
+        {
+            EntityUniqueId = 42,
+            EntityRuntimeId = 99,
+            PlayerGameMode = 0,
+            PlayerPosition = new Vec3f { X = 1f, Y = 64f, Z = -2f },
+            Pitch = 10f,
+            Yaw = 20f,
+            WorldName = "Orion",
+            LevelId = "OrionWorld",
+            BaseGameVersion = "1.26.21",
+            GameVersion = "1.26.21"
+        };
+
+        StartGamePacket decoded = PacketTestHelper.RoundTrip(original);
+
+        Assert.Equal(original.EntityUniqueId, decoded.EntityUniqueId);
+        Assert.Equal(original.EntityRuntimeId, decoded.EntityRuntimeId);
+        Assert.Equal(original.PlayerPosition.X, decoded.PlayerPosition.X);
+        Assert.Equal(original.WorldName, decoded.WorldName);
+        Assert.Equal(original.LevelId, decoded.LevelId);
+    }
+
+    [Fact]
+    public void PlayerAuthInput_RoundTrip_PreservesFields()
+    {
+        PlayerAuthInputData inputData = new();
+        inputData.SetFlag(PlayerAuthInputFlag.Up, true);
+        inputData.SetFlag(PlayerAuthInputFlag.Sneaking, true);
+
+        PlayerAuthInputPacket original = new()
+        {
+            Pitch = 5f,
+            Yaw = 15f,
+            Position = new Vec3f { X = 0f, Y = 70f, Z = 0f },
+            MoveVector = new Vec2f { X = 0.5f, Y = -0.25f },
+            InputData = inputData,
+            InputMode = InputMode.Mouse,
+            PlayMode = PlayMode.Normal,
+            InteractionModel = InteractionModel.Crosshair
+        };
+
+        PlayerAuthInputPacket decoded = PacketTestHelper.RoundTrip(original);
+
+        Assert.Equal(original.Pitch, decoded.Pitch);
+        Assert.Equal(original.Yaw, decoded.Yaw);
+        Assert.Equal(original.Position.Z, decoded.Position.Z);
+        Assert.True(decoded.InputData.HasFlag(PlayerAuthInputFlag.Up));
+        Assert.True(decoded.InputData.HasFlag(PlayerAuthInputFlag.Sneaking));
+        Assert.Equal(original.InputMode, decoded.InputMode);
+    }
+
+    [Fact]
+    public void LevelChunk_RoundTrip_PreservesFields()
+    {
+        LevelChunkPacket original = new()
+        {
+            ChunkX = 3,
+            ChunkZ = -4,
+            Dimension = 0,
+            SubChunkCount = 2,
+            CacheEnabled = false,
+            RawPayload = [0x01, 0x02, 0x03, 0x04]
+        };
+
+        LevelChunkPacket decoded = PacketTestHelper.RoundTrip(original);
+
+        Assert.Equal(original.ChunkX, decoded.ChunkX);
+        Assert.Equal(original.ChunkZ, decoded.ChunkZ);
+        Assert.Equal(original.SubChunkCount, decoded.SubChunkCount);
+        Assert.Equal(original.RawPayload, decoded.RawPayload);
+    }
+}
