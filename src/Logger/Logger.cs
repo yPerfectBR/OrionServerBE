@@ -67,35 +67,11 @@ public static class Logger
     public static void Warn(LogCategory category, string format, params object?[] args) =>
         Log(category, LogLevel.Warn, format, args);
 
-    public static void Err(LogCategory category, string format, params object?[] args) =>
-        Log(category, LogLevel.Err, format, args);
-
     public static void Error(LogCategory category, string format, params object?[] args) =>
-        Log(category, LogLevel.Err, format, args);
+        Log(category, LogLevel.Error, format, args);
 
     public static void Chat(LogCategory category, string format, params object?[] args) =>
         Log(category, LogLevel.Chat, format, args);
-
-    public static void Debug(string format, params object?[] args) =>
-        Log(LogCategory.System, LogLevel.Debug, format, args);
-
-    public static void Info(string format, params object?[] args) =>
-        Log(LogCategory.System, LogLevel.Info, format, args);
-
-    public static void Warn(string format, params object?[] args) =>
-        Log(LogCategory.System, LogLevel.Warn, format, args);
-
-    public static void Err(string format, params object?[] args) =>
-        Log(LogCategory.System, LogLevel.Err, format, args);
-
-    public static void Error(string format, params object?[] args) =>
-        Log(LogCategory.System, LogLevel.Err, format, args);
-
-    public static void Chat(string format, params object?[] args) =>
-        Log(LogCategory.System, LogLevel.Chat, format, args);
-
-    public static void Log(LogLevel level, string format, params object?[] args) =>
-        Log(LogCategory.System, level, format, args);
 
     public static void Log(LogCategory category, LogLevel level, string format, params object?[] args)
     {
@@ -146,7 +122,7 @@ public static class Logger
         LogLevel.Debug => "debug",
         LogLevel.Info => "info",
         LogLevel.Warn => "warning",
-        LogLevel.Err => "error",
+        LogLevel.Error => "error",
         LogLevel.Chat => "chat",
         _ => "info"
     };
@@ -156,7 +132,7 @@ public static class Logger
         LogLevel.Debug => LogColor.DarkGray,
         LogLevel.Info => LogColor.Green,
         LogLevel.Warn => LogColor.Yellow,
-        LogLevel.Err => LogColor.Red,
+        LogLevel.Error => LogColor.Red,
         LogLevel.Chat => LogColor.MaterialAmethyst,
         _ => LogColor.White
     };

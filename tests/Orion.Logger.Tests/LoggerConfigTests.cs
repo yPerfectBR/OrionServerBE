@@ -28,7 +28,7 @@ public sealed class LoggerConfigTests
                 Debug = false,
                 Info = true,
                 Warn = true,
-                Err = true,
+                Error = true,
                 Chat = true
             }
         };
