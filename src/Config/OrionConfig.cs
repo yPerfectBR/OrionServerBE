@@ -1,0 +1,294 @@
+using System.Text.Json.Serialization;
+
+namespace Orion.Config;
+
+/// <summary>
+/// Root configuration model. Maps 1:1 to config/server.json.
+/// </summary>
+public sealed class OrionConfig
+{
+    [JsonPropertyName("Logging")]
+    public LoggingConfig Logging { get; init; } = new();
+
+    [JsonPropertyName("Server")]
+    public ServerSection Server { get; init; } = new();
+
+    [JsonPropertyName("Storage")]
+    public StorageConfig Storage { get; init; } = new();
+}
+
+public sealed class LoggingConfig
+{
+    [JsonPropertyName("LogLevel")]
+    public LogLevelConfig LogLevel { get; init; } = new();
+}
+
+public sealed class LogLevelConfig
+{
+    [JsonPropertyName("System")]
+    public bool System { get; init; } = true;
+
+    [JsonPropertyName("World")]
+    public bool World { get; init; } = true;
+
+    [JsonPropertyName("Orion")]
+    public bool Orion { get; init; } = true;
+
+    [JsonPropertyName("RakNet")]
+    public bool RakNet { get; init; } = true;
+
+    [JsonPropertyName("Protocol")]
+    public bool Protocol { get; init; } = true;
+
+    [JsonPropertyName("Binary")]
+    public bool Binary { get; init; } = true;
+}
+
+public sealed class ServerSection
+{
+    [JsonPropertyName("Edition")]
+    public string Edition { get; init; } = "MCPE";
+
+    [JsonPropertyName("Name")]
+    public string Name { get; init; } = "OrionServer";
+
+    [JsonPropertyName("Motd")]
+    public string Motd { get; init; } = "OrionServer";
+
+    [JsonPropertyName("Orion")]
+    public OrionSection Orion { get; init; } = new();
+
+    [JsonPropertyName("WorldDefaultSettings")]
+    public WorldProperties WorldDefaultSettings { get; init; } = new();
+
+    [JsonPropertyName("Network")]
+    public NetworkConfig Network { get; init; } = new();
+
+    [JsonPropertyName("Raknet")]
+    public RaknetConfig Raknet { get; init; } = new();
+}
+
+public sealed class OrionSection
+{
+    [JsonPropertyName("Permissions")]
+    public string Permissions { get; init; } = "./config/permissions.json";
+
+    [JsonPropertyName("Resources")]
+    public ResourcesConfig Resources { get; init; } = new();
+
+    [JsonPropertyName("SpawnWorldIdentifier")]
+    public string SpawnWorldIdentifier { get; init; } = "default";
+
+    [JsonPropertyName("MovementValidation")]
+    public bool MovementValidation { get; init; } = true;
+
+    [JsonPropertyName("MovementHorizontalThreshold")]
+    public float MovementHorizontalThreshold { get; init; } = 0.4f;
+
+    [JsonPropertyName("MovementVerticalThreshold")]
+    public float MovementVerticalThreshold { get; init; } = 0.6f;
+
+    [JsonPropertyName("ShutdownMessage")]
+    public string ShutdownMessage { get; init; } = "Server is shutting down...";
+
+    [JsonPropertyName("TicksPerSecond")]
+    public int TicksPerSecond { get; init; } = 20;
+
+    [JsonPropertyName("OfflineMode")]
+    public bool OfflineMode { get; init; } = true;
+}
+
+public sealed class ResourcesConfig
+{
+    [JsonPropertyName("Path")]
+    public string Path { get; init; } = "./resource_packs";
+
+    [JsonPropertyName("MustAccept")]
+    public bool MustAccept { get; init; } = true;
+
+    [JsonPropertyName("ChunkDownloadTimeout")]
+    public int ChunkDownloadTimeout { get; init; } = 1;
+
+    [JsonPropertyName("ChunkMaxSize")]
+    public int ChunkMaxSize { get; init; } = 262144;
+}
+
+public sealed class NetworkConfig
+{
+    [JsonPropertyName("CompressionMethod")]
+    public int CompressionMethod { get; init; }
+
+    [JsonPropertyName("CompressionThreshold")]
+    public int CompressionThreshold { get; init; } = 1;
+
+    [JsonPropertyName("FrameMonitoring")]
+    public bool FrameMonitoring { get; init; } = true;
+
+    [JsonPropertyName("PacketsPerFrame")]
+    public int PacketsPerFrame { get; init; } = 64;
+}
+
+public sealed class RaknetConfig
+{
+    [JsonPropertyName("Address")]
+    public string Address { get; init; } = "0.0.0.0";
+
+    [JsonPropertyName("PortIPV4")]
+    public ushort PortIPV4 { get; init; } = 19132;
+
+    [JsonPropertyName("PortIPV6")]
+    public ushort PortIPV6 { get; init; } = 19133;
+
+    [JsonPropertyName("Protocol")]
+    public int Protocol { get; init; } = 975;
+
+    [JsonPropertyName("Version")]
+    public string Version { get; init; } = "1.26.20";
+
+    [JsonPropertyName("Message")]
+    public string Message { get; init; } = "Orion";
+
+    [JsonPropertyName("MaxConnections")]
+    public int MaxConnections { get; init; } = 40;
+
+    [JsonPropertyName("MtuMaxSize")]
+    public int MtuMaxSize { get; init; } = 1492;
+
+    [JsonPropertyName("MtuMinSize")]
+    public int MtuMinSize { get; init; } = 400;
+
+    [JsonPropertyName("ValidatePort")]
+    public bool ValidatePort { get; init; } = true;
+}
+
+public sealed class StorageConfig
+{
+    [JsonPropertyName("Provider")]
+    public string Provider { get; init; } = "Redis";
+
+    [JsonPropertyName("ImportWorldOnStartup")]
+    public bool ImportWorldOnStartup { get; init; }
+
+    [JsonPropertyName("ImportSourceWorldPath")]
+    public string ImportSourceWorldPath { get; init; } = "./worlds/default";
+
+    [JsonPropertyName("Redis")]
+    public RedisStorageConfig Redis { get; init; } = new();
+}
+
+public sealed class RedisStorageConfig
+{
+    [JsonPropertyName("Endpoint")]
+    public string Endpoint { get; init; } = "127.0.0.1:6379";
+
+    [JsonPropertyName("Database")]
+    public int Database { get; init; }
+
+    [JsonPropertyName("KeyPrefix")]
+    public string KeyPrefix { get; init; } = "orion";
+
+    [JsonPropertyName("AofRequired")]
+    public bool AofRequired { get; init; } = true;
+
+    [JsonPropertyName("PoolSize")]
+    public int PoolSize { get; init; } = 16;
+}
+
+public sealed class WorldProperties
+{
+    [JsonPropertyName("identifier")]
+    public string Identifier { get; init; } = "default";
+
+    [JsonPropertyName("seed")]
+    public long Seed { get; init; } = 2570659193;
+
+    [JsonPropertyName("gamemode")]
+    public string Gamemode { get; init; } = "survival";
+
+    [JsonPropertyName("difficulty")]
+    public string Difficulty { get; init; } = "normal";
+
+    [JsonPropertyName("saveInterval")]
+    public int SaveInterval { get; init; } = 5;
+
+    [JsonPropertyName("dimensions")]
+    public List<DimensionConfig> Dimensions { get; init; } = [new()];
+
+    [JsonPropertyName("gamerules")]
+    public GamerulesConfig Gamerules { get; init; } = new();
+}
+
+public sealed class DimensionConfig
+{
+    [JsonPropertyName("identifier")]
+    public string Identifier { get; init; } = "overworld";
+
+    [JsonPropertyName("type")]
+    public int Type { get; init; }
+
+    [JsonPropertyName("generator")]
+    public string Generator { get; init; } = "superflat";
+
+    [JsonPropertyName("viewDistance")]
+    public int ViewDistance { get; init; } = 20;
+
+    [JsonPropertyName("simulationDistance")]
+    public int SimulationDistance { get; init; } = 10;
+
+    [JsonPropertyName("spawnPosition")]
+    public int[] SpawnPosition { get; init; } = [0, -57, 0];
+
+    [JsonPropertyName("chunkPregeneration")]
+    public List<ChunkPregenerationConfig> ChunkPregeneration { get; init; } = [];
+
+    [JsonPropertyName("lockOnMemory")]
+    public bool LockOnMemory { get; init; }
+}
+
+public sealed class ChunkPregenerationConfig
+{
+    [JsonPropertyName("start")]
+    public int[] Start { get; init; } = [-400, -400];
+
+    [JsonPropertyName("end")]
+    public int[] End { get; init; } = [400, 400];
+
+    [JsonPropertyName("memoryLock")]
+    public bool MemoryLock { get; init; } = true;
+}
+
+public sealed class GamerulesConfig
+{
+    [JsonPropertyName("showCoordinates")]
+    public bool ShowCoordinates { get; init; } = true;
+
+    [JsonPropertyName("showDaysPlayed")]
+    public bool ShowDaysPlayed { get; init; }
+
+    [JsonPropertyName("doDayLightCycle")]
+    public bool DoDayLightCycle { get; init; } = true;
+
+    [JsonPropertyName("doImmediateRespawn")]
+    public bool DoImmediateRespawn { get; init; }
+
+    [JsonPropertyName("doTileDrops")]
+    public bool DoTileDrops { get; init; } = true;
+
+    [JsonPropertyName("keepInventory")]
+    public bool KeepInventory { get; init; }
+
+    [JsonPropertyName("fallDamage")]
+    public bool FallDamage { get; init; } = true;
+
+    [JsonPropertyName("fireDamage")]
+    public bool FireDamage { get; init; } = true;
+
+    [JsonPropertyName("drowningDamage")]
+    public bool DrowningDamage { get; init; } = true;
+
+    [JsonPropertyName("randomTickSpeed")]
+    public int RandomTickSpeed { get; init; } = 1;
+
+    [JsonPropertyName("locatorBar")]
+    public bool LocatorBar { get; init; }
+}
