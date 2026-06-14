@@ -8,4 +8,5 @@
   <Project Path="src/Protocol/Protocol.csproj" />
   <Project Path="src/RakNet/RakNet.csproj" Id="0f80e604-c0a6-45b4-9cb6-8737297b006d" />
   <Project Path="tests/Orion.Protocol.Tests/Orion.Protocol.Tests.csproj" />
+  <Project Path="tests/Orion.Logger.Tests/Orion.Logger.Tests.csproj" />
 </Solution>

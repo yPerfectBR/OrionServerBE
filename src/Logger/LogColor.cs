@@ -1,4 +1,4 @@
-namespace Basalt;
+namespace Orion.Logger;
 
 public enum LogColor
 {
@@ -29,5 +29,5 @@ public enum LogColor
     MaterialDiamond,
     MaterialLapis,
     MaterialAmethyst,
-    Reset,
+    Reset
 }
