@@ -48,7 +48,8 @@
             -57,
             0
           ],
-          "chunkPregeneration": []
+          "chunkPregeneration": [],
+          "lockOnMemory": false
         }
       ],
       "gamerules": {
