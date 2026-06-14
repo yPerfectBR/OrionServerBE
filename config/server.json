@@ -2,12 +2,11 @@
   "Logging": {
     "LogLevel": {
       "System": true,
-      "OrionCore": true,
-      "OrionEngine": true,
-      "OrionServer": true,
-      "OrionNet": true,
-      "OrionReplication": true,
-      "OrionWorld": true
+      "World": true,
+      "Orion": true,
+      "RakNet": true,
+      "Protocol": true,
+      "Binary": true
     }
   },
   "Server": {
