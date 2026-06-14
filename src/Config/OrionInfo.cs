@@ -71,6 +71,7 @@ public static class OrionInfo
     public static RaknetConfig Raknet => Config.Server.Raknet;
     public static WorldProperties WorldDefaultSettings => Config.Server.WorldDefaultSettings;
     public static StorageConfig Storage => Config.Storage;
+    public static RuntimeConfig Runtime => Config.Runtime;
 
     /// <summary>
     /// Loads configuration from disk. Safe to call once at process startup.
@@ -95,6 +96,8 @@ public static class OrionInfo
             throw new InvalidOperationException($"Failed to deserialize configuration: {path}");
         }
 
+        OrionRuntime.Apply(config.Runtime);
+
         lock (Sync)
         {
             _config = config;
@@ -109,6 +112,8 @@ public static class OrionInfo
     public static void Load(OrionConfig config, string? configPath = null)
     {
         ArgumentNullException.ThrowIfNull(config);
+
+        OrionRuntime.Apply(config.Runtime);
 
         lock (Sync)
         {

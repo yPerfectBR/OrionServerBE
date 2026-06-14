@@ -15,6 +15,9 @@ public sealed class OrionConfig
 
     [JsonPropertyName("Storage")]
     public StorageConfig Storage { get; init; } = new();
+
+    [JsonPropertyName("Runtime")]
+    public RuntimeConfig Runtime { get; init; } = new();
 }
 
 public sealed class LoggingConfig
@@ -361,4 +364,29 @@ public sealed class GamerulesConfig
 
     [JsonPropertyName("locatorBar")]
     public bool LocatorBar { get; init; }
+}
+
+public sealed class RuntimeConfig
+{
+    [JsonPropertyName("ThreadPool")]
+    public ThreadPoolConfig ThreadPool { get; init; } = new();
+}
+
+/// <summary>
+/// Caps the .NET thread pool used by async continuations and background work.
+/// Values of 0 leave the corresponding limit unchanged (OS/.NET default).
+/// </summary>
+public sealed class ThreadPoolConfig
+{
+    [JsonPropertyName("MinWorkerThreads")]
+    public int MinWorkerThreads { get; init; }
+
+    [JsonPropertyName("MaxWorkerThreads")]
+    public int MaxWorkerThreads { get; init; }
+
+    [JsonPropertyName("MinIoCompletionThreads")]
+    public int MinIoCompletionThreads { get; init; }
+
+    [JsonPropertyName("MaxIoCompletionThreads")]
+    public int MaxIoCompletionThreads { get; init; }
 }

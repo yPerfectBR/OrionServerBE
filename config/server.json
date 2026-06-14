@@ -120,6 +120,14 @@
       "ValidatePort": true
     }
   },
+  "Runtime": {
+    "ThreadPool": {
+      "MinWorkerThreads": 1,
+      "MaxWorkerThreads": 4,
+      "MinIoCompletionThreads": 1,
+      "MaxIoCompletionThreads": 4
+    }
+  },
   "Storage": {
     "Provider": "Redis",
     "ImportWorldOnStartup": true,
