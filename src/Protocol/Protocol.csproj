@@ -13,4 +13,11 @@
     <ProjectReference Include="..\Compression\Compression.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Content Include="Data\orion\**\*.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <Link>Data\orion\%(RecursiveDir)%(Filename)%(Extension)</Link>
+    </Content>
+  </ItemGroup>
+
 </Project>
