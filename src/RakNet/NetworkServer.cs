@@ -3,6 +3,7 @@ using System.Collections.Concurrent;
 using System.Net;
 using System.Net.Sockets;
 using System.Security.Cryptography;
+using Orion.Config;
 using Orion.RakNet.Packets;
 using Orion.RakNet.Packets.Types;
 
@@ -11,7 +12,6 @@ namespace Orion.RakNet;
 public sealed class NetworkServer : IDisposable
 {
     private const int RakNetHeaderSize = 28;
-    private const int MinMtu = 576;
     private const int DefaultFrameBufferSize = 2048;
     private const int DisconnectTimeoutMs = 15000;
 
@@ -27,7 +27,7 @@ public sealed class NetworkServer : IDisposable
     public event Action<NetworkConnection>? OnDisconnected;
     public event Action<NetworkConnection, ReadOnlyMemory<byte>>? OnMessage;
 
-    public ulong ServerGuid = unchecked((ulong)Random.Shared.NextInt64());
+    public ulong ServerGuid => unchecked((ulong)OrionInfo.ServerGuid);
 
     private readonly byte[] _cookieSecret = RandomNumberGenerator.GetBytes(32);
     private readonly ConcurrentDictionary<EndpointKey, NetworkServerConnection> _connections = new();
@@ -39,15 +39,10 @@ public sealed class NetworkServer : IDisposable
     public NetworkServer(RaknetServerOptions options = default)
     {
         RaknetServerOptions resolvedOptions = options.Equals(default(RaknetServerOptions))
-            ? new RaknetServerOptions(1400, 255, RaknetServerOptions.DefaultAdvertisement, true)
+            ? RaknetServerOptions.FromOrionInfo()
             : options;
 
-        if (string.IsNullOrWhiteSpace(resolvedOptions.Advertisement))
-        {
-            resolvedOptions = resolvedOptions with { Advertisement = RaknetServerOptions.DefaultAdvertisement };
-        }
-
-        ushort normalizedMaxMtu = Math.Clamp(resolvedOptions.MaxMtu, (ushort)MinMtu, (ushort)ushort.MaxValue);
+        ushort normalizedMaxMtu = Math.Clamp(resolvedOptions.MaxMtu, resolvedOptions.MinMtu, ushort.MaxValue);
         if (normalizedMaxMtu != resolvedOptions.MaxMtu)
         {
             resolvedOptions = resolvedOptions with { MaxMtu = normalizedMaxMtu };
@@ -69,7 +64,7 @@ public sealed class NetworkServer : IDisposable
             _socket.IOControl(sioUdpConnReset, [0, 0, 0, 0], null);
         }
 
-        _socket.Bind(new IPEndPoint(IPAddress.Any, Options.Port));
+        _socket.Bind(new IPEndPoint(IPAddress.Any, Options.PortIpv4));
 
         _runCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
         CancellationToken token = _runCts.Token;
@@ -234,7 +229,8 @@ public sealed class NetworkServer : IDisposable
         }
 
         UnconnectedPing ping = UnconnectedPing.Deserialize(message);
-        UnconnectedPong pong = new(ping.Time, ServerGuid, Options.Advertisement);
+        string advertisement = OrionInfo.BuildRaknetAdvertisement();
+        UnconnectedPong pong = new(ping.Time, ServerGuid, advertisement);
 
         SendTo(endpoint, pong, UnconnectedPong.Serialize);
     }
@@ -246,7 +242,7 @@ public sealed class NetworkServer : IDisposable
             return;
         }
 
-        ushort mtu = (ushort)Math.Clamp(message.Length + RakNetHeaderSize, MinMtu, Options.MaxMtu);
+        ushort mtu = (ushort)Math.Clamp(message.Length + RakNetHeaderSize, Options.MinMtu, Options.MaxMtu);
 
         uint? cookie = Options.EnableCookies
             ? ConnectionCookie.Create(endpoint, _cookieSecret)
@@ -279,7 +275,7 @@ public sealed class NetworkServer : IDisposable
             return;
         }
 
-        ushort selectedMtu = Math.Clamp(request.MTU, (ushort)MinMtu, Options.MaxMtu);
+        ushort selectedMtu = Math.Clamp(request.MTU, Options.MinMtu, Options.MaxMtu);
 
         OpenConnectionReplyTwo reply = new((long)ServerGuid, endpoint, selectedMtu, false);
         SendTo(endpoint, reply, OpenConnectionReplyTwo.Serialize);

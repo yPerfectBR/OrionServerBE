@@ -10,6 +10,25 @@ public static class OrionInfo
     private static readonly Lock Sync = new();
     private static OrionConfig? _config;
     private static string _configPath = "config/server.json";
+    private static long _serverGuid;
+
+    /// <summary>
+    /// Optional hook for live player count in server-list pings. Returns 0 when unset or on failure.
+    /// </summary>
+    public static Func<int>? ActivePlayerCountProvider { get; set; }
+
+    public static long ServerGuid
+    {
+        get
+        {
+            lock (Sync)
+            {
+                EnsureLoaded();
+                EnsureServerGuid();
+                return _serverGuid;
+            }
+        }
+    }
 
     public static bool IsLoaded
     {
@@ -80,6 +99,7 @@ public static class OrionInfo
         {
             _config = config;
             _configPath = path;
+            EnsureServerGuid();
         }
     }
 
@@ -97,17 +117,84 @@ public static class OrionInfo
             {
                 _configPath = configPath;
             }
+
+            EnsureServerGuid();
         }
     }
 
     /// <summary>
     /// Builds the MCPE server-list advertisement string for RakNet UnconnectedPong.
+    /// Format: Edition;MOTD;Protocol;Version;PlayerCount;MaxPlayers;ServerGuid;SubMotd;Gamemode;GamemodeId;PortV4;PortV6;
     /// </summary>
-    public static string BuildRaknetAdvertisement(long serverGuid)
+    public static string BuildRaknetAdvertisement()
     {
         RaknetConfig raknet = Raknet;
         ServerSection server = Server;
+        string gamemode = FormatGamemode(server.WorldDefaultSettings.Gamemode);
+        int gamemodeNumeric = ResolveGamemodeNumeric(server.WorldDefaultSettings.Gamemode);
+        int playerCount = ResolveActivePlayerCount();
 
-        return $"MCPE;{server.Motd};{raknet.Protocol};{raknet.Version};0;10;{serverGuid};{raknet.Message};Survival;1;{raknet.PortIPV4};{raknet.PortIPV6};";
+        return string.Join(';',
+        [
+            server.Edition,
+            server.Motd,
+            raknet.Protocol.ToString(),
+            raknet.Version,
+            playerCount.ToString(),
+            raknet.MaxConnections.ToString(),
+            ServerGuid.ToString(),
+            raknet.Message,
+            gamemode,
+            gamemodeNumeric.ToString(),
+            raknet.PortIPV4.ToString(),
+            raknet.PortIPV6.ToString(),
+            ""
+        ]);
     }
+
+    private static void EnsureLoaded()
+    {
+        if (_config is null)
+        {
+            throw new InvalidOperationException(
+                "OrionInfo is not loaded. Call OrionInfo.Load() before accessing configuration.");
+        }
+    }
+
+    private static void EnsureServerGuid()
+    {
+        if (_serverGuid == 0)
+        {
+            _serverGuid = Random.Shared.NextInt64(1, long.MaxValue);
+        }
+    }
+
+    private static int ResolveActivePlayerCount()
+    {
+        try
+        {
+            return Math.Max(0, ActivePlayerCountProvider?.Invoke() ?? 0);
+        }
+        catch
+        {
+            return 0;
+        }
+    }
+
+    private static string FormatGamemode(string gamemode)
+    {
+        if (string.IsNullOrWhiteSpace(gamemode))
+        {
+            return "Survival";
+        }
+
+        return char.ToUpperInvariant(gamemode[0]) + gamemode[1..].ToLowerInvariant();
+    }
+
+    private static int ResolveGamemodeNumeric(string gamemode) => gamemode.ToLowerInvariant() switch
+    {
+        "creative" => 2,
+        "adventure" => 3,
+        _ => 1
+    };
 }
