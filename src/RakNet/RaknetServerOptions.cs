@@ -1,12 +1,33 @@
+using Orion.Config;
+
 namespace Orion.RakNet;
 
 public readonly record struct RaknetServerOptions(
-    ushort MaxMtu = 1400,
-    int MaxConnections = 255,
-    string Advertisement = "MCPE;Basalt;924;1.21.90;0;10;03124212345;Bedrock level;Survival;1;19132;19133;",
-    bool EnableCookies = true,
-    ushort Port = 19132
-)
+    ushort MaxMtu,
+    ushort MinMtu,
+    int MaxConnections,
+    bool EnableCookies,
+    ushort PortIpv4,
+    ushort PortIpv6)
 {
-    public const string DefaultAdvertisement = "MCPE;Basalt;924;1.21.90;0;10;03124212345;Bedrock level;Survival;1;19132;19133;";
+    public static RaknetServerOptions FromOrionInfo()
+    {
+        if (!OrionInfo.IsLoaded)
+        {
+            throw new InvalidOperationException(
+                "OrionInfo is not loaded. Call OrionInfo.Load() before creating RaknetServerOptions.");
+        }
+
+        RaknetConfig raknet = OrionInfo.Raknet;
+        ushort minMtu = (ushort)Math.Clamp(raknet.MtuMinSize, 576, ushort.MaxValue);
+        ushort maxMtu = (ushort)Math.Clamp(raknet.MtuMaxSize, minMtu, ushort.MaxValue);
+
+        return new RaknetServerOptions(
+            MaxMtu: maxMtu,
+            MinMtu: minMtu,
+            MaxConnections: raknet.MaxConnections,
+            EnableCookies: true,
+            PortIpv4: raknet.PortIPV4,
+            PortIpv6: raknet.PortIPV6);
+    }
 }
