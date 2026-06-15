@@ -72,6 +72,32 @@ public sealed class ConnectionCoordinator
         });
     }
 
+    public void EnqueueSend(PlayerSession session, IReadOnlyList<DataPacket> packets)
+    {
+        if (packets.Count == 0)
+        {
+            return;
+        }
+
+        int workerId = session.SessionWorkerId ?? ResolveWorkerId(session.Connection);
+        SessionWorker worker = _pool.GetWorker(workerId);
+
+        if (worker.IsCurrentThread())
+        {
+            Network.SessionSendCoordinator.SendDirect(session, packets);
+            return;
+        }
+
+        for (int i = 0; i < packets.Count; i++)
+        {
+            worker.Enqueue(new ViewDeltaMessage
+            {
+                Session = session,
+                Packet = packets[i]
+            });
+        }
+    }
+
     public void RunOnSessionThread(PlayerSession session, Action action)
     {
         ArgumentNullException.ThrowIfNull(action);
