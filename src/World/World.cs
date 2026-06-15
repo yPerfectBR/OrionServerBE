@@ -1,3 +1,4 @@
+using Orion.Config;
 using Orion.Protocol.Enums;
 using Orion.World.Generation;
 using Orion.World.Provider;
@@ -6,6 +7,7 @@ namespace Orion.World;
 
 public sealed class World : IDisposable, Tickable
 {
+    public object? Server { get; set; }
     private readonly Dictionary<string, Dimension> _dimensions = new(StringComparer.OrdinalIgnoreCase);
 
     public string Name { get; }
@@ -15,6 +17,8 @@ public sealed class World : IDisposable, Tickable
     public ulong TickValue { get; set; }
 
     public double TickWork { get; set; }
+
+    public int? AttachedWorkerId { get; set; }
 
     public int DimensionCount => _dimensions.Count;
 
@@ -26,9 +30,13 @@ public sealed class World : IDisposable, Tickable
         Provider = provider ?? new InMemoryProvider();
     }
 
-    public Dimension CreateDimension(string identifier, DimensionType type, Generator generator)
+    public Dimension CreateDimension(
+        string identifier,
+        DimensionType type,
+        Generator generator,
+        IReadOnlyList<ThreadingAreaConfig>? threadingAreas = null)
     {
-        Dimension dimension = new(identifier, type, Provider, generator);
+        Dimension dimension = new(identifier, type, Provider, generator, threadingAreas);
         AddDimension(dimension);
         return dimension;
     }

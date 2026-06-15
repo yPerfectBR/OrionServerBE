@@ -24,6 +24,8 @@ public sealed class Chunk
     public byte[]? Cache;
     public bool Dirty;
 
+    public bool Simulated;
+
     public Chunk(int x, int z, DimensionType type, SubChunk?[]? subChunks = null)
     {
         X = x;

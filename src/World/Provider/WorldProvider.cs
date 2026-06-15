@@ -20,4 +20,8 @@ public abstract class WorldProvider : IDisposable
     public abstract void Dispose();
 
     protected static long HashChunk(int x, int z) => CoordMath.HashChunk(x, z);
+
+    public virtual void SavePlayerData(string xuid, Orion.Protocol.Nbt.CompoundTag data) { _ = xuid; _ = data; }
+
+    public virtual Orion.Protocol.Nbt.CompoundTag? LoadPlayerData(string xuid) { _ = xuid; return null; }
 }
