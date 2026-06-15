@@ -11,6 +11,36 @@ public static class OrionRuntime
         ApplyThreadPool(runtime.ThreadPool);
     }
 
+    /// <summary>
+    /// Validates configured thread-pool limits against dedicated scheduling requirements.
+    /// Returns warning messages when explicit limits are below the recommended minimum.
+    /// </summary>
+    public static IReadOnlyList<string> ValidateThreadPool(OrionConfig config)
+    {
+        ArgumentNullException.ThrowIfNull(config);
+
+        SchedulingThreadBudget budget = SchedulingThreadRequirements.Compute(config);
+        ThreadPoolConfig threadPool = config.Runtime.ThreadPool;
+        List<string> warnings = [];
+
+        if (threadPool.MaxWorkerThreads > 0 && threadPool.MaxWorkerThreads < budget.MinimumThreadPoolMaxWorkers)
+        {
+            warnings.Add(
+                $"Runtime.ThreadPool.MaxWorkerThreads ({threadPool.MaxWorkerThreads}) is below the recommended minimum of " +
+                $"{budget.MinimumThreadPoolMaxWorkers} for {budget.AreaWorkerCount} area worker(s) and " +
+                $"{budget.SessionWorkerCount} session worker(s). Increase MaxWorkerThreads or set it to 0 to keep the .NET default.");
+        }
+
+        if (threadPool.MinWorkerThreads > 0 && threadPool.MinWorkerThreads > budget.MinimumThreadPoolMaxWorkers)
+        {
+            warnings.Add(
+                $"Runtime.ThreadPool.MinWorkerThreads ({threadPool.MinWorkerThreads}) exceeds the dedicated scheduling budget of " +
+                $"{budget.DedicatedWorkerThreads} worker thread(s). This may reserve more pool threads than the server needs.");
+        }
+
+        return warnings;
+    }
+
     public static void ApplyThreadPool(ThreadPoolConfig threadPool)
     {
         ArgumentNullException.ThrowIfNull(threadPool);
