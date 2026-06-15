@@ -36,19 +36,25 @@ public sealed class ServerHost : IDisposable
 
         OrionInfo.SetCanAcceptPlayers(false);
 
-        bool areaThreading = config.Server.WorldDefaultSettings.Dimensions
-            .Any(d => d.ThreadingAreas is { Count: > 0 });
+        SchedulingThreadBudget threadBudget = SchedulingThreadRequirements.Compute(config);
 
         ServerProperties properties = new()
         {
             TicksPerSecond = config.Server.Orion.TicksPerSecond,
-            AreaThreadingEnabled = areaThreading,
-            SessionThreadingEnabled = areaThreading,
-            AreaThreadCount = Math.Max(8, areaThreading ? CountAreaWorkers(config) : 1),
-            SessionThreadCount = 4,
+            AreaThreadingEnabled = threadBudget.AreaThreadingEnabled,
+            SessionThreadingEnabled = threadBudget.AreaThreadingEnabled,
+            AreaThreadCount = threadBudget.AreaWorkerCount,
+            SessionThreadCount = threadBudget.SessionWorkerCount,
             SimulationDistance = config.Server.WorldDefaultSettings.Dimensions.FirstOrDefault()?.SimulationDistance ?? 10,
             OnlineMode = !config.Server.Orion.OfflineMode
         };
+
+        WorldLogger.Info(
+            LogCategory.System,
+            "Scheduling threads: {0} area worker(s), {1} session worker(s) ({2} dedicated)",
+            threadBudget.AreaWorkerCount,
+            threadBudget.SessionWorkerCount,
+            threadBudget.DedicatedWorkerThreads);
 
         Server server = new(properties);
 
@@ -78,7 +84,7 @@ public sealed class ServerHost : IDisposable
             Dimension dimension = world.GetDimension(dimensionConfig.Identifier)!;
             pregenerator.PregenerateAll(dimension, dimensionConfig.ChunkPregeneration ?? [], dimensionConfig.Identifier);
 
-            if (areaThreading)
+            if (threadBudget.AreaThreadingEnabled)
             {
                 AttachConfiguredAreas(server, dimension);
             }
@@ -113,17 +119,6 @@ public sealed class ServerHost : IDisposable
         NetworkServer?.Dispose();
         Scheduling.Dispose();
         Server.GetWorld().Dispose();
-    }
-
-    private static int CountAreaWorkers(OrionConfig config)
-    {
-        int max = 1;
-        foreach (DimensionConfig dimension in config.Server.WorldDefaultSettings.Dimensions)
-        {
-            max = Math.Max(max, (dimension.ThreadingAreas?.Count ?? 0) + 1);
-        }
-
-        return max;
     }
 
     private static void AttachConfiguredAreas(Server server, Dimension dimension)

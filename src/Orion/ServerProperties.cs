@@ -4,9 +4,9 @@ public sealed class ServerProperties
 {
     public int TicksPerSecond { get; set; } = 20;
 
-    public int AreaThreadCount { get; set; } = 8;
+    public int AreaThreadCount { get; set; } = 2;
 
-    public int SessionThreadCount { get; set; } = 4;
+    public int SessionThreadCount { get; set; } = 1;
 
     public bool AreaThreadingEnabled { get; set; }
 
