@@ -1,6 +1,6 @@
 [
   {
-    "networkId": 1,
+    "networkId": 2,
     "identifier": "minecraft:grass_block",
     "isBlock": true,
     "blockStateHash": -567203660,
@@ -9,7 +9,7 @@
     "propertiesBase64": "CgAAAA=="
   },
   {
-    "networkId": 2,
+    "networkId": 3,
     "identifier": "minecraft:dirt",
     "isBlock": true,
     "blockStateHash": -2108756090,
@@ -18,7 +18,7 @@
     "propertiesBase64": "CgAAAA=="
   },
   {
-    "networkId": 3,
+    "networkId": 7,
     "identifier": "minecraft:bedrock",
     "isBlock": true,
     "blockStateHash": -173245189,
@@ -27,21 +27,23 @@
     "propertiesBase64": "CgAAAA=="
   },
   {
-    "networkId": 4,
+    "networkId": -161,
     "identifier": "minecraft:barrier",
     "isBlock": true,
     "blockStateHash": 951810905,
     "componentBased": false,
     "itemVersion": 2,
+    "creative": false,
     "propertiesBase64": "CgAAAA=="
   },
   {
-    "networkId": 5,
+    "networkId": 217,
     "identifier": "minecraft:structure_void",
     "isBlock": true,
     "blockStateHash": 1150271535,
     "componentBased": false,
     "itemVersion": 2,
+    "creative": false,
     "propertiesBase64": "CgAAAA=="
   }
 ]
