@@ -68,6 +68,18 @@ public sealed class Server
         }
 
         PacketIngress = new PacketIngress(this);
+        Commands.RegisterDefaultCommands();
+    }
+
+    public bool TryGetWorld(string identifier, out WorldInstance? world)
+    {
+        world = World;
+        if (world is null)
+        {
+            return false;
+        }
+
+        return string.Equals(world.Name, identifier, StringComparison.OrdinalIgnoreCase);
     }
 
     public void SetWorld(WorldInstance world)
