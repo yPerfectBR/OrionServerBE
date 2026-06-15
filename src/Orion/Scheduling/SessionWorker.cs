@@ -2,6 +2,7 @@ using System.Collections.Concurrent;
 using System.Diagnostics;
 using Orion.Network;
 using Orion.Player;
+using Orion.Player.Traits;
 using Orion.Scheduling.Messages;
 
 namespace Orion.Scheduling;
@@ -17,7 +18,7 @@ public sealed class SessionWorker
     private readonly ConcurrentDictionary<Orion.RakNet.NetworkConnection, PlayerSession> _sessions = new();
 
     private CancellationTokenSource? _runCancellation;
-    private Task? _loopTask;
+    private Thread? _workerThread;
 
     public int WorkerId { get; }
 
@@ -35,30 +36,33 @@ public sealed class SessionWorker
 
     public void Start()
     {
-        if (_loopTask is not null)
+        if (_workerThread is not null)
         {
             return;
         }
 
         _runCancellation = new CancellationTokenSource();
         CancellationToken token = _runCancellation.Token;
-        _loopTask = Task.Run(() => WorkerLoop(token), token);
+        _workerThread = new Thread(() => WorkerLoop(token))
+        {
+            IsBackground = true,
+            Name = $"session-worker-{WorkerId}"
+        };
+        _workerThread.Start();
     }
 
     public void Stop()
     {
         CancellationTokenSource? cancellation = _runCancellation;
-        Task? loopTask = _loopTask;
+        Thread? workerThread = _workerThread;
         _runCancellation = null;
-        _loopTask = null;
+        _workerThread = null;
 
         cancellation?.Cancel();
         try
         {
-            loopTask?.Wait(TimeSpan.FromSeconds(5));
+            workerThread?.Join(TimeSpan.FromSeconds(5));
         }
-        catch (AggregateException exception) when (exception.InnerExceptions.All(static inner => inner is TaskCanceledException))
-        { }
         finally
         {
             cancellation?.Dispose();
@@ -85,7 +89,21 @@ public sealed class SessionWorker
         {
             long tickStartTimestamp = Stopwatch.GetTimestamp();
             DrainInbox(MaxMessagesPerDrain);
-            SleepUntilDeadline(tickStartTimestamp + (long)(TickIntervalMs * Stopwatch.Frequency / 1000.0));
+            TickChunkStreaming();
+            SleepUntilDeadline(tickStartTimestamp + (long)(TickIntervalMs * Stopwatch.Frequency / 1000.0), token);
+        }
+    }
+
+    void TickChunkStreaming()
+    {
+        foreach (PlayerSession session in _sessions.Values)
+        {
+            if (session.ActiveEntity is not Player.Player player || session.TransferState == TransferState.Transferring)
+            {
+                continue;
+            }
+
+            player.GetTrait<PlayerChunkRenderingTrait>()?.TickChunkStreaming();
         }
     }
 
@@ -145,7 +163,7 @@ public sealed class SessionWorker
         _server.Scheduler.EnqueueGamePacket(message.Connection, message.PacketId, message.Payload);
     }
 
-    static void SleepUntilDeadline(long deadlineTimestamp)
+    static void SleepUntilDeadline(long deadlineTimestamp, CancellationToken token = default)
     {
         double remainingMs = (deadlineTimestamp - Stopwatch.GetTimestamp()) * 1000.0 / Stopwatch.Frequency;
         if (remainingMs <= 0)
@@ -155,6 +173,11 @@ public sealed class SessionWorker
 
         while (remainingMs > SpinThresholdMs)
         {
+            if (token.IsCancellationRequested)
+            {
+                return;
+            }
+
             Thread.Sleep(1);
             remainingMs = (deadlineTimestamp - Stopwatch.GetTimestamp()) * 1000.0 / Stopwatch.Frequency;
             if (remainingMs <= 0)
@@ -165,6 +188,11 @@ public sealed class SessionWorker
 
         while (Stopwatch.GetTimestamp() < deadlineTimestamp)
         {
+            if (token.IsCancellationRequested)
+            {
+                return;
+            }
+
             Thread.SpinWait(1);
         }
     }
