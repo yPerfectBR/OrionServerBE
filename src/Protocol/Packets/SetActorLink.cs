@@ -1,0 +1,25 @@
+using BinaryReader = Basalt.Binary.BinaryReader;
+using BinaryWriter = Basalt.Binary.BinaryWriter;
+using Orion.Protocol.Enums;
+using Orion.Protocol.Types;
+
+namespace Orion.Protocol.Packets;
+
+[Packet(PacketId.SetActorLink)]
+public sealed record SetActorLinkPacket : DataPacket
+{
+    /// <summary>
+    /// Link payload for the actor relationship.
+    /// </summary>
+    public EntityLink EntityLink = new();
+
+    public override void Deserialize(BinaryReader reader)
+    {
+        EntityLink.Read(reader);
+    }
+
+    public override void Serialize(BinaryWriter writer)
+    {
+        EntityLink.Write(writer);
+    }
+}
