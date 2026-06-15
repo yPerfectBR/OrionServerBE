@@ -1,7 +1,25 @@
 [
-  { "networkId": 1, "groupIndex": 0 },
-  { "networkId": 2, "groupIndex": 0 },
-  { "networkId": 3, "groupIndex": 0 },
-  { "networkId": 4, "groupIndex": 0 },
-  { "networkId": 5, "groupIndex": 0 }
+  {
+    "type": "minecraft:grass_block",
+    "instance": "BAEAAJfd9pwECgAAAAAAAAAAAAA=",
+    "groupIndex": 0
+  },
+  {
+    "type": "minecraft:dirt",
+    "instance": "BgEAAPPBiNsPCgAAAAAAAAAAAAA=",
+    "groupIndex": 0
+  },
+  {
+    "type": "minecraft:bedrock",
+    "instance": "DgEAAImMnKUBCgAAAAAAAAAAAAA=",
+    "groupIndex": 0
+  },
+  {
+    "type": "minecraft:barrier",
+    "groupIndex": 0
+  },
+  {
+    "type": "minecraft:structure_void",
+    "groupIndex": 0
+  }
 ]

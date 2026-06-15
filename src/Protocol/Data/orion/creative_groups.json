@@ -1,7 +1,7 @@
 [
   {
     "category": 2,
-    "name": "orion.blocks",
-    "iconNetworkId": 1
+    "name": "itemGroup.name.grass",
+    "icon": "minecraft:grass_block"
   }
 ]
