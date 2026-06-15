@@ -2,18 +2,20 @@ namespace Orion.Network.Handlers;
 
 using Orion.Containers;
 using Orion;
+using Orion.Config;
 using Orion.Entity.Traits;
 using Orion.Item;
 using Orion.Protocol.Enums;
 using Orion.Protocol.Packets;
+using Orion.Protocol.Registry;
 using Orion.Protocol.Types;
 using Orion.RakNet;
 using Orion.Player.Traits;
+using Log = Orion.Logger.Logger;
 
 
 public static class ItemStackRequest
 {
-    // TODO:  The damn ahh InventorySlotPacket is giving an errror
     public static void Handle(Server server, NetworkConnection connection, ReadOnlySpan<byte> packetBuffer)
     {
         ItemStackRequestPacket packet = new();
@@ -24,6 +26,15 @@ public static class ItemStackRequest
         if (!SessionLookup.TryGetPlayer(server, connection, out global::Orion.Player.Player? player) || packet.Requests.Count == 0)
         {
             return;
+        }
+
+        if (player.Gamemode == Gamemode.Creative)
+        {
+            Log.Info(
+                LogCategory.Orion,
+                "[CreativeInv] {0} packet requests={1}",
+                player.Username,
+                packet.Requests.Count);
         }
 
         List<ItemStackResponse> responses = new(packet.Requests.Count);
@@ -60,15 +71,56 @@ public static class ItemStackRequest
         {
             server.Network.SendPacket(connection, responsePacket);
         }
+
+        if (player.Gamemode == Gamemode.Creative)
+        {
+            CreativeInventoryLog.LogItemStackResponse(player.Username, responses.Count, responses);
+            if (responses.All(response => response.Status == ItemStackResponseStatus.Ok))
+            {
+                SyncCreativeContainersToClient(player);
+            }
+        }
     }
+
+    public static ItemStackResponse Process(global::Orion.Player.Player player, Protocol.Types.ItemStackRequest request) =>
+        ProcessRequest(player, request);
 
     private static ItemStackResponse ProcessRequest(global::Orion.Player.Player player, Protocol.Types.ItemStackRequest request)
     {
         Dictionary<string, StackResponseContainerInfo> changedContainers = [];
+        bool logCreative = player.Gamemode == Gamemode.Creative;
+        bool suppressNetworkSync = logCreative;
 
-        foreach (IStackRequestAction action in request.Actions)
+        if (suppressNetworkSync)
         {
-            ItemStackResponseStatus status = action switch
+            SetSuppressNetworkSync(player, true);
+        }
+
+        try
+        {
+            if (logCreative)
+            {
+                Log.Info(
+                    LogCategory.Orion,
+                    "[CreativeInv] {0} request={1} actions={2}",
+                    player.Username,
+                    request.RequestId,
+                    request.Actions.Count);
+            }
+
+            foreach (IStackRequestAction action in request.Actions)
+            {
+                if (logCreative)
+                {
+                    Log.Info(
+                        LogCategory.Orion,
+                        "[CreativeInv] {0} request={1} action={2}",
+                        player.Username,
+                        request.RequestId,
+                        DescribeAction(action));
+                }
+
+                ItemStackResponseStatus status = action switch
             {
                 TransferStackRequestAction transfer => TransferItem(player, transfer, changedContainers),
                 SwapStackRequestAction swap => SwapItems(player, swap, changedContainers),
@@ -82,35 +134,61 @@ public static class ItemStackRequest
                 _ => ItemStackResponseStatus.InvalidRequestActionType
             };
 
-            if (status == ItemStackResponseStatus.Ok)
-            {
-                continue;
+                if (status == ItemStackResponseStatus.Ok)
+                {
+                    continue;
+                }
+
+                Log.Info(
+                    LogCategory.Orion,
+                    "[CreativeInv] {0} request={1} FAILED status={2} action={3}",
+                    player.Username,
+                    request.RequestId,
+                    status,
+                    DescribeAction(action));
+                Console.WriteLine($"ItemStackRequest failed: request: {request.RequestId} status={status} action={DescribeAction(action)}");
+                foreach (Container container in player.openedContainers.Values.Distinct())
+                {
+                    container.Update();
+                }
+
+                player.GetTrait<PlayerCursorTrait>()?.Container.UpdateSlot(0);
+                player.GetTrait<PlayerCraftingOutputTrait>()?.Container.UpdateSlot(0);
+
+                return new ItemStackResponse
+                {
+                    Status = status,
+                    RequestId = request.RequestId,
+                    ContainerInfo = []
+                };
             }
 
-            Console.WriteLine($"ItemStackRequest failed: request: {request.RequestId} status={status} action={DescribeAction(action)}");
-            foreach (Container container in player.openedContainers.Values.Distinct())
+            if (logCreative)
             {
-                container.Update();
+                Log.Info(
+                    LogCategory.Orion,
+                    "[CreativeInv] {0} request={1} OK changedContainers={2}",
+                    player.Username,
+                    request.RequestId,
+                    changedContainers.Count);
             }
-
-            player.GetTrait<PlayerCursorTrait>()?.Container.UpdateSlot(0);
 
             return new ItemStackResponse
             {
-                Status = status,
+                Status = ItemStackResponseStatus.Ok,
                 RequestId = request.RequestId,
-                ContainerInfo = []
+                ContainerInfo = changedContainers.Count > 0
+                    ? [.. changedContainers.Values]
+                    : []
             };
         }
-
-        return new ItemStackResponse
+        finally
         {
-            Status = ItemStackResponseStatus.Ok,
-            RequestId = request.RequestId,
-            ContainerInfo = changedContainers.Count > 0
-                ? [.. changedContainers.Values]
-                : []
-        };
+            if (suppressNetworkSync)
+            {
+                SetSuppressNetworkSync(player, false);
+            }
+        }
     }
 
     private static ItemStackResponseStatus TransferItem(
@@ -118,14 +196,53 @@ public static class ItemStackRequest
         TransferStackRequestAction action,
         Dictionary<string, StackResponseContainerInfo> changedContainers)
     {
-        if (!TryResolveSlot(player, action.Source, out Container sourceContainer, out int sourceSlot) ||
-            !TryResolveSlot(player, action.Destination, out Container destinationContainer, out int destinationSlot))
+        if (!TryResolveCreativeTransferSource(player, action.Source, out Container sourceContainer, out int sourceSlot))
         {
+            if (player.Gamemode == Gamemode.Creative)
+            {
+                Log.Info(
+                    LogCategory.Orion,
+                    "[CreativeInv] {0} transfer INVALID src {1}",
+                    player.Username,
+                    CreativeInventoryLog.DescribeSlot(action.Source));
+            }
+
             return ItemStackResponseStatus.InvalidSourceContainer;
         }
 
-        if (sourceSlot < 0 || sourceSlot >= sourceContainer.GetSize() ||
-            destinationSlot < 0 || destinationSlot >= destinationContainer.GetSize())
+        bool destinationResolved = TryResolveSlot(player, action.Destination, out Container destinationContainer, out int destinationSlot);
+
+        if (!destinationResolved)
+        {
+            if (player.Gamemode == Gamemode.Creative)
+            {
+                Log.Info(
+                    LogCategory.Orion,
+                    "[CreativeInv] {0} transfer INVALID dst {1} fromOutput={2}",
+                    player.Username,
+                    CreativeInventoryLog.DescribeSlot(action.Destination),
+                    IsCreativeOutputContainer(player, sourceContainer));
+            }
+
+            return ItemStackResponseStatus.InvalidSourceContainer;
+        }
+
+        if (player.Gamemode == Gamemode.Creative)
+        {
+            Log.Info(
+                LogCategory.Orion,
+                "[CreativeInv] {0} transfer src={1} slot={2} item={3} dst={4} dstSlot={5} type={6} count={7}",
+                player.Username,
+                sourceContainer.GetType().Name,
+                sourceSlot,
+                sourceContainer.GetItem(sourceSlot)?.Type.Identifier ?? "null",
+                destinationContainer.GetType().Name,
+                destinationSlot,
+                action.ActionType,
+                action.Count);
+        }
+
+        if (sourceSlot < 0 || sourceSlot >= sourceContainer.GetSize())
         {
             return ItemStackResponseStatus.FailedToValidateSrcSlot;
         }
@@ -136,110 +253,93 @@ public static class ItemStackRequest
             return ItemStackResponseStatus.FailedToMatchExpectedSlotConsumedItem;
         }
 
-        int amount = Math.Min(Math.Max(1, (int)action.Count), sourceItem.StackSize);
-        ItemStack? destinationItem = destinationContainer.GetItem(destinationSlot);
-        if (action.Destination.Slot >= 0 &&
-            action.Destination.StackNetworkId == 0 &&
-            destinationItem is not null &&
-            sourceItem is not null)
+        int amount = ResolveTransferAmount(player, action, sourceContainer, sourceItem);
+
+        if (destinationSlot < 0)
         {
-            int resolvedSlot = ResolveDestinationSlot(destinationContainer, sourceItem, destinationSlot);
-            if (resolvedSlot >= 0)
-            {
-                destinationSlot = resolvedSlot;
-                destinationItem = destinationContainer.GetItem(destinationSlot);
-            }
+            destinationSlot = ResolveDestinationSlot(destinationContainer, sourceItem, -1);
         }
-
-        if (destinationItem is null)
+        else if (destinationSlot >= destinationContainer.GetSize())
         {
-            ItemStack movedItem = sourceContainer.TakeItem(sourceSlot, amount) ?? ItemStack.Empty();
-            if ((movedItem.Type == ItemType.Air || movedItem.StackSize == 0) &&
-                action.Source.StackNetworkId != 0 &&
-                TryFindSlotByStackNetworkId(sourceContainer, action.Source.StackNetworkId, out int actualSourceSlot))
-            {
-                sourceSlot = actualSourceSlot;
-                sourceItem = sourceContainer.GetItem(sourceSlot);
-                if (sourceItem is null)
-                {
-                    return ItemStackResponseStatus.CannotRemoveItem;
-                }
-
-                amount = Math.Min(Math.Max(1, (int)action.Count), sourceItem.StackSize);
-                movedItem = sourceContainer.TakeItem(sourceSlot, amount) ?? ItemStack.Empty();
-            }
-
-            if (movedItem.Type == ItemType.Air || movedItem.StackSize == 0)
-            {
-                return ItemStackResponseStatus.CannotRemoveItem;
-            }
-
-            destinationContainer.SetItem(destinationSlot, movedItem);
+            destinationSlot = ResolveDestinationSlot(destinationContainer, sourceItem, -1);
         }
         else
         {
-            if (destinationItem is null)
+            ItemStack? existing = destinationContainer.GetItem(destinationSlot);
+            if (existing is not null && !existing.CanStackWith(sourceItem))
+            {
+                int alternate = ResolveDestinationSlot(destinationContainer, sourceItem, destinationSlot);
+                if (alternate >= 0)
+                {
+                    destinationSlot = alternate;
+                }
+            }
+        }
+
+        if (destinationSlot < 0 || destinationSlot >= destinationContainer.GetSize())
+        {
+            return ItemStackResponseStatus.CannotPlaceItem;
+        }
+
+        ItemStack? movedItem = sourceContainer.TakeItem(sourceSlot, amount);
+        if (movedItem is null || movedItem.Type == ItemType.Air || movedItem.StackSize == 0)
+        {
+            return ItemStackResponseStatus.CannotRemoveItem;
+        }
+
+        ItemStack? destinationItem = destinationContainer.GetItem(destinationSlot);
+        if (destinationItem is null)
+        {
+            destinationContainer.SetItem(destinationSlot, movedItem);
+        }
+        else if (destinationItem.CanStackWith(movedItem))
+        {
+            int space = destinationItem.Type.MaxStackSize - destinationItem.StackSize;
+            if (space <= 0)
             {
                 return ItemStackResponseStatus.CannotPlaceItem;
             }
 
-            ItemStack destinationExisting = destinationItem;
-            ItemStack sourceExisting = sourceItem ?? ItemStack.Empty();
-            if (sourceExisting.Type == ItemType.Air || sourceExisting.StackSize == 0)
+            int merge = Math.Min(space, movedItem.StackSize);
+            destinationItem.IncrementStack((ushort)merge);
+            movedItem.DecrementStack((ushort)merge);
+            if (movedItem.StackSize > 0)
             {
-                return ItemStackResponseStatus.CannotRemoveItem;
-            }
-            if (!sourceExisting.CanStackWith(destinationExisting))
-            {
-                if (action.Destination.StackNetworkId == 0 && sourceItem is not null)
+                int overflow = ResolveDestinationSlot(destinationContainer, movedItem, -1);
+                if (overflow < 0)
                 {
-                    int resolvedSlot = ResolveDestinationSlot(destinationContainer, sourceItem, destinationSlot);
-                    if (resolvedSlot >= 0 && resolvedSlot != destinationSlot)
-                    {
-                        destinationSlot = resolvedSlot;
-                        destinationItem = destinationContainer.GetItem(destinationSlot);
-                        if (destinationItem is null)
-                        {
-                            ItemStack movedItem = sourceContainer.TakeItem(sourceSlot, amount) ?? ItemStack.Empty();
-                            if (movedItem.Type == ItemType.Air || movedItem.StackSize == 0)
-                            {
-                                return ItemStackResponseStatus.CannotRemoveItem;
-                            }
-
-                            destinationContainer.SetItem(destinationSlot, movedItem);
-                            AddChangedSlot(changedContainers, action.Source.Container, sourceContainer, action.Source.Slot, sourceSlot);
-                            AddChangedSlot(changedContainers, action.Destination.Container, destinationContainer, action.Destination.Slot, destinationSlot);
-                            return ItemStackResponseStatus.Ok;
-                        }
-
-                        destinationExisting = destinationItem;
-                    }
+                    sourceContainer.SetItem(sourceSlot, movedItem);
+                    return ItemStackResponseStatus.CannotPlaceItem;
                 }
 
-                return ItemStackResponseStatus.CannotPlaceItem;
+                destinationContainer.SetItem(overflow, movedItem);
             }
 
-            int availableSpace = destinationExisting.Type.MaxStackSize - destinationExisting.StackSize;
-            if (availableSpace <= 0)
-            {
-                return ItemStackResponseStatus.CannotPlaceItem;
-            }
-
-            amount = Math.Min(amount, availableSpace);
-
-            destinationExisting.IncrementStack((ushort)amount);
-            sourceExisting.DecrementStack((ushort)amount);
-
-            if (sourceExisting.StackSize == 0)
+            destinationContainer.UpdateSlot(destinationSlot);
+        }
+        else if (destinationContainer.GetSize() == 1)
+        {
+            ItemStack? previousDestination = destinationContainer.GetItem(destinationSlot);
+            destinationContainer.SetItem(destinationSlot, movedItem);
+            if (previousDestination is null)
             {
                 sourceContainer.ClearSlot(sourceSlot);
             }
             else
             {
-                sourceContainer.UpdateSlot(sourceSlot);
+                sourceContainer.SetItem(sourceSlot, previousDestination);
+            }
+        }
+        else
+        {
+            int alternate = ResolveDestinationSlot(destinationContainer, movedItem, -1);
+            if (alternate < 0)
+            {
+                sourceContainer.SetItem(sourceSlot, movedItem);
+                return ItemStackResponseStatus.CannotPlaceItem;
             }
 
-            destinationContainer.UpdateSlot(destinationSlot);
+            destinationContainer.SetItem(alternate, movedItem);
         }
 
         AddChangedSlot(changedContainers, action.Source.Container, sourceContainer, action.Source.Slot, sourceSlot);
@@ -248,39 +348,134 @@ public static class ItemStackRequest
         return ItemStackResponseStatus.Ok;
     }
 
-    private static Container? GetContainer(global::Orion.Player.Player player, FullContainerName name, int slot)
+    private static ushort ResolveCreativeStackCount(ItemStack item, byte numberOfCrafts)
     {
-        if (TryGetOpenedDynamicContainer(player, name, out Container openedContainer))
+        ushort maxStack = (ushort)Math.Max(1, item.Type.MaxStackSize);
+        if (numberOfCrafts == 0)
         {
-            if (slot < openedContainer.GetSize())
-            {
-                return openedContainer;
-            }
-
-            return player.GetTrait<EntityInventoryTrait>()?.Container;
+            return maxStack;
         }
 
-        if (name.ContainerId == (byte)ContainerId.DynamicContainer)
-        {
-            return null;
-        }
-
-        return player.GetContainer(name);
+        return (ushort)Math.Min(numberOfCrafts, maxStack);
     }
 
-    private static int StorageSlot(global::Orion.Player.Player player, FullContainerName container, int slot)
+    private static bool IsCreativeOutputContainer(global::Orion.Player.Player player, Container container)
     {
-        if (container.ContainerId is not ((byte)ContainerId.Armor or 12 or (byte)ContainerId.Inventory or (byte)ContainerId.Hotbar or (byte)ContainerId.FixedInventory or (byte)ContainerId.Offhand))
+        return ReferenceEquals(player.GetTrait<PlayerCraftingOutputTrait>()?.Container, container);
+    }
+
+    /// <summary>
+    /// Resolves creative pick destinations from the client's container encoding.
+    /// Shift: AnvilMaterial + dynamic → inventory. Normal: AnvilInput + dynamic or Cursor → cursor.
+    /// </summary>
+    private static bool TryResolveCreativePickDestination(
+        global::Orion.Player.Player player,
+        StackRequestSlotInfo destination,
+        out Container container,
+        out int slot)
+    {
+        container = null!;
+        slot = -1;
+
+        PlayerCursorTrait? cursorTrait = player.GetTrait<PlayerCursorTrait>();
+        EntityInventoryTrait? inventoryTrait = player.GetTrait<EntityInventoryTrait>();
+        Container? cursor = cursorTrait?.Container;
+        Container? inventory = inventoryTrait?.Container;
+
+        FullContainerName containerName = destination.Container;
+        ContainerName name = (ContainerName)containerName.ContainerId;
+        int uiSlot = destination.Slot;
+
+        if (name == ContainerName.Cursor || uiSlot == (byte)ContainerName.Cursor)
         {
-            return slot;
+            if (cursor is null)
+            {
+                return false;
+            }
+
+            container = cursor;
+            slot = 0;
+            return true;
         }
 
-        if (slot is >= 36 and <= 44)
+        if (name == ContainerName.HotbarAndInventory || uiSlot == (byte)ContainerName.HotbarAndInventory
+            || name is ContainerName.Hotbar or ContainerName.Inventory)
         {
-            return slot - 36;
+            if (inventory is null)
+            {
+                return false;
+            }
+
+            container = inventory;
+            slot = -1;
+            return true;
         }
 
-        return slot;
+        if (!containerName.DynamicContainerId.HasValue)
+        {
+            return false;
+        }
+
+        if (name == ContainerName.AnvilMaterial)
+        {
+            if (inventory is null)
+            {
+                return false;
+            }
+
+            container = inventory;
+            slot = -1;
+            return true;
+        }
+
+        if (name == ContainerName.AnvilInput)
+        {
+            if (cursor is null)
+            {
+                return false;
+            }
+
+            container = cursor;
+            slot = 0;
+            return true;
+        }
+
+        return false;
+    }
+
+    private static int ResolveTransferAmount(
+        global::Orion.Player.Player player,
+        TransferStackRequestAction action,
+        Container sourceContainer,
+        ItemStack sourceItem)
+    {
+        if (player.Gamemode == Gamemode.Creative && IsCreativeOutputContainer(player, sourceContainer))
+        {
+            int requested = action.Count == 0
+                ? sourceItem.Type.MaxStackSize
+                : action.Count;
+
+            requested = Math.Min(requested, sourceItem.Type.MaxStackSize);
+
+            if (requested <= 0)
+            {
+                requested = sourceItem.Type.MaxStackSize;
+            }
+
+            if (sourceItem.StackSize < requested)
+            {
+                sourceItem.SetStackSize((ushort)requested);
+            }
+
+            return Math.Max(1, Math.Min(requested, sourceItem.StackSize));
+        }
+
+        if (action.Count == 0)
+        {
+            return Math.Max(1, (int)sourceItem.StackSize);
+        }
+
+        return Math.Min(Math.Max(1, (int)action.Count), sourceItem.StackSize);
     }
 
     private static int ResolveDestinationSlot(Container container, ItemStack sourceItem, int preferredSlot)
@@ -334,25 +529,43 @@ public static class ItemStackRequest
             return ItemStackResponseStatus.PlayerNotInCreativeMode;
         }
 
-        Container? cursor = player.GetContainer(new FullContainerName { ContainerId = (byte)ContainerId.Cursor });
-        if (cursor is null)
+        PlayerCraftingOutputTrait? craftingOutput = player.GetTrait<PlayerCraftingOutputTrait>();
+        Container? output = craftingOutput?.Container;
+        if (output is null)
         {
             return ItemStackResponseStatus.MissingCreatedOutputContainer;
         }
 
-        ItemStack? item = ItemType.GetCreativeItem(action.CreativeItemNetworkId);
+        ItemStack? item = ResolveCreativeCraftItem(action.CreativeItemNetworkId);
         if (item is null)
         {
+            Log.Info(
+                LogCategory.Orion,
+                "[CreativeInv] {0} craftCreative FAILED index={1} (ResolveCreativeCraftItem returned null)",
+                player.Username,
+                action.CreativeItemNetworkId);
             return ItemStackResponseStatus.FailedToCraftCreative;
         }
 
-        cursor.SetItem(0, item);
-        AddChangedSlot(
-            changedContainers,
-            new FullContainerName { ContainerId = (byte)ContainerId.Cursor },
-            cursor,
-            0,
-            0);
+        output.Clear();
+        item.SetStackSize(ResolveCreativeStackCount(item, action.NumberOfCrafts));
+        output.SetItem(0, item);
+
+        Log.Info(
+            LogCategory.Orion,
+            "[CreativeInv] {0} craftCreative index={1} item={2}x{3} output={4}",
+            player.Username,
+            action.CreativeItemNetworkId,
+            item.Type.Identifier,
+            item.StackSize,
+            output.GetType().Name);
+
+        FullContainerName containerName = new()
+        {
+            ContainerId = (byte)ContainerName.CreativeOutput
+        };
+
+        AddChangedSlot(changedContainers, containerName, output, 0, 0);
 
         return ItemStackResponseStatus.Ok;
     }
@@ -422,6 +635,17 @@ public static class ItemStackRequest
             return ItemStackResponseStatus.InvalidSourceContainer;
         }
 
+        if (player.Gamemode == Gamemode.Creative && IsCreativeProtectedContainer(player, container))
+        {
+            Log.Info(
+                LogCategory.Orion,
+                "[CreativeInv] {0} destroy IGNORED protected={1} slot={2}",
+                player.Username,
+                container.GetType().Name,
+                slot);
+            return ItemStackResponseStatus.Ok;
+        }
+
         if (slot < 0 || slot >= container.GetSize())
         {
             return ItemStackResponseStatus.FailedToValidateSrcSlot;
@@ -438,6 +662,49 @@ public static class ItemStackRequest
         AddChangedSlot(changedContainers, action.Source.Container, container, action.Source.Slot, slot);
 
         return ItemStackResponseStatus.Ok;
+    }
+
+    private static void SetSuppressNetworkSync(global::Orion.Player.Player player, bool suppress)
+    {
+        EntityInventoryTrait? inventory = player.GetTrait<EntityInventoryTrait>();
+        if (inventory is not null)
+        {
+            inventory.Container.SuppressNetworkSync = suppress;
+        }
+
+        PlayerCursorTrait? cursor = player.GetTrait<PlayerCursorTrait>();
+        if (cursor is not null)
+        {
+            cursor.Container.SuppressNetworkSync = suppress;
+        }
+
+        PlayerCraftingOutputTrait? craftingOutput = player.GetTrait<PlayerCraftingOutputTrait>();
+        if (craftingOutput is not null)
+        {
+            craftingOutput.Container.SuppressNetworkSync = suppress;
+        }
+    }
+
+    private static void SyncCreativeContainersToClient(global::Orion.Player.Player player)
+    {
+        player.SyncInventoryToClient();
+
+        PlayerCursorTrait? cursor = player.GetTrait<PlayerCursorTrait>();
+        cursor?.Container.UpdateSlot(0);
+
+        PlayerCraftingOutputTrait? craftingOutput = player.GetTrait<PlayerCraftingOutputTrait>();
+        craftingOutput?.Container.UpdateSlot(0);
+    }
+
+    private static bool IsCreativeProtectedContainer(global::Orion.Player.Player player, Container container)
+    {
+        if (player.Gamemode != Gamemode.Creative)
+        {
+            return false;
+        }
+
+        PlayerCraftingOutputTrait? craftingOutput = player.GetTrait<PlayerCraftingOutputTrait>();
+        return craftingOutput is not null && ReferenceEquals(craftingOutput.Container, container);
     }
 
     private static void AddChangedSlot(
@@ -485,123 +752,140 @@ public static class ItemStackRequest
     {
         container = null!;
         slot = -1;
+
         FullContainerName containerName = requestSlot.Container;
-        Container? resolved = GetContainer(player, containerName, requestSlot.Slot);
-        if (resolved is null)
+        ContainerName name = (ContainerName)containerName.ContainerId;
+        int uiSlot = requestSlot.Slot;
+
+        PlayerCursorTrait? cursor = player.GetTrait<PlayerCursorTrait>();
+        PlayerCraftingOutputTrait? craftingOutput = player.GetTrait<PlayerCraftingOutputTrait>();
+
+        if (uiSlot == (byte)ContainerName.Cursor)
+        {
+            container = cursor?.Container ?? player.GetContainer(containerName);
+            slot = 0;
+            return container is not null;
+        }
+
+        if (uiSlot is (byte)ContainerName.CreativeOutput or (byte)ContainerName.CraftingOutput)
+        {
+            container = craftingOutput?.Container ?? player.GetContainer(containerName);
+            slot = 0;
+            return container is not null;
+        }
+
+        container = player.GetContainer(containerName);
+        if (container is null)
         {
             return false;
         }
 
-        int resolvedSlot = ResolveSlotIndex(player, containerName, resolved, requestSlot.Slot);
-        if (resolvedSlot < 0 || resolvedSlot >= resolved.GetSize())
+        if (uiSlot == (byte)ContainerName.HotbarAndInventory)
         {
-            return false;
-        }
-
-        container = resolved;
-        slot = resolvedSlot;
-        return true;
-    }
-
-    private static int ResolveSlotIndex(global::Orion.Player.Player player, FullContainerName containerName, Container container, int slot)
-    {
-        if (containerName.ContainerId is (byte)ContainerId.Armor or 12 or (byte)ContainerId.Inventory or (byte)ContainerId.Hotbar or (byte)ContainerId.FixedInventory or (byte)ContainerId.Offhand)
-        {
-            return StorageSlot(player, containerName, slot);
-        }
-
-        if (containerName.ContainerId == (byte)ContainerId.DynamicContainer || containerName.ContainerId == (byte)ContainerId.Barrel || containerName.ContainerId == (byte)ContainerId.InventoryUi)
-        {
-            if (container.Type != ContainerType.Inventory)
-            {
-                if (slot >= 0 && slot < container.GetSize())
-                {
-                    return slot;
-                }
-
-                if (container.GetSize() == 27 && slot is >= 27 and <= 53)
-                {
-                    return slot - 27;
-                }
-            }
-
-            return StorageSlot(player, containerName, slot);
-        }
-
-        return slot;
-    }
-
-    private static bool TryFindSlotByStackNetworkId(Container container, int stackNetworkId, out int slot)
-    {
-        slot = -1;
-        if (stackNetworkId == 0)
-        {
-            return false;
-        }
-
-        for (int i = 0; i < container.GetSize(); i++)
-        {
-            ItemStack? item = container.GetItem(i);
-            if (item is null)
-            {
-                continue;
-            }
-
-            if (item.NetworkStackId == stackNetworkId)
-            {
-                slot = i;
-                return true;
-            }
-        }
-
-        return false;
-    }
-
-    private static bool TryGetOpenedDynamicContainer(global::Orion.Player.Player player, FullContainerName name, out Container container)
-    {
-        container = null!;
-        if (name.ContainerId != (byte)ContainerId.DynamicContainer)
-        {
-            return false;
-        }
-
-        if (name.DynamicContainerId.HasValue)
-        {
-            if (!player.TryGetOpenContainer((int)name.DynamicContainerId.Value, out Container? opened) || opened is null || opened.Type == ContainerType.Inventory)
-            {
-                return false;
-            }
-
-            container = opened;
+            slot = -1;
             return true;
         }
 
-        Container? singleOpened = null;
-        foreach ((_, Container opened) in player.openedContainers)
+        if (craftingOutput?.Container is not null && ReferenceEquals(container, craftingOutput.Container))
         {
-            if (opened.Type == ContainerType.Inventory)
-            {
-                continue;
-            }
-
-            if (singleOpened is not null)
-            {
-                return false;
-            }
-
-            singleOpened = opened;
+            slot = 0;
+            return true;
         }
 
-        if (singleOpened is null)
+        if (uiSlot >= container.GetSize())
         {
             return false;
         }
 
-        container = singleOpened;
+        if (name is ContainerName.AnvilInput or ContainerName.AnvilMaterial or ContainerName.CreativeOutput or ContainerName.CraftingOutput)
+        {
+            slot = uiSlot;
+            if (slot < 0 || slot >= container.GetSize())
+            {
+                slot = 0;
+            }
+
+            return true;
+        }
+
+        slot = MapInventorySlot(containerName, uiSlot);
+        return slot >= 0 || slot == -1;
+    }
+
+    private static int MapInventorySlot(FullContainerName containerName, int uiSlot)
+    {
+        if (containerName.ContainerId is (byte)ContainerName.Armor
+            or (byte)ContainerName.HotbarAndInventory
+            or (byte)ContainerName.Hotbar
+            or (byte)ContainerName.Inventory
+            or (byte)ContainerId.Armor
+            or (byte)ContainerId.Inventory
+            or (byte)ContainerId.Hotbar
+            or (byte)ContainerId.FixedInventory
+            or (byte)ContainerId.Offhand)
+        {
+            if (uiSlot is >= 36 and <= 44)
+            {
+                return uiSlot - 36;
+            }
+        }
+
+        return uiSlot;
+    }
+
+    private static bool TryResolveCreativeTransferSource(
+        global::Orion.Player.Player player,
+        StackRequestSlotInfo source,
+        out Container container,
+        out int slot)
+    {
+        container = null!;
+        slot = -1;
+
+        if (TryResolveSlot(player, source, out container, out slot) &&
+            slot >= 0 &&
+            slot < container.GetSize() &&
+            container.GetItem(slot) is not null)
+        {
+            return true;
+        }
+
+        if (player.Gamemode != Gamemode.Creative)
+        {
+            return false;
+        }
+
+        Container? output = player.GetTrait<PlayerCraftingOutputTrait>()?.Container;
+        if (output is null || output.GetItem(0) is null)
+        {
+            return false;
+        }
+
+        container = output;
+        slot = 0;
         return true;
     }
 
-    // These are temp cause it's a mess
+    private static ItemStack? ResolveCreativeCraftItem(uint creativeItemNetworkId)
+    {
+        if (CuratedItemCatalog.TryGetCreativeMenuItem(checked((int)creativeItemNetworkId), out CuratedItem curated))
+        {
+            ItemType? type = ItemType.GetByNetwork(curated.NetworkId);
+            if (type is not null)
+            {
+                return new ItemStack(type, 1);
+            }
+        }
+
+        ItemStack? item = ItemType.GetCreativeItem(creativeItemNetworkId);
+        if (item is not null)
+        {
+            return item;
+        }
+
+        return ItemType.GetCreativePickFromSlotByte(checked((byte)creativeItemNetworkId));
+    }
+
     private static string DescribeAction(IStackRequestAction action)
     {
         return action switch
@@ -619,7 +903,6 @@ public static class ItemStackRequest
             _ => action.GetType().Name
         };
     }
-    // These are temp cause it's a mess
 
     private static string DescribeSlot(StackRequestSlotInfo slot)
     {
@@ -630,13 +913,3 @@ public static class ItemStackRequest
         return $"container={slot.Container.ContainerId} dynamic={dynamicId} slot={slot.Slot} stack={slot.StackNetworkId}";
     }
 }
-
-
-
-
-
-
-
-
-
-

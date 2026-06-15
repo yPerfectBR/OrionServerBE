@@ -1,9 +1,9 @@
 namespace Orion.Network.Handlers;
 
-using Orion.Protocol.Packets;
-using Orion.RakNet;
 using Orion;
 using Orion.Entity.Traits;
+using Orion.Protocol.Packets;
+using Orion.RakNet;
 
 
 public static class ContainerClose
@@ -21,6 +21,7 @@ public static class ContainerClose
             ArgumentNullException.ThrowIfNull(player);
 
             EntityInventoryTrait? inventory = player.GetTrait<EntityInventoryTrait>();
+
             if (inventory is not null && packet.WindowId == (byte)(inventory.Container.Identifier ?? 0))
             {
                 inventory.Container.RemoveViewer(player, false);
@@ -49,14 +50,3 @@ public static class ContainerClose
         }
     }
 }
-
-
-
-
-
-
-
-
-
-
-
