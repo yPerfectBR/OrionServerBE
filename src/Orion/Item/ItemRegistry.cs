@@ -2,7 +2,10 @@ using System.Reflection;
 using System.Runtime.CompilerServices;
 using System.Text.Json;
 using Orion.Item.Traits;
+using Orion.Protocol.Io;
 using Orion.Protocol.Nbt;
+using Orion.Config;
+using Log = Orion.Logger.Logger;
 
 namespace Orion.Item;
 
@@ -16,7 +19,10 @@ public static class ItemRegistry
         PropertyNameCaseInsensitive = true
     };
 
+    private static readonly TagOptions NetworkNbtOptions = new(Name: true, Type: true, VarInt: true);
+
     private static Dictionary<uint, ItemStack>? _creativeItems;
+    private static HashSet<string> _giveableIdentifiers = new(StringComparer.Ordinal);
 
     [ModuleInitializer]
     public static void Initialize() => EnsureLoaded();
@@ -37,24 +43,24 @@ public static class ItemRegistry
 
             Block.BlockRegistry.EnsureLoaded();
             string path = Path.Combine(ResolveDataRoot(), "items.json");
-            List<ItemRegistryDto>? items = JsonSerializer.Deserialize<List<ItemRegistryDto>>(File.ReadAllBytes(path), JsonOptions);
-            if (items is not null)
+            List<ItemRegistryDto>? items = JsonSerializer.Deserialize<List<ItemRegistryDto>>(File.ReadAllBytes(path), JsonOptions) ?? [];
+            _giveableIdentifiers = new HashSet<string>(StringComparer.Ordinal);
+            foreach (ItemRegistryDto dto in items)
             {
-                foreach (ItemRegistryDto dto in items)
-                {
-                    _ = new ItemType(
-                        dto.Identifier,
-                        dto.NetworkId,
-                        maxStackSize: 64,
-                        tags: null,
-                        isComponentBased: dto.ComponentBased,
-                        version: dto.ItemVersion,
-                        properties: new CompoundTag());
-                }
+                _giveableIdentifiers.Add(dto.Identifier);
+                CompoundTag properties = ReadPropertiesNbt(dto.PropertiesBase64);
+                _ = new ItemType(
+                    dto.Identifier,
+                    dto.NetworkId,
+                    maxStackSize: dto.MaxStackSize > 0 ? dto.MaxStackSize : 64,
+                    tags: null,
+                    isComponentBased: dto.ComponentBased,
+                    version: dto.ItemVersion,
+                    properties: properties);
             }
 
             _ = ItemType.GetOrAir("minecraft:air");
-            LoadCreativeItems(path);
+            LoadCreativeItems(items);
             ItemTraitRegistry.RegisterFromAssembly(Assembly.GetExecutingAssembly());
             _loaded = true;
         }
@@ -68,31 +74,88 @@ public static class ItemRegistry
             : null;
     }
 
-    static void LoadCreativeItems(string dataRoot)
+    public static ItemStack? TryGetCreativePickFromSlotByte(byte slotByte, out string resolution)
     {
-        string path = Path.Combine(dataRoot, "creative_content.json");
-        if (!File.Exists(path))
+        EnsureLoaded();
+        resolution = "none";
+
+        ItemType? bySignedNetwork = ItemType.GetByNetwork((sbyte)slotByte);
+        if (bySignedNetwork is not null && bySignedNetwork != ItemType.Air)
         {
-            _creativeItems = [];
-            return;
+            resolution = $"networkId(sbyte)={(sbyte)slotByte} -> {bySignedNetwork.Identifier}";
+            return new ItemStack(bySignedNetwork, 1);
         }
 
-        List<CreativeContentDto>? entries = JsonSerializer.Deserialize<List<CreativeContentDto>>(File.ReadAllBytes(path), JsonOptions);
-        Dictionary<uint, ItemStack> creative = [];
-        if (entries is not null)
+        ItemType? byNetwork = ItemType.GetByNetwork(slotByte);
+        if (byNetwork is not null && byNetwork != ItemType.Air)
         {
-            for (int i = 0; i < entries.Count; i++)
+            resolution = $"networkId={slotByte} -> {byNetwork.Identifier}";
+            return new ItemStack(byNetwork, 1);
+        }
+
+        if (_creativeItems is not null)
+        {
+            foreach (ItemStack item in _creativeItems.Values)
             {
-                CreativeContentDto entry = entries[i];
-                ItemType? type = ItemType.GetByNetwork((int)entry.NetworkId);
-                if (type is not null)
+                int networkId = item.Type.NetworkId;
+                if (networkId == slotByte
+                    || networkId == (sbyte)slotByte
+                    || unchecked((byte)networkId) == slotByte)
                 {
-                    creative[(uint)entry.NetworkId] = new ItemStack(type, 1);
+                    resolution = $"creativeCatalog networkId={networkId} slotByte={slotByte} -> {item.Type.Identifier}";
+                    return item.Clone();
                 }
             }
         }
 
+        ItemStack? fromIndex = TryGetCreativeItem(slotByte);
+        if (fromIndex is not null)
+        {
+            resolution = $"creativeIndex={slotByte} -> {fromIndex.Type.Identifier}";
+            return fromIndex;
+        }
+
+        return null;
+    }
+
+    public static ItemStack? TryGetCreativePickFromSlotByte(byte slotByte) =>
+        TryGetCreativePickFromSlotByte(slotByte, out _);
+
+    public static IReadOnlyCollection<string> GetGiveableIdentifiers()
+    {
+        EnsureLoaded();
+        return _giveableIdentifiers;
+    }
+
+    public static bool IsGiveable(string identifier)
+    {
+        EnsureLoaded();
+        return _giveableIdentifiers.Contains(identifier);
+    }
+
+    static void LoadCreativeItems(List<ItemRegistryDto> items)
+    {
+        Dictionary<uint, ItemStack> creative = [];
+        uint creativeIndex = 0;
+        foreach (ItemRegistryDto dto in items)
+        {
+            if (!dto.Creative)
+            {
+                continue;
+            }
+
+            ItemType? type = ItemType.GetByNetwork(dto.NetworkId);
+            if (type is not null)
+            {
+                creative[creativeIndex++] = new ItemStack(type, 1);
+            }
+        }
+
         _creativeItems = creative;
+        Log.Info(
+            LogCategory.Orion,
+            "[CreativeInv] ItemRegistry loaded creativeCount={0}",
+            creative.Count);
     }
 
     private static string ResolveDataRoot()
@@ -120,11 +183,26 @@ public static class ItemRegistry
         public string Identifier { get; set; } = "";
         public bool ComponentBased { get; set; }
         public int ItemVersion { get; set; }
+        public bool Creative { get; set; } = true;
+        public int MaxStackSize { get; set; }
+        public string PropertiesBase64 { get; set; } = "CgAAAA==";
     }
 
-    private sealed class CreativeContentDto
+    static CompoundTag ReadPropertiesNbt(string propertiesBase64)
     {
-        public int NetworkId { get; set; }
-        public int GroupIndex { get; set; }
+        if (string.IsNullOrWhiteSpace(propertiesBase64))
+        {
+            return new CompoundTag();
+        }
+
+        byte[] payload = Convert.FromBase64String(propertiesBase64);
+        if (payload.Length == 0)
+        {
+            return new CompoundTag();
+        }
+
+        int offset = 0;
+        Basalt.Binary.BinaryReader reader = new(payload, ref offset);
+        return NBT.ReadTag<CompoundTag>(reader, NetworkNbtOptions);
     }
 }
