@@ -265,7 +265,7 @@ public sealed class EntityInventoryTrait : EntityTrait
 
         for (int i = 0; i < Container.GetSize(); i++)
         {
-            packet.Content.Add(Container.GetItem(i)?.ToNetworkStack() ?? new LegacyItem());
+            packet.Content.Add(Container.GetItem(i)?.ToLegacyInventoryItem() ?? new LegacyItem());
         }
 
         player.Send(packet);
