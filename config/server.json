@@ -83,8 +83,18 @@
             -57,
             0
           ],
-          "chunkPregeneration": [],
-          "lockOnMemory": false
+          "chunkPregeneration": {
+                "start": [-400, -400],
+                "end": [400, 400],
+                "memoryLock": true
+            },
+            "threadingAreas": [
+                {
+                    "name": "default",
+                    "start": [-50, -50],
+                    "end": [50, 50]
+                }
+            ]
         }
       ],
       "gamerules": {
@@ -122,22 +132,10 @@
   },
   "Runtime": {
     "ThreadPool": {
-      "MinWorkerThreads": 1,
+      "MinWorkerThreads": 4,
       "MaxWorkerThreads": 4,
-      "MinIoCompletionThreads": 1,
+      "MinIoCompletionThreads": 4,
       "MaxIoCompletionThreads": 4
-    }
-  },
-  "Storage": {
-    "Provider": "Redis",
-    "ImportWorldOnStartup": true,
-    "ImportSourceWorldPath": "./worlds/default",
-    "Redis": {
-      "Endpoint": "127.0.0.1:6379",
-      "Database": 0,
-      "KeyPrefix": "orion",
-      "AofRequired": true,
-      "PoolSize": 16
     }
   }
 }

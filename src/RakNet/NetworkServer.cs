@@ -254,7 +254,7 @@ public sealed class NetworkServer : IDisposable
 
     private void HandleOpenConnectionRequestTwo(SocketAddress endpoint, ReadOnlySpan<byte> message)
     {
-        if (_socket is null || _connections.Count >= Options.MaxConnections || message.Length < 1 + Magic.MAGIC_LENGTH)
+        if (_socket is null || !OrionInfo.CanAcceptPlayers || _connections.Count >= Options.MaxConnections || message.Length < 1 + Magic.MAGIC_LENGTH)
         {
             return;
         }

@@ -8,4 +8,9 @@ namespace Orion.Config;
     DefaultIgnoreCondition = JsonIgnoreCondition.Never)]
 [JsonSerializable(typeof(OrionConfig))]
 [JsonSerializable(typeof(WorldProperties))]
+[JsonSerializable(typeof(WorldJsonFile))]
+[JsonSerializable(typeof(ChunkPregenerationConfig))]
+[JsonSerializable(typeof(List<ChunkPregenerationConfig>))]
+[JsonSerializable(typeof(DimensionConfig))]
+[JsonSerializable(typeof(ThreadingAreaConfig))]
 public partial class OrionJsonContext : JsonSerializerContext;
