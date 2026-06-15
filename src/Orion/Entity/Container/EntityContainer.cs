@@ -93,7 +93,7 @@ public sealed class EntityContainer : Containers.Container
     {
         if (Identifier == 124)
         {
-            return 0x3A;
+            return (byte)ContainerName.Cursor;
         }
 
         return base.GetFullContainerNameId();

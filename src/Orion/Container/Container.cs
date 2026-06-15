@@ -278,6 +278,8 @@ public class Container
         Update();
     }
 
+    internal bool SuppressNetworkSync { get; set; }
+
     /// <summary>
     /// Updates a single slot of the container and sends it off to player
     /// if they are in the container 
@@ -291,6 +293,11 @@ public class Container
         }
 
         if (slot < 0 || slot >= Storage.Count)
+        {
+            return;
+        }
+
+        if (SuppressNetworkSync)
         {
             return;
         }
@@ -575,11 +582,7 @@ public class Container
             return new LegacyItem();
         }
 
-        int networkBlockId = 0;
-        if (item.Type.BlockType is not null && item.Type.BlockType.Permutations.Count > 0)
-        {
-            networkBlockId = item.Type.BlockType.Permutations[0].NetworkId;
-        }
+        int networkBlockId = ItemBlockRuntimeIds.Resolve(item.Type);
 
         return new LegacyItem
         {
@@ -605,11 +608,7 @@ public class Container
             return new NetworkItemStackDescriptor();
         }
 
-        int runtimeId = 0;
-        if (item.Type.BlockType is not null && item.Type.BlockType.Permutations.Count > 0)
-        {
-            runtimeId = item.Type.BlockType.Permutations[0].NetworkId;
-        }
+        int runtimeId = ItemBlockRuntimeIds.Resolve(item.Type);
 
         return new NetworkItemStackDescriptor
         {
