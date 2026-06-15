@@ -2,6 +2,7 @@ namespace Orion.Network.Handlers;
 
 using Orion;
 using Orion.Entity.Traits;
+using Orion.Item;
 using Orion.Protocol.Packets;
 using Orion.RakNet;
 

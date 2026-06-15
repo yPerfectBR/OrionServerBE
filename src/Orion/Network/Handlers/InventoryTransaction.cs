@@ -23,6 +23,8 @@ public static class InventoryTransaction
     private const uint UseItemTriggerInitial = 1;
     private const uint UseItemTriggerRepeat = 2;
     private const uint UseItemClientPredictionPlace = 1;
+    private const UpdateBlockFlagsType PlaceBlockUpdateFlags =
+        UpdateBlockFlagsType.Network | UpdateBlockFlagsType.Neighbors;
 
     private static readonly HashSet<string> ReplaceableBlocks =
     [
@@ -87,6 +89,8 @@ public static class InventoryTransaction
                 break;
 
             case ReleaseItemInventoryTransactionData:
+                break;
+
             case MismatchInventoryTransactionData:
                 break;
         }
@@ -356,31 +360,10 @@ public static class InventoryTransaction
         }
 
         if (transaction.TriggerType == UseItemTriggerInitial &&
-            transaction.ClientPrediction != UseItemClientPredictionPlace)
+            transaction.ClientPrediction != UseItemClientPredictionPlace &&
+            player.Gamemode != Gamemode.Creative)
         {
             return;
-        }
-
-        if (player.Dimension is not null)
-        {
-            BlockPos blockPosition = transaction.BlockPosition;
-
-            if (IsEmptyPosition(blockPosition) && transaction.BlockRuntimeId == 0 && player.LastActionBlockPosition.HasValue)
-            {
-                blockPosition = player.LastActionBlockPosition.Value;
-            }
-
-            Orion.Block.Block? block = player.Dimension.GetBlock(blockPosition.X, blockPosition.Y, blockPosition.Z);
-            if (block is not null)
-            {
-                block.OnInteract(new BlockInteractDetails(
-                    player,
-                    blockPosition,
-                    transaction.BlockFace,
-                    transaction.ClickedPosition));
-
-                return;
-            }
         }
 
         ItemStack? heldItem = GetHeldItem(inventory, transaction.HotBarSlot);
@@ -431,22 +414,11 @@ public static class InventoryTransaction
         Orion.Block.BlockPermutation existingBlock =
             player.Dimension.GetGameplayPermutation(placePosition.X, placePosition.Y, placePosition.Z);
 
-        Orion.Block.Block? blockEntity =
-            player.Dimension.GetBlock(clickedPosition.X, clickedPosition.Y, clickedPosition.Z);
-
-        if (blockEntity is not null)
-        {
-            blockEntity.OnInteract(new BlockInteractDetails(
-                player,
-                clickedPosition,
-                clickedFace,
-                transaction.ClickedPosition));
-
-            SendBlockUpdate(player, clickedPosition, clickedBlock.NetworkId);
-            return;
-        }
-
         Orion.Block.BlockType? blockType = heldItem.Type.BlockType ?? Orion.Block.BlockType.Get(heldItem.Identifier);
+        bool placingBlock = blockType is not null &&
+                            blockType.Identifier != "minecraft:air" &&
+                            existingBlock.Type.Identifier != blockType.Identifier &&
+                            ReplaceableBlocks.Contains(existingBlock.Type.Identifier);
 
         if (blockType is null || blockType.Identifier == "minecraft:air")
         {
@@ -462,11 +434,38 @@ public static class InventoryTransaction
             return;
         }
 
-        if (existingBlock.Type.Identifier == blockType.Identifier ||
-            !ReplaceableBlocks.Contains(existingBlock.Type.Identifier))
+        if (!placingBlock && existingBlock.Type.Identifier == blockType.Identifier)
+        {
+            if (player.Gamemode != Gamemode.Creative)
+            {
+                SendBlockUpdate(player, placePosition, existingBlock.NetworkId);
+            }
+
+            return;
+        }
+
+        if (!placingBlock && !ReplaceableBlocks.Contains(existingBlock.Type.Identifier))
         {
             SendBlockUpdate(player, placePosition, existingBlock.NetworkId);
             return;
+        }
+
+        if (!placingBlock)
+        {
+            Orion.Block.Block? blockEntity =
+                player.Dimension.GetBlock(clickedPosition.X, clickedPosition.Y, clickedPosition.Z);
+
+            if (blockEntity is not null)
+            {
+                blockEntity.OnInteract(new BlockInteractDetails(
+                    player,
+                    clickedPosition,
+                    clickedFace,
+                    transaction.ClickedPosition));
+
+                SendBlockUpdate(player, clickedPosition, clickedBlock.NetworkId);
+                return;
+            }
         }
 
         Server? server = player.Dimension.World?.Server as Server;
@@ -510,15 +509,24 @@ public static class InventoryTransaction
             player.Dimension.SetGameplayPermutation(placePosition.X, placePosition.Y, placePosition.Z, placedPermutation);
         }
 
-        SendBlockUpdate(player, placePosition, placedPermutation.NetworkId);
-
-        player.Dimension.Broadcast(new UpdateBlockPacket
+        UpdateBlockPacket placedBlockUpdate = new()
         {
             Position = placePosition,
-            NetworkBlockId = (uint)placedPermutation.NetworkId,
-            Flags = UpdateBlockFlagsType.Network,
+            NetworkBlockId = placedPermutation.NetworkId,
+            Flags = PlaceBlockUpdateFlags,
             Layer = UpdateBlockLayerType.Normal
-        });
+        };
+
+        // Creative clients already predict placement locally; a server UpdateBlock to the placer
+        // can overwrite that prediction and make the block vanish until the next click.
+        if (player.Gamemode != Gamemode.Creative)
+        {
+            SendBlockUpdate(player, placePosition, placedPermutation.NetworkId);
+        }
+
+        player.Dimension.Broadcast(
+            placedBlockUpdate,
+            new BroadcastOptions { Except = [player] });
 
         player.Dimension.Broadcast(new LevelSoundEventPacket
         {
@@ -647,8 +655,8 @@ public static class InventoryTransaction
         player.Send(new UpdateBlockPacket
         {
             Position = position,
-            NetworkBlockId = (uint)networkId,
-            Flags = UpdateBlockFlagsType.Network,
+            NetworkBlockId = networkId,
+            Flags = PlaceBlockUpdateFlags,
             Layer = UpdateBlockLayerType.Normal
         });
     }
