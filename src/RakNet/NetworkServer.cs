@@ -56,7 +56,10 @@ public sealed class NetworkServer : IDisposable
     {
         byte[] buffer = new byte[_frameBufferSize];
 
-        _socket = new Socket(AddressFamily.InterNetwork, SocketType.Dgram, ProtocolType.Udp);
+        _socket = new Socket(AddressFamily.InterNetwork, SocketType.Dgram, ProtocolType.Udp)
+        {
+            ExclusiveAddressUse = false
+        };
 
         if (OperatingSystem.IsWindows())
         {
@@ -64,6 +67,7 @@ public sealed class NetworkServer : IDisposable
             _socket.IOControl(sioUdpConnReset, [0, 0, 0, 0], null);
         }
 
+        _socket.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.ReuseAddress, true);
         _socket.Bind(new IPEndPoint(IPAddress.Any, Options.PortIpv4));
 
         _runCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
@@ -92,18 +96,28 @@ public sealed class NetworkServer : IDisposable
                 {
                     break;
                 }
+                catch (SocketException)
+                {
+                    break;
+                }
             }
         }
         finally
         {
-            try { _socket?.Close(); } catch { }
+            Socket? socket = _socket;
+            _socket = null;
+            try { socket?.Close(); } catch { }
+            try { socket?.Dispose(); } catch { }
         }
     }
 
     public void Stop()
     {
+        Socket? socket = Interlocked.Exchange(ref _socket, null);
+        try { socket?.Close(); } catch { }
+        try { socket?.Dispose(); } catch { }
+
         _runCts?.Cancel();
-        try { _socket?.Close(); } catch { }
     }
 
     public void Dispose()
@@ -231,7 +245,6 @@ public sealed class NetworkServer : IDisposable
         UnconnectedPing ping = UnconnectedPing.Deserialize(message);
         string advertisement = OrionInfo.BuildRaknetAdvertisement();
         UnconnectedPong pong = new(ping.Time, ServerGuid, advertisement);
-
         SendTo(endpoint, pong, UnconnectedPong.Serialize);
     }
 
