@@ -1,5 +1,6 @@
 using Orion.Protocol.Enums;
 using Orion.Protocol.Packets;
+using Orion.Protocol.Registry;
 using Orion.Protocol.Types;
 
 namespace Orion.Protocol.Tests;
@@ -118,5 +119,26 @@ public sealed class PacketRoundTripTests
         Assert.Equal(original.ChunkZ, decoded.ChunkZ);
         Assert.Equal(original.SubChunkCount, decoded.SubChunkCount);
         Assert.Equal(original.RawPayload, decoded.RawPayload);
+    }
+
+    [Fact]
+    public void UpdateBlock_RoundTrip_PreservesNegativeRuntimeId()
+    {
+        UpdateBlockPacket original = new()
+        {
+            Position = new BlockPos { X = 1, Y = -60, Z = 2 },
+            NetworkBlockId = BedrockBlockStates.GrassBlock,
+            Flags = UpdateBlockFlagsType.Network,
+            Layer = UpdateBlockLayerType.Normal
+        };
+
+        UpdateBlockPacket decoded = PacketTestHelper.RoundTrip(original);
+
+        Assert.Equal(original.Position.X, decoded.Position.X);
+        Assert.Equal(original.Position.Y, decoded.Position.Y);
+        Assert.Equal(original.Position.Z, decoded.Position.Z);
+        Assert.Equal(BedrockBlockStates.GrassBlock, decoded.NetworkBlockId);
+        Assert.Equal(UpdateBlockFlagsType.Network, decoded.Flags);
+        Assert.Equal(UpdateBlockLayerType.Normal, decoded.Layer);
     }
 }

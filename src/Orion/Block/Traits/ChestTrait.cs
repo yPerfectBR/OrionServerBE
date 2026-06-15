@@ -270,7 +270,7 @@ public class ChestTrait : BlockTrait
             return;
         }
 
-        uint networkId = (uint)dimension.GetPermutation(x, y, z).NetworkId;
+        int networkId = dimension.GetPermutation(x, y, z).NetworkId;
 
         player.Send(
         new BlockActorDataPacket

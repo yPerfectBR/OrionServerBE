@@ -21,7 +21,7 @@ public sealed record UpdateBlockPacket : DataPacket
     /// <summary>
     /// Runtime network block state id.
     /// </summary>
-    public uint NetworkBlockId;
+    public int NetworkBlockId;
 
     /// <summary>
     /// Update behavior flags for neighbors/network/permutation.
@@ -38,7 +38,7 @@ public sealed record UpdateBlockPacket : DataPacket
         BlockPos position = Position;
         position.Read(reader);
         Position = position;
-        NetworkBlockId = reader.ReadVarUInt();
+        NetworkBlockId = reader.ReadZigZag();
         Flags = (UpdateBlockFlagsType)reader.ReadVarUInt();
         Layer = (UpdateBlockLayerType)reader.ReadVarUInt();
     }
@@ -46,7 +46,7 @@ public sealed record UpdateBlockPacket : DataPacket
     public override void Serialize(BinaryWriter writer)
     {
         Position.Write(writer);
-        writer.WriteVarUInt(NetworkBlockId);
+        writer.WriteZigZag(NetworkBlockId);
         writer.WriteVarUInt((uint)Flags);
         writer.WriteVarUInt((uint)Layer);
     }
