@@ -1,4 +1,6 @@
+using System.Runtime.InteropServices;
 using Orion;
+using Orion.Commands;
 using Orion.Config;
 using Orion.RakNet;
 using WorldLogger = Orion.Logger.Logger;
@@ -17,6 +19,11 @@ try
     WorldLogger.Info(LogCategory.System, "Config: {0}", Path.GetFullPath(configPath));
     WorldLogger.Info(LogCategory.System, "Worlds: {0}", Path.GetFullPath(worldsRoot));
 
+    foreach (string warning in OrionRuntime.ValidateThreadPool(OrionInfo.Config))
+    {
+        WorldLogger.Warn(LogCategory.System, warning);
+    }
+
     using ServerHost host = ServerHost.Bootstrap(OrionInfo.Config, worldsRoot);
     OrionInfo.ActivePlayerCountProvider = () => host.Server.Sessions.Count;
 
@@ -24,24 +31,50 @@ try
     host.AttachNetwork(network);
 
     using CancellationTokenSource shutdown = new();
+    RegisterShutdownSignals(shutdown);
+
     Console.CancelKeyPress += (_, eventArgs) =>
     {
         eventArgs.Cancel = true;
         shutdown.Cancel();
     };
 
-    Task networkTask = Task.Run(() => network.Start(shutdown.Token), shutdown.Token);
+    Thread consoleThread = new(() => ConsoleInterface.Run(host.Server, shutdown.Token, shutdown.Cancel))
+    {
+        IsBackground = true,
+        Name = "server-console"
+    };
+    consoleThread.Start();
+
+    Thread networkThread = new(() => RunNetworkLoop(network, shutdown.Token))
+    {
+        IsBackground = true,
+        Name = "raknet-udp"
+    };
+    networkThread.Start();
+
+    for (int i = 0; i < 50 && network.LocalEndPoint is null && !shutdown.IsCancellationRequested; i++)
+    {
+        Thread.Sleep(20);
+    }
+
+    if (network.LocalEndPoint is null)
+    {
+        throw new InvalidOperationException("UDP socket failed to bind — check port 19132 is free.");
+    }
 
     RaknetConfig raknet = OrionInfo.Raknet;
     ServerSection server = OrionInfo.Server;
     WorldLogger.Info(
         LogCategory.System,
-        "Listening on {0}:{1} ({2}) — world '{3}'",
-        raknet.Address,
-        raknet.PortIPV4,
+        "Listening on {0} ({1}) — world '{2}'",
+        network.LocalEndPoint,
         server.Name,
         OrionInfo.SpawnWorldIdentifier);
-    WorldLogger.Info(LogCategory.System, "Press Ctrl+C to stop.");
+    WorldLogger.Info(LogCategory.System, "Add server manually: <host-ip>:{0} (client must match protocol {1})",
+        raknet.PortIPV4,
+        raknet.Protocol);
+    WorldLogger.Info(LogCategory.System, "Type commands in the console, 'stop', or press Ctrl+C to shut down.");
 
     while (!shutdown.IsCancellationRequested)
     {
@@ -52,13 +85,11 @@ try
 
     WorldLogger.Info(LogCategory.System, "Shutting down...");
     network.Stop();
+    host.Scheduling.Stop();
 
-    try
+    if (!networkThread.Join(TimeSpan.FromSeconds(3)))
     {
-        await networkTask.ConfigureAwait(false);
-    }
-    catch (OperationCanceledException)
-    {
+        WorldLogger.Warn(LogCategory.System, "Network thread did not exit in time.");
     }
 
     WorldLogger.Info(LogCategory.System, "OrionServer stopped.");
@@ -78,7 +109,33 @@ catch (Exception exception)
     return 1;
 }
 
-static string ResolveConfigPath(string[] args)
+static void RegisterShutdownSignals(CancellationTokenSource shutdown)
+{
+    if (!OperatingSystem.IsLinux() && !OperatingSystem.IsMacOS())
+    {
+        return;
+    }
+
+    PosixSignalRegistration.Create(PosixSignal.SIGINT, _ => shutdown.Cancel());
+    PosixSignalRegistration.Create(PosixSignal.SIGTERM, _ => shutdown.Cancel());
+}
+
+static void RunNetworkLoop(NetworkServer network, CancellationToken cancellationToken)
+{
+    try
+    {
+        network.Start(cancellationToken).AsTask().GetAwaiter().GetResult();
+    }
+    catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+    {
+    }
+    catch (Exception exception)
+    {
+        WorldLogger.Error(LogCategory.System, "Network loop failed: {0}", exception);
+    }
+}
+
+    static string ResolveConfigPath(string[] args)
 {
     string? fromEnv = Environment.GetEnvironmentVariable("ORION_CONFIG_PATH");
     if (!string.IsNullOrWhiteSpace(fromEnv))
