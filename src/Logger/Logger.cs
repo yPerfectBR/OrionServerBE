@@ -58,6 +58,24 @@ public static class Logger
         }
     }
 
+    public static void Debug(string format, params object?[] args) =>
+        Debug(LogCategory.Orion, format, args);
+
+    public static void Info(string format, params object?[] args) =>
+        Info(LogCategory.Orion, format, args);
+
+    public static void Warn(string format, params object?[] args) =>
+        Warn(LogCategory.Orion, format, args);
+
+    public static void Err(string format, params object?[] args) =>
+        Error(LogCategory.Orion, format, args);
+
+    public static void Error(string format, params object?[] args) =>
+        Error(LogCategory.Orion, format, args);
+
+    public static void Chat(string format, params object?[] args) =>
+        Chat(LogCategory.Orion, format, args);
+
     public static void Debug(LogCategory category, string format, params object?[] args) =>
         Log(category, LogLevel.Debug, format, args);
 
