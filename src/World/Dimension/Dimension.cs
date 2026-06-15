@@ -3,16 +3,17 @@ using Orion.Protocol.Enums;
 using Orion.World.Coordinates;
 using Orion.World.Generation;
 using Orion.World.Provider;
+using Orion.World.Threading;
 using ChunkColumn = Orion.World.Chunk.Chunk;
 
 namespace Orion.World;
 
 /// <summary>
-/// Slim dimension: chunk cache, provider I/O, and generator fallback only.
+/// Slim dimension with area-sharded chunk cache, provider I/O, and generator fallback.
 /// </summary>
 public sealed class Dimension : IDisposable
 {
-    private readonly Dictionary<long, ChunkColumn> _chunks = [];
+    private readonly AreaShardManager _shardManager;
     private readonly WorldProvider _provider;
     private readonly Generator _generator;
     private bool _disposed;
@@ -21,21 +22,29 @@ public sealed class Dimension : IDisposable
     public DimensionType Type { get; }
     public World? World { get; internal set; }
     public DimensionGameRules Gamerules { get; } = new();
+    public AreaShardManager ShardManager => _shardManager;
 
-    public int ChunkCount => _chunks.Count;
+    public int ChunkCount => _shardManager.TotalChunkCount;
 
-    public Dimension(string identifier, DimensionType type, WorldProvider provider, Generator? generator = null)
+    public Dimension(
+        string identifier,
+        DimensionType type,
+        WorldProvider provider,
+        Generator? generator = null,
+        IReadOnlyList<Orion.Config.ThreadingAreaConfig>? threadingAreas = null)
     {
         Identifier = identifier;
         Type = type;
         _provider = provider;
         _generator = generator ?? new VoidGenerator();
+        _shardManager = new AreaShardManager(threadingAreas ?? []);
     }
 
     public bool HasChunk(int x, int z)
     {
         long hash = CoordMath.HashChunk(x, z);
-        return _chunks.ContainsKey(hash) || _provider.HasChunk(Type, x, z);
+        AreaShard shard = _shardManager.ResolveShard(x, z);
+        return shard.TryGetChunk(hash, out _) || _provider.HasChunk(Type, x, z);
     }
 
     public ChunkColumn? GetChunk(int x, int z) => GetOrLoadChunk(x, z);
@@ -48,18 +57,19 @@ public sealed class Dimension : IDisposable
             return chunk;
         }
 
-        long hash = CoordMath.HashChunk(x, z);
+        AreaShard shard = _shardManager.ResolveShard(x, z);
         chunk = _generator.Generate(Type, x, z);
         _generator.Populate(chunk);
         chunk.Dirty = true;
-        _chunks[hash] = chunk;
+        shard.SetChunk(chunk);
         return chunk;
     }
 
     public ChunkColumn? GetOrLoadChunk(int x, int z)
     {
         long hash = CoordMath.HashChunk(x, z);
-        if (_chunks.TryGetValue(hash, out ChunkColumn? cached))
+        AreaShard shard = _shardManager.ResolveShard(x, z);
+        if (shard.TryGetChunk(hash, out ChunkColumn? cached))
         {
             return cached;
         }
@@ -67,7 +77,7 @@ public sealed class Dimension : IDisposable
         ChunkColumn? chunk = _provider.LoadChunk(Type, x, z);
         if (chunk is not null)
         {
-            _chunks[hash] = chunk;
+            shard.SetChunk(chunk);
             return chunk;
         }
 
@@ -76,13 +86,16 @@ public sealed class Dimension : IDisposable
 
     public void SetChunk(ChunkColumn chunk)
     {
-        _chunks[CoordMath.HashChunk(chunk.X, chunk.Z)] = chunk;
+        AreaShard shard = _shardManager.ResolveShard(chunk.X, chunk.Z);
+        shard.SetChunk(chunk);
         _provider.SaveChunk(chunk);
     }
 
     public bool SaveChunk(int x, int z)
     {
-        if (!_chunks.TryGetValue(CoordMath.HashChunk(x, z), out ChunkColumn? chunk))
+        long hash = CoordMath.HashChunk(x, z);
+        AreaShard shard = _shardManager.ResolveShard(x, z);
+        if (!shard.TryGetChunk(hash, out ChunkColumn? chunk) || chunk is null)
         {
             return false;
         }
@@ -95,7 +108,8 @@ public sealed class Dimension : IDisposable
     public bool UnloadChunk(int x, int z, bool save = true)
     {
         long hash = CoordMath.HashChunk(x, z);
-        if (!_chunks.TryGetValue(hash, out ChunkColumn? chunk))
+        AreaShard shard = _shardManager.ResolveShard(x, z);
+        if (!shard.TryGetChunk(hash, out ChunkColumn? chunk) || chunk is null)
         {
             return false;
         }
@@ -107,12 +121,12 @@ public sealed class Dimension : IDisposable
         }
 
         chunk.ReleaseMemory();
-        return _chunks.Remove(hash);
+        return shard.RemoveChunk(hash, out _);
     }
 
     public void SaveDirtyChunks()
     {
-        foreach (ChunkColumn chunk in _chunks.Values)
+        foreach (ChunkColumn chunk in _shardManager.AllChunks)
         {
             if (!chunk.Dirty)
             {
@@ -124,7 +138,7 @@ public sealed class Dimension : IDisposable
         }
     }
 
-    public IEnumerable<ChunkColumn> GetLoadedChunks() => _chunks.Values;
+    public IEnumerable<ChunkColumn> GetLoadedChunks() => _shardManager.AllChunks;
 
     public BlockPermutation GetPermutation(int x, int y, int z, int layer = 0)
     {
@@ -152,7 +166,7 @@ public sealed class Dimension : IDisposable
 
     public void Tick(ulong currentTick, uint deltaTick)
     {
-        if (currentTick % 20 == 0 && _chunks.Count > 0)
+        if (currentTick % 20 == 0 && ChunkCount > 0)
         {
             SaveDirtyChunks();
         }
@@ -167,7 +181,6 @@ public sealed class Dimension : IDisposable
 
         _disposed = true;
         SaveDirtyChunks();
-        _chunks.Clear();
     }
 
     private static int GetChunkLocal(int value) => value & 0xF;
