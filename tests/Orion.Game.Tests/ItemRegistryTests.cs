@@ -12,5 +12,6 @@ public sealed class ItemRegistryTests
         ItemType? grass = ItemType.Get("minecraft:grass_block");
         Assert.NotNull(grass);
         Assert.True(grass!.NetworkId > 0);
+        Assert.Contains("minecraft:grass_block", ItemRegistry.GetGiveableIdentifiers());
     }
 }

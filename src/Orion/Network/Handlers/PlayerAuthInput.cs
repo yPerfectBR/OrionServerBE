@@ -2,6 +2,7 @@ using Orion.RakNet;
 namespace Orion.Network.Handlers;
 
 using System.Collections.Concurrent;
+using System.Linq;
 using Orion;
 using Orion.Scheduling;
 using Orion.Player;
@@ -19,7 +20,6 @@ using Orion.Protocol.Packets;
 using Orion.Protocol.Types;
 using Orion.RakNet;
 using Orion.World;
-
 
 public static class PlayerAuthInput
 {
@@ -290,6 +290,11 @@ public static class PlayerAuthInput
         if (packet.InputData.HasFlag(PlayerAuthInputFlag.PerformItemStackRequest))
         {
             mineBlockRequest = GetMineBlockRequest(packet.ItemStackRequest);
+            bool onlyMineBlock = packet.ItemStackRequest.Actions.All(static action =>
+                action is MineBlockStackRequestAction
+                    or EmptyStackRequestAction
+                    or CraftResultsDeprecatedStackRequestAction);
+
             Warn(
                 "PlayerAuthInput item stack request player={0} request={1} actions={2} mineBlock={3}",
                 player.Username,
@@ -297,9 +302,13 @@ public static class PlayerAuthInput
                 packet.ItemStackRequest.Actions.Count,
                 mineBlockRequest is not null);
 
+            ItemStackResponse response = onlyMineBlock
+                ? ProcessItemStackRequest(player, packet.ItemStackRequest)
+                : ItemStackRequest.Process(player, packet.ItemStackRequest);
+
             ItemStackResponsePacket stackResponse = new()
             {
-                Responses = [ProcessItemStackRequest(player, packet.ItemStackRequest)]
+                Responses = [response]
             };
 
             if (player.Session is not null)
@@ -533,6 +542,9 @@ public static class PlayerAuthInput
         });
     }
 
+    private static bool IsAirBlock(Orion.Block.BlockPermutation block) =>
+        block.Type.Identifier is "minecraft:air" or "minecraft:cave_air" or "minecraft:void_air";
+
     private static void DestroyBlock(global::Orion.Player.Player player, PlayerBlockAction action)
     {
         if (IsZero(action.BlockPos) && !player.BreakingBlock.HasValue)
@@ -555,7 +567,6 @@ public static class PlayerAuthInput
 
         if (player.Dimension is null)
         {
-            // Warn("PlayerAuthInput destroy skipped player={0} reason=no-dimension", player.Username);
             return;
         }
 
@@ -564,24 +575,42 @@ public static class PlayerAuthInput
 
         if (block is null)
         {
-            // Warn(
-            //     "PlayerAuthInput destroy skipped player={0} reason=null-block pos={1},{2},{3}",
-            //     player.Username,
-            //     blockPosition.X,
-            //     blockPosition.Y,
-            //     blockPosition.Z);
             return;
         }
 
-        // Warn(
-        //     "PlayerAuthInput destroy attempt player={0} pos={1},{2},{3} before={4} network={5} action={6}",
-        //     player.Username,
-        //     blockPosition.X,
-        //     blockPosition.Y,
-        //     blockPosition.Z,
-        //     block.Type.Identifier,
-        //     block.NetworkId,
-        //     action.Action);
+        if (IsAirBlock(block) && player.Gamemode == Gamemode.Creative)
+        {
+            EntityInventoryTrait? creativeInventory = player.GetTrait<EntityInventoryTrait>();
+            ItemStack? creativeHeldItem = creativeInventory?.GetHeldItem();
+            int effectRuntime = creativeHeldItem is not null ? ItemBlockRuntimeIds.Resolve(creativeHeldItem.Type) : 0;
+
+            if (effectRuntime == 0)
+            {
+                return;
+            }
+
+            Vec3f creativeBlockCenter = CenterOf(blockPosition);
+
+            player.Dimension.Broadcast(new LevelEventPacket
+            {
+                Event = LevelEvent.ParticlesDestroyBlock,
+                Position = creativeBlockCenter,
+                Data = effectRuntime
+            });
+
+            player.Dimension.Broadcast(new LevelSoundEventPacket
+            {
+                Event = LevelSoundEvent.BreakBlock,
+                Position = creativeBlockCenter,
+                Data = effectRuntime,
+                ActorIdentifier = string.Empty,
+                IsBabyMob = false,
+                IsGlobal = false,
+                UniqueActorId = 0,
+                FireAtPosition = new Optional<Vec3f> { HasValue = false, Value = default }
+            });
+            return;
+        }
 
         Server? server = player.Dimension.World?.Server as Server;
         if (server is not null)
@@ -593,7 +622,7 @@ public static class PlayerAuthInput
                 player.Send(new UpdateBlockPacket
                 {
                     Position = blockPosition,
-                    NetworkBlockId = (uint)block.NetworkId,
+                    NetworkBlockId = block.NetworkId,
                     Flags = UpdateBlockFlagsType.Network,
                     Layer = UpdateBlockLayerType.Normal
                 });
@@ -614,11 +643,25 @@ public static class PlayerAuthInput
             }
         }
 
+        Vec3f blockCenter = CenterOf(blockPosition);
+
         player.Dimension.Broadcast(new LevelEventPacket
         {
             Event = LevelEvent.ParticlesDestroyBlock,
-            Position = CenterOf(blockPosition),
+            Position = blockCenter,
             Data = block.NetworkId
+        });
+
+        player.Dimension.Broadcast(new LevelSoundEventPacket
+        {
+            Event = LevelSoundEvent.BreakBlock,
+            Position = blockCenter,
+            Data = block.NetworkId,
+            ActorIdentifier = string.Empty,
+            IsBabyMob = false,
+            IsGlobal = false,
+            UniqueActorId = 0,
+            FireAtPosition = new Optional<Vec3f> { HasValue = false, Value = default }
         });
 
         Orion.Block.BlockPermutation air = Orion.Block.BlockType
@@ -633,22 +676,10 @@ public static class PlayerAuthInput
 
         player.Dimension.SetGameplayPermutation(blockPosition.X, blockPosition.Y, blockPosition.Z, air);
 
-        Orion.Block.BlockPermutation after =
-            player.Dimension.GetGameplayPermutation(blockPosition.X, blockPosition.Y, blockPosition.Z);
-
-        // Warn(
-        //     "PlayerAuthInput destroy result player={0} pos={1},{2},{3} after={4} network={5}",
-        //     player.Username,
-        //     blockPosition.X,
-        //     blockPosition.Y,
-        //     blockPosition.Z,
-        //     after.Type.Identifier,
-        //     after.NetworkId);
-
         player.Dimension.Broadcast(new UpdateBlockPacket
         {
             Position = blockPosition,
-            NetworkBlockId = (uint)air.NetworkId,
+            NetworkBlockId = air.NetworkId,
             Flags = UpdateBlockFlagsType.Network,
             Layer = UpdateBlockLayerType.Normal
         });
