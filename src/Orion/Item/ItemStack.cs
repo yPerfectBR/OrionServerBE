@@ -85,6 +85,39 @@ public sealed class ItemStack {
         return descriptor;
     }
 
+    public LegacyItem ToLegacyInventoryItem()
+    {
+        if (StackSize == 0 || Type.NetworkId == 0)
+        {
+            return new LegacyItem();
+        }
+
+        int networkBlockId = ItemBlockRuntimeIds.Resolve(Type);
+        CompoundTag? nbt = GetSerializedNbt();
+        bool hasExtraData = (ExtraData?.CanPlaceOn.Count ?? 0) > 0
+            || (ExtraData?.CanDestroy.Count ?? 0) > 0
+            || ExtraData?.Ticking is not null
+            || (nbt is not null && nbt.Values.Count > 0);
+
+        return new LegacyItem
+        {
+            NetworkId = Type.NetworkId,
+            StackSize = StackSize,
+            Metadata = unchecked((int)Metadata),
+            ItemStackId = NetworkStackId,
+            NetworkBlockId = networkBlockId,
+            ExtraData = hasExtraData
+                ? new ItemInstanceUserData
+                {
+                    Nbt = nbt,
+                    CanPlaceOn = ExtraData?.CanPlaceOn ?? [],
+                    CanDestroy = ExtraData?.CanDestroy ?? [],
+                    Ticking = ExtraData?.Ticking
+                }
+                : null
+        };
+    }
+
     public NetworkItemStackDescriptor ToNetworkItemStackDescriptor()
     {
         if (StackSize == 0 || Type.NetworkId == 0)
@@ -92,11 +125,7 @@ public sealed class ItemStack {
             return new NetworkItemStackDescriptor();
         }
 
-        int runtimeId = 0;
-        if (Type.BlockType is not null && Type.BlockType.Permutations.Count > 0)
-        {
-            runtimeId = Type.BlockType.Permutations[0].NetworkId;
-        }
+        int runtimeId = ItemBlockRuntimeIds.Resolve(Type);
 
         return new NetworkItemStackDescriptor
         {

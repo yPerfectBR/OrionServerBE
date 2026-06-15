@@ -78,6 +78,18 @@ public sealed class ItemType
         return ItemRegistry.TryGetCreativeItem(creativeItemNetworkId);
     }
 
+    public static ItemStack? GetCreativePickFromSlotByte(byte slotByte, out string resolution)
+    {
+        ItemRegistry.EnsureLoaded();
+        return ItemRegistry.TryGetCreativePickFromSlotByte(slotByte, out resolution);
+    }
+
+    public static ItemStack? GetCreativePickFromSlotByte(byte slotByte)
+    {
+        ItemRegistry.EnsureLoaded();
+        return ItemRegistry.TryGetCreativePickFromSlotByte(slotByte);
+    }
+
     public void RegisterTrait(Type traitType, string identifier)
     {
         if (!typeof(ItemTrait).IsAssignableFrom(traitType) || traitType.IsAbstract)
@@ -101,11 +113,7 @@ public sealed class ItemType
 
     public static LegacyItem ToNetworkStack(ItemType type, ushort stackSize = 1, uint metadata = 0)
     {
-        int networkBlockId = 0;
-        if (type.BlockType is not null && type.BlockType.Permutations.Count > 0)
-        {
-            networkBlockId = type.BlockType.Permutations[0].NetworkId;
-        }
+        int networkBlockId = ItemBlockRuntimeIds.Resolve(type);
 
         return new LegacyItem
         {
