@@ -5,6 +5,8 @@ using Orion.Protocol.Packets;
 using Orion.Network;
 using Orion.Network.Handlers;
 using Orion.Scheduling;
+using Orion.Config;
+using Log = Orion.Logger.Logger;
 
 using Orion.RakNet;
 using Orion.Containers;
@@ -97,8 +99,23 @@ public readonly string Username;
 
         if (Session is not null)
         {
-            Session.Send(new SetPlayerGameTypePacket { GameType = gamemode });
-            Session.Send(abilitiesPacket);
+            if (gamemode == Gamemode.Creative)
+            {
+                byte[] itemRegistryPayload = Orion.Protocol.Registry.CuratedItemCatalog.GetItemRegistryPayload();
+                byte[] creativeContentPayload = Orion.Protocol.Registry.CuratedItemCatalog.GetCreativeContentPayload();
+                SessionSendCoordinator.SendGamemodeChange(
+                    Session,
+                    Username,
+                    gamemode,
+                    abilitiesPacket,
+                    itemRegistryPayload,
+                    creativeContentPayload);
+            }
+            else
+            {
+                Session.Send(new SetPlayerGameTypePacket { GameType = gamemode });
+                Session.Send(abilitiesPacket);
+            }
         }
     }
 
@@ -356,6 +373,12 @@ public readonly string Username;
             cursor.Container.Update();
         }
 
+        PlayerCraftingOutputTrait? craftingOutput = GetTrait<PlayerCraftingOutputTrait>();
+        if (craftingOutput is not null)
+        {
+            craftingOutput.Container.Update();
+        }
+
         SendAttributes();
     }
 
@@ -389,6 +412,27 @@ public readonly string Username;
 
         Session.PendingClientWorldStateSync = false;
         SyncClientWorldState();
+    }
+
+    /// <summary>
+    /// Pushes the authoritative player inventory to the client (window 0).
+    /// </summary>
+    public void SyncInventoryToClient()
+    {
+        if (!Spawned)
+        {
+            return;
+        }
+
+        EntityInventoryTrait? inventory = GetTrait<EntityInventoryTrait>();
+        if (inventory is null)
+        {
+            return;
+        }
+
+        EnsureContainerViewer(this, inventory.Container, inventory.Container.Identifier ?? 0);
+        inventory.SyncToPlayer(this);
+        inventory.SyncHeldItemToClient(this);
     }
 
     static void EnsureContainerViewer(Player player, Containers.Container container, int windowId)
@@ -541,14 +585,78 @@ public readonly string Username;
             return null;
         }
 
-        if (name.ContainerId is (byte)ContainerId.Armor or 12 or (byte)ContainerId.Inventory or (byte)ContainerId.Hotbar or (byte)ContainerId.FixedInventory or (byte)ContainerId.Offhand)
+        ContainerName containerName = (ContainerName)name.ContainerId;
+
+        switch (containerName)
+        {
+            case ContainerName.HotbarAndInventory:
+            case ContainerName.Hotbar:
+            case ContainerName.Inventory:
+                return inventory.Container;
+
+            case ContainerName.Cursor:
+                return GetTrait<PlayerCursorTrait>()?.Container;
+
+            case ContainerName.CreativeOutput:
+            case ContainerName.CraftingOutput:
+                return GetTrait<PlayerCraftingOutputTrait>()?.Container;
+
+            case ContainerName.Armor:
+            case ContainerName.Offhand:
+                return inventory.Container;
+
+            case ContainerName.Container:
+            case ContainerName.Barrel:
+                if (name.DynamicContainerId.HasValue &&
+                    TryGetOpenContainer((int)name.DynamicContainerId.Value, out Container? openedById))
+                {
+                    return openedById;
+                }
+
+                foreach ((int _, Container candidate) in openedContainers)
+                {
+                    if (candidate.Type != ContainerType.Inventory)
+                    {
+                        return candidate;
+                    }
+                }
+
+                break;
+
+            case ContainerName.AnvilInput:
+                if (Gamemode == Gamemode.Creative)
+                {
+                    return name.DynamicContainerId.HasValue
+                        ? GetTrait<PlayerCursorTrait>()?.Container
+                        : GetTrait<PlayerCraftingOutputTrait>()?.Container;
+                }
+
+                break;
+
+            case ContainerName.AnvilMaterial:
+                if (Gamemode == Gamemode.Creative && name.DynamicContainerId.HasValue)
+                {
+                    return inventory.Container;
+                }
+
+                break;
+        }
+
+        if (name.DynamicContainerId.HasValue &&
+            containerName is ContainerName.Container or ContainerName.Dynamic)
+        {
+            return inventory.Container;
+        }
+
+        if (name.ContainerId is (byte)ContainerId.Armor or (byte)ContainerId.Inventory or (byte)ContainerId.Hotbar or (byte)ContainerId.FixedInventory or (byte)ContainerId.Offhand)
         {
             return inventory.Container;
         }
 
         if (name.ContainerId == (byte)ContainerId.Barrel || name.ContainerId == (byte)ContainerId.InventoryUi)
         {
-            if (name.DynamicContainerId.HasValue && TryGetOpenContainer((int)name.DynamicContainerId.Value!, out Container? containerById))
+            if (name.DynamicContainerId.HasValue &&
+                TryGetOpenContainer((int)name.DynamicContainerId.Value!, out Container? containerById))
             {
                 return containerById;
             }
@@ -566,11 +674,11 @@ public readonly string Username;
 
         if (name.ContainerId == (byte)ContainerId.Cursor)
         {
-            PlayerCursorTrait? cursor = GetTrait<PlayerCursorTrait>();
-            return cursor?.Container;
+            return GetTrait<PlayerCursorTrait>()?.Container;
         }
 
-        if (name.DynamicContainerId.HasValue && TryGetOpenContainer((int)name.DynamicContainerId.Value!, out Container? container))
+        if (name.DynamicContainerId.HasValue &&
+            TryGetOpenContainer((int)name.DynamicContainerId.Value!, out Container? container))
         {
             return container;
         }
