@@ -10,11 +10,15 @@ using Orion.Protocol.Types;
 using Orion.RakNet;
 using Orion.Player;
 using Orion.Scheduling;
+using Orion.Config;
 using Dimension = Orion.World.Dimension;
+using Log = Orion.Logger.Logger;
 
 
 public static class ResourcePackClientResponse
 {
+    private static bool _loggedCatalogInit;
+
     public static void Handle(Server server, NetworkConnection connection, ReadOnlySpan<byte> packetBuffer)
     {
         ResourcePackClientResponsePacket packet = new();
@@ -204,6 +208,14 @@ public static class ResourcePackClientResponse
 
                 byte[] itemRegistryPayload = Orion.Protocol.Registry.CuratedItemCatalog.GetItemRegistryPayload();
                 byte[] creativeContentPayload = Orion.Protocol.Registry.CuratedItemCatalog.GetCreativeContentPayload();
+
+                if (!_loggedCatalogInit)
+                {
+                    _loggedCatalogInit = true;
+                    CreativeInventoryLog.LogCatalogInit();
+                    CreativeInventoryLog.LogRegistryCreativeItems();
+                }
+
                 AvailableActorIdentifiersPacket actorIdentifiers = new()
                 {
                     Data = EntityRegistry.BuildAvailableActorIdentifiersTag()
@@ -218,6 +230,15 @@ public static class ResourcePackClientResponse
                     server.Network.SendSerializedPacket(connection, PacketId.ItemRegistry, itemRegistryPayload);
                     server.Network.SendPackets(connection, [actorIdentifiers, spawnStatus]);
                     server.Network.SendSerializedPacket(connection, PacketId.CreativeContent, creativeContentPayload);
+
+                    CreativeInventoryLog.LogItemRegistrySent("spawn", player.Username, itemRegistryPayload);
+                    CreativeInventoryLog.LogCreativeContentSent("spawn", player.Username, creativeContentPayload);
+                    CreativeInventoryLog.LogSpawnSequence(
+                        player.Username,
+                        player.GetGamemode(),
+                        startGame.PlayerGameMode,
+                        itemRegistryPayload.Length,
+                        creativeContentPayload.Length);
                 }
 
                 if (server.ConnectionCoordinator is Scheduling.ConnectionCoordinator coordinator && coordinator.IsActive)

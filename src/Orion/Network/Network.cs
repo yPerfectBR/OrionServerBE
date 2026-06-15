@@ -156,6 +156,8 @@ public sealed class NetworkHandler
 
     internal void HandleGamePacketOnWorker(NetworkConnection connection, PacketId packetId, ReadOnlySpan<byte> packetBuffer)
     {
+        CreativeInventoryLog.TryLogClientPacket(_server, connection, packetId, packetBuffer);
+
         // Debug($"Received packet {packetId}");
         switch (packetId)
         {
