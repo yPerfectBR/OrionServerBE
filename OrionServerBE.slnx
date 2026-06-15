@@ -11,4 +11,5 @@
   <Project Path="tests/Orion.Protocol.Tests/Orion.Protocol.Tests.csproj" />
   <Project Path="tests/Orion.Logger.Tests/Orion.Logger.Tests.csproj" />
   <Project Path="tests/Orion.World.Tests/Orion.World.Tests.csproj" />
+  <Project Path="tests/Orion.Game.Tests/Orion.Game.Tests.csproj" />
 </Solution>
