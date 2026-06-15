@@ -27,6 +27,7 @@
     <ProjectReference Include="..\Logger\Logger.csproj" />
     <ProjectReference Include="..\Protocol\Protocol.csproj" />
     <ProjectReference Include="..\RakNet\RakNet.csproj" />
+    <ProjectReference Include="..\World\World.csproj" />
   </ItemGroup>
 
   <ItemGroup>
@@ -35,10 +36,6 @@
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
       <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
     </Content>
-  </ItemGroup>
-
-  <ItemGroup>
-    <PackageReference Include="LevelDB.Standard" Version="2.1.6.1" />
   </ItemGroup>
 
 </Project>

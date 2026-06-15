@@ -13,9 +13,6 @@ public sealed class OrionConfig
     [JsonPropertyName("Server")]
     public ServerSection Server { get; init; } = new();
 
-    [JsonPropertyName("Storage")]
-    public StorageConfig Storage { get; init; } = new();
-
     [JsonPropertyName("Runtime")]
     public RuntimeConfig Runtime { get; init; } = new();
 }
@@ -234,37 +231,10 @@ public sealed class RaknetConfig
     public bool ValidatePort { get; init; } = true;
 }
 
-public sealed class StorageConfig
+public sealed class WorldJsonFile
 {
-    [JsonPropertyName("Provider")]
-    public string Provider { get; init; } = "Redis";
-
-    [JsonPropertyName("ImportWorldOnStartup")]
-    public bool ImportWorldOnStartup { get; init; }
-
-    [JsonPropertyName("ImportSourceWorldPath")]
-    public string ImportSourceWorldPath { get; init; } = "./worlds/default";
-
-    [JsonPropertyName("Redis")]
-    public RedisStorageConfig Redis { get; init; } = new();
-}
-
-public sealed class RedisStorageConfig
-{
-    [JsonPropertyName("Endpoint")]
-    public string Endpoint { get; init; } = "127.0.0.1:6379";
-
-    [JsonPropertyName("Database")]
-    public int Database { get; init; }
-
-    [JsonPropertyName("KeyPrefix")]
-    public string KeyPrefix { get; init; } = "orion";
-
-    [JsonPropertyName("AofRequired")]
-    public bool AofRequired { get; init; } = true;
-
-    [JsonPropertyName("PoolSize")]
-    public int PoolSize { get; init; } = 16;
+    [JsonPropertyName("settings")]
+    public WorldProperties Settings { get; init; } = new();
 }
 
 public sealed class WorldProperties
@@ -312,10 +282,23 @@ public sealed class DimensionConfig
     public int[] SpawnPosition { get; init; } = [0, -57, 0];
 
     [JsonPropertyName("chunkPregeneration")]
+    [JsonConverter(typeof(ChunkPregenerationJsonConverter))]
     public List<ChunkPregenerationConfig> ChunkPregeneration { get; init; } = [];
 
-    [JsonPropertyName("lockOnMemory")]
-    public bool LockOnMemory { get; init; }
+    [JsonPropertyName("threadingAreas")]
+    public List<ThreadingAreaConfig> ThreadingAreas { get; init; } = [];
+}
+
+public sealed class ThreadingAreaConfig
+{
+    [JsonPropertyName("name")]
+    public string Name { get; init; } = "default";
+
+    [JsonPropertyName("start")]
+    public int[] Start { get; init; } = [-50, -50];
+
+    [JsonPropertyName("end")]
+    public int[] End { get; init; } = [50, 50];
 }
 
 public sealed class ChunkPregenerationConfig

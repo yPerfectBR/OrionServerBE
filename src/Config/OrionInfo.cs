@@ -17,6 +17,22 @@ public static class OrionInfo
     /// </summary>
     public static Func<int>? ActivePlayerCountProvider { get; set; }
 
+    /// <summary>
+    /// When false, new player connections must be rejected until world pregeneration completes.
+    /// </summary>
+    public static bool CanAcceptPlayers
+    {
+        get
+        {
+            lock (Sync)
+            {
+                return _canAcceptPlayers;
+            }
+        }
+    }
+
+    private static bool _canAcceptPlayers;
+
     public static long ServerGuid
     {
         get
@@ -70,8 +86,19 @@ public static class OrionInfo
     public static NetworkConfig Network => Config.Server.Network;
     public static RaknetConfig Raknet => Config.Server.Raknet;
     public static WorldProperties WorldDefaultSettings => Config.Server.WorldDefaultSettings;
-    public static StorageConfig Storage => Config.Storage;
     public static RuntimeConfig Runtime => Config.Runtime;
+    public static string SpawnWorldIdentifier => Config.Server.Orion.SpawnWorldIdentifier;
+
+    /// <summary>
+    /// Updates whether the server may accept new player connections.
+    /// </summary>
+    public static void SetCanAcceptPlayers(bool canAccept)
+    {
+        lock (Sync)
+        {
+            _canAcceptPlayers = canAccept;
+        }
+    }
 
     /// <summary>
     /// Loads configuration from disk. Safe to call once at process startup.
@@ -97,6 +124,7 @@ public static class OrionInfo
         }
 
         OrionRuntime.Apply(config.Runtime);
+        SetCanAcceptPlayers(false);
 
         lock (Sync)
         {
@@ -114,6 +142,7 @@ public static class OrionInfo
         ArgumentNullException.ThrowIfNull(config);
 
         OrionRuntime.Apply(config.Runtime);
+        SetCanAcceptPlayers(false);
 
         lock (Sync)
         {
