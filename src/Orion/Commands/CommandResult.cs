@@ -2,13 +2,28 @@ namespace Orion.Commands;
 
 public sealed class CommandResult
 {
-    public bool Success { get; set; }
+    public bool Success;
 
-    public List<string> Messages { get; set; } = [];
+    public List<string> Messages = [];
 
-    public static CommandResult Empty(bool success = true) =>
-        new() { Success = success };
+    public static CommandResult Empty(bool success = true)
+    {
+        return new CommandResult { Success = success };
+    }
 
-    public static CommandResult Message(string message, bool success = true) =>
-        new() { Success = success, Messages = [message] };
+    public static CommandResult Message(string message, bool success = true)
+    {
+        return new CommandResult
+        {
+            Success = success,
+            Messages = [message]
+        };
+    }
 }
+
+
+
+
+
+
+
