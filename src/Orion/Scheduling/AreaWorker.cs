@@ -20,7 +20,7 @@ public sealed class AreaWorker
     private readonly Dictionary<AttachedAreaKey, AreaShard> _attachedAreas = [];
 
     private CancellationTokenSource? _runCancellation;
-    private Task? _loopTask;
+    private Thread? _workerThread;
     private long _lastTpsTimestamp;
     private ulong _lastTpsTick;
     private ulong _tickValue;
@@ -57,7 +57,7 @@ public sealed class AreaWorker
 
     public void Start()
     {
-        if (_loopTask is not null)
+        if (_workerThread is not null)
         {
             return;
         }
@@ -66,23 +66,26 @@ public sealed class AreaWorker
         CancellationToken token = _runCancellation.Token;
         _lastTpsTimestamp = Stopwatch.GetTimestamp();
         _lastTpsTick = 0;
-        _loopTask = Task.Run(() => WorkerLoop(token), token);
+        _workerThread = new Thread(() => WorkerLoop(token))
+        {
+            IsBackground = true,
+            Name = $"area-worker-{WorkerId}"
+        };
+        _workerThread.Start();
     }
 
     public void Stop()
     {
         CancellationTokenSource? cancellation = _runCancellation;
-        Task? loopTask = _loopTask;
+        Thread? workerThread = _workerThread;
         _runCancellation = null;
-        _loopTask = null;
+        _workerThread = null;
 
         cancellation?.Cancel();
         try
         {
-            loopTask?.Wait(TimeSpan.FromSeconds(5));
+            workerThread?.Join(TimeSpan.FromSeconds(5));
         }
-        catch (AggregateException exception) when (exception.InnerExceptions.All(static inner => inner is TaskCanceledException))
-        { }
         finally
         {
             cancellation?.Dispose();
@@ -125,7 +128,7 @@ public sealed class AreaWorker
             UpdateMetrics(tickEndTimestamp);
 
             long tickDeadlineTimestamp = tickStartTimestamp + (long)(TickIntervalMs * Stopwatch.Frequency / 1000.0);
-            SleepUntilDeadline(tickDeadlineTimestamp);
+            SleepUntilDeadline(tickDeadlineTimestamp, token);
         }
     }
 
@@ -171,7 +174,7 @@ public sealed class AreaWorker
         _lastTpsTick = _tickValue;
     }
 
-    static void SleepUntilDeadline(long deadlineTimestamp)
+    static void SleepUntilDeadline(long deadlineTimestamp, CancellationToken token = default)
     {
         double remainingMs = (deadlineTimestamp - Stopwatch.GetTimestamp()) * 1000.0 / Stopwatch.Frequency;
         if (remainingMs <= 0)
@@ -181,6 +184,11 @@ public sealed class AreaWorker
 
         while (remainingMs > SpinThresholdMs)
         {
+            if (token.IsCancellationRequested)
+            {
+                return;
+            }
+
             Thread.Sleep(1);
             remainingMs = (deadlineTimestamp - Stopwatch.GetTimestamp()) * 1000.0 / Stopwatch.Frequency;
             if (remainingMs <= 0)
@@ -191,6 +199,11 @@ public sealed class AreaWorker
 
         while (Stopwatch.GetTimestamp() < deadlineTimestamp)
         {
+            if (token.IsCancellationRequested)
+            {
+                return;
+            }
+
             Thread.SpinWait(1);
         }
     }
