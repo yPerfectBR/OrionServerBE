@@ -1,0 +1,461 @@
+using System.Collections.Concurrent;
+using System.Diagnostics;
+using Orion.Config;
+using Log = Orion.Logger.Logger;
+using Orion.Scheduling.Messages;
+using Orion.World.Threading;
+using WorldInstance = Orion.World.World;
+
+namespace Orion.Scheduling;
+
+public sealed class AreaWorker
+{
+    private const int MaxMessagesPerDrain = 256;
+    private const double TickIntervalMs = 50.0;
+    private const double SpinThresholdMs = 16.0;
+    private const ulong TpsUpdateIntervalTicks = 20;
+
+    private readonly Server _server;
+    private readonly ConcurrentQueue<IAreaMessage> _inbox = new();
+    private readonly Dictionary<AttachedAreaKey, AreaShard> _attachedAreas = [];
+
+    private CancellationTokenSource? _runCancellation;
+    private Task? _loopTask;
+    private long _lastTpsTimestamp;
+    private ulong _lastTpsTick;
+    private ulong _tickValue;
+
+    public int WorkerId { get; }
+
+    public AreaWorkerLoadMetrics Metrics { get; } = new();
+
+    internal int PendingMessageCount => _inbox.Count;
+
+    internal int WorkerThreadId { get; private set; }
+
+    internal int LastActionThreadId { get; private set; }
+
+    public AreaWorker(int workerId, Server server)
+    {
+        WorkerId = workerId;
+        _server = server;
+        Metrics.WorkerId = workerId;
+    }
+
+    internal void RefreshMetrics()
+    {
+        Metrics.ActiveAreaCount = _attachedAreas.Count;
+        Metrics.TotalPresenceCount = 0;
+        foreach (AreaShard area in _attachedAreas.Values)
+        {
+            Metrics.TotalPresenceCount += area.PresenceCount;
+        }
+    }
+
+    internal bool HasAttachedArea(Dimension dimension, int areaIndex) =>
+        _attachedAreas.ContainsKey(new AttachedAreaKey(dimension, areaIndex));
+
+    public void Start()
+    {
+        if (_loopTask is not null)
+        {
+            return;
+        }
+
+        _runCancellation = new CancellationTokenSource();
+        CancellationToken token = _runCancellation.Token;
+        _lastTpsTimestamp = Stopwatch.GetTimestamp();
+        _lastTpsTick = 0;
+        _loopTask = Task.Run(() => WorkerLoop(token), token);
+    }
+
+    public void Stop()
+    {
+        CancellationTokenSource? cancellation = _runCancellation;
+        Task? loopTask = _loopTask;
+        _runCancellation = null;
+        _loopTask = null;
+
+        cancellation?.Cancel();
+        try
+        {
+            loopTask?.Wait(TimeSpan.FromSeconds(5));
+        }
+        catch (AggregateException exception) when (exception.InnerExceptions.All(static inner => inner is TaskCanceledException))
+        { }
+        finally
+        {
+            cancellation?.Dispose();
+            DrainInbox(int.MaxValue);
+        }
+    }
+
+    public void Enqueue(IAreaMessage message) => _inbox.Enqueue(message);
+
+    internal bool IsCurrentThread()
+    {
+#if DEBUG
+        if (ThreadGuard.CurrentAreaWorkerId == WorkerId)
+        {
+            return true;
+        }
+#endif
+
+        return WorkerThreadId != 0
+            && Thread.CurrentThread.ManagedThreadId == WorkerThreadId;
+    }
+
+    void WorkerLoop(CancellationToken token)
+    {
+        Thread.CurrentThread.Name = $"area-worker-{WorkerId}";
+        WorkerThreadId = Thread.CurrentThread.ManagedThreadId;
+
+        while (!token.IsCancellationRequested)
+        {
+            long tickStartTimestamp = Stopwatch.GetTimestamp();
+#if DEBUG
+            ThreadGuard.CurrentAreaWorkerId = WorkerId;
+#endif
+
+            DrainInbox(MaxMessagesPerDrain);
+            TickAttachedAreas();
+
+            long tickEndTimestamp = Stopwatch.GetTimestamp();
+            Metrics.LastTickWorkMs = (tickEndTimestamp - tickStartTimestamp) * 1000.0 / Stopwatch.Frequency;
+            UpdateMetrics(tickEndTimestamp);
+
+            long tickDeadlineTimestamp = tickStartTimestamp + (long)(TickIntervalMs * Stopwatch.Frequency / 1000.0);
+            SleepUntilDeadline(tickDeadlineTimestamp);
+        }
+    }
+
+    void TickAttachedAreas()
+    {
+        _tickValue++;
+        if (WorkerId != 0 || _server.World is not WorldInstance world)
+        {
+            return;
+        }
+
+        world.Tick();
+    }
+
+    void UpdateMetrics(long timestamp)
+    {
+        RefreshMetrics();
+
+        if (_lastTpsTimestamp == 0)
+        {
+            _lastTpsTimestamp = timestamp;
+            _lastTpsTick = _tickValue;
+            return;
+        }
+
+        ulong tickDelta = _tickValue - _lastTpsTick;
+        if (tickDelta < TpsUpdateIntervalTicks)
+        {
+            return;
+        }
+
+        long timestampDelta = timestamp - _lastTpsTimestamp;
+        if (timestampDelta <= 0)
+        {
+            return;
+        }
+
+        double elapsedSeconds = (double)timestampDelta / Stopwatch.Frequency;
+        double currentTps = Math.Min(20.0, tickDelta / elapsedSeconds);
+        Metrics.Tps = Metrics.Tps == 0 ? currentTps : Metrics.Tps + ((currentTps - Metrics.Tps) * 0.2);
+        Metrics.TickLagMs = Math.Max(0, Metrics.LastTickWorkMs - TickIntervalMs);
+        _lastTpsTimestamp = timestamp;
+        _lastTpsTick = _tickValue;
+    }
+
+    static void SleepUntilDeadline(long deadlineTimestamp)
+    {
+        double remainingMs = (deadlineTimestamp - Stopwatch.GetTimestamp()) * 1000.0 / Stopwatch.Frequency;
+        if (remainingMs <= 0)
+        {
+            return;
+        }
+
+        while (remainingMs > SpinThresholdMs)
+        {
+            Thread.Sleep(1);
+            remainingMs = (deadlineTimestamp - Stopwatch.GetTimestamp()) * 1000.0 / Stopwatch.Frequency;
+            if (remainingMs <= 0)
+            {
+                return;
+            }
+        }
+
+        while (Stopwatch.GetTimestamp() < deadlineTimestamp)
+        {
+            Thread.SpinWait(1);
+        }
+    }
+
+    internal void DrainInbox(int maxMessages)
+    {
+#if DEBUG
+        int? previousWorkerId = ThreadGuard.CurrentAreaWorkerId;
+        ThreadGuard.CurrentAreaWorkerId = WorkerId;
+        try
+        {
+            DrainInboxCore(maxMessages);
+        }
+        finally
+        {
+            ThreadGuard.CurrentAreaWorkerId = previousWorkerId;
+        }
+#else
+        DrainInboxCore(maxMessages);
+#endif
+    }
+
+    void DrainInboxCore(int maxMessages)
+    {
+        List<IAreaMessage> batch = [];
+        while (batch.Count < maxMessages && _inbox.TryDequeue(out IAreaMessage? message))
+        {
+            batch.Add(message);
+        }
+
+        batch.Sort(static (a, b) => GetMessagePriority(a).CompareTo(GetMessagePriority(b)));
+
+        foreach (IAreaMessage message in batch)
+        {
+            try
+            {
+                ProcessMessage(message);
+            }
+            catch (Exception exception)
+            {
+                Log.Warn(LogCategory.Orion, "Area worker {0} message error: {1}", WorkerId, exception.Message);
+            }
+        }
+    }
+
+    static int GetMessagePriority(IAreaMessage message) =>
+        message switch
+        {
+            DetachAreaMessage => 0,
+            AttachAreaMessage => 1,
+            CompleteAreaTransferMessage => 2,
+            PrepareAreaTransferMessage => 3,
+            AbortAreaTransferMessage => 4,
+            RunOnAreaThreadMessage => 5,
+            CompletedChunkMessage => 6,
+            PluginResultMessage => 7,
+            ProcessAreaDisconnectMessage => 8,
+            ProcessAreaPacketMessage => 9,
+            _ => 10
+        };
+
+    void ProcessMessage(IAreaMessage message)
+    {
+        switch (message)
+        {
+            case AttachAreaMessage attachMessage:
+                HandleAttach(attachMessage);
+                break;
+
+            case DetachAreaMessage detachMessage:
+                HandleDetach(detachMessage);
+                break;
+
+            case ProcessAreaPacketMessage packetMessage:
+                HandleProcessPacket(packetMessage);
+                break;
+
+            case ProcessAreaDisconnectMessage disconnectMessage:
+                _server.Network.ProcessDisconnectOnWorker(disconnectMessage.Connection);
+                break;
+
+            case RunOnAreaThreadMessage runMessage:
+                HandleRunOnAreaThread(runMessage);
+                break;
+
+            case PrepareAreaTransferMessage prepareMessage:
+                CrossAreaTransferHandler.HandlePrepareTransfer(_server, this, prepareMessage);
+                break;
+
+            case CompleteAreaTransferMessage completeMessage:
+                CrossAreaTransferHandler.HandleCompleteTransfer(_server, this, completeMessage);
+                break;
+
+            case AbortAreaTransferMessage abortMessage:
+                CrossAreaTransferHandler.HandleAbortTransfer(_server, abortMessage);
+                break;
+
+            case CompletedChunkMessage completedChunkMessage:
+                HandleCompletedChunk(completedChunkMessage);
+                break;
+
+            case PluginResultMessage pluginResultMessage:
+                HandlePluginResult(pluginResultMessage);
+                break;
+        }
+    }
+
+    void HandleCompletedChunk(CompletedChunkMessage message)
+    {
+        LastActionThreadId = Thread.CurrentThread.ManagedThreadId;
+#if DEBUG
+        AreaShard area = message.Dimension.GetAreaShard(message.AreaIndex);
+        System.Diagnostics.Debug.Assert(area.AttachedWorkerId == WorkerId);
+
+        int? previousAreaIndex = ThreadGuard.CurrentAreaIndex;
+        ThreadGuard.CurrentAreaIndex = message.AreaIndex;
+        try
+        {
+            message.Dimension.CommitCompletedChunk(message.Hash, message.Chunk);
+        }
+        finally
+        {
+            ThreadGuard.CurrentAreaIndex = previousAreaIndex;
+        }
+#else
+        message.Dimension.CommitCompletedChunk(message.Hash, message.Chunk);
+#endif
+    }
+
+    void HandlePluginResult(PluginResultMessage message)
+    {
+        LastActionThreadId = Thread.CurrentThread.ManagedThreadId;
+#if DEBUG
+        System.Diagnostics.Debug.Assert(ThreadGuard.CurrentAreaWorkerId == WorkerId);
+#endif
+        try
+        {
+            message.Apply();
+            message.Completion?.TrySetResult(null);
+        }
+        catch (Exception exception)
+        {
+            message.Completion?.TrySetException(exception);
+            throw;
+        }
+    }
+
+    void HandleRunOnAreaThread(RunOnAreaThreadMessage message)
+    {
+        LastActionThreadId = Thread.CurrentThread.ManagedThreadId;
+        try
+        {
+            message.Action();
+            message.Completion?.TrySetResult(null);
+        }
+        catch (Exception exception)
+        {
+            message.Completion?.TrySetException(exception);
+            throw;
+        }
+    }
+
+    void HandleAttach(AttachAreaMessage message)
+    {
+        AttachedAreaKey key = new(message.Dimension, message.AreaIndex);
+        if (_attachedAreas.ContainsKey(key))
+        {
+            return;
+        }
+
+        AreaShard area = message.Dimension.GetAreaShard(message.AreaIndex);
+        area.AttachedWorkerId = WorkerId;
+        _attachedAreas[key] = area;
+        RefreshMetrics();
+
+        if (_server.Properties.AreaSchedulerDebug)
+        {
+            Log.Debug(
+                LogCategory.Orion,
+                "[Area:Attach] worker={0} dimension={1} area={2}",
+                WorkerId,
+                message.Dimension.Identifier,
+                message.AreaIndex);
+        }
+    }
+
+    void HandleDetach(DetachAreaMessage message)
+    {
+        AttachedAreaKey key = new(message.Dimension, message.AreaIndex);
+        if (!_attachedAreas.TryGetValue(key, out AreaShard? area))
+        {
+            return;
+        }
+
+        if (area.PresenceCount > 0)
+        {
+            Log.Warn(
+                LogCategory.Orion,
+                "Area detach skipped for index {0}: PresenceCount={1}",
+                message.AreaIndex,
+                area.PresenceCount);
+            return;
+        }
+
+        _attachedAreas.Remove(key);
+        area.AttachedWorkerId = null;
+        RefreshMetrics();
+
+        if (_server.Properties.AreaSchedulerDebug)
+        {
+            Log.Debug(
+                LogCategory.Orion,
+                "[Area:Detach] worker={0} dimension={1} area={2}",
+                WorkerId,
+                message.Dimension.Identifier,
+                message.AreaIndex);
+        }
+    }
+
+    void HandleProcessPacket(ProcessAreaPacketMessage packetMessage)
+    {
+        int areaIndex = packetMessage.AreaIndex;
+
+        if (_server.AreaScheduler is AreaScheduler scheduler)
+        {
+            AreaScheduler.AreaRouteTarget? liveRoute =
+                scheduler.ResolveRouteTarget(packetMessage.Connection, packetMessage.PacketId);
+            if (liveRoute is null)
+            {
+                return;
+            }
+
+            if (liveRoute.Value.WorkerId != WorkerId
+                || liveRoute.Value.AreaIndex != packetMessage.AreaIndex)
+            {
+                scheduler.Pool.GetWorker(liveRoute.Value.WorkerId).Enqueue(new ProcessAreaPacketMessage
+                {
+                    Connection = packetMessage.Connection,
+                    PacketId = packetMessage.PacketId,
+                    Payload = packetMessage.Payload,
+                    Dimension = liveRoute.Value.Dimension,
+                    AreaIndex = liveRoute.Value.AreaIndex
+                });
+                return;
+            }
+
+            areaIndex = liveRoute.Value.AreaIndex;
+        }
+
+#if DEBUG
+        ThreadGuard.CurrentAreaIndex = areaIndex;
+#endif
+
+        try
+        {
+            _server.Network.HandleGamePacketOnWorker(
+                packetMessage.Connection,
+                packetMessage.PacketId,
+                packetMessage.Payload);
+        }
+        finally
+        {
+#if DEBUG
+            ThreadGuard.CurrentAreaIndex = null;
+#endif
+        }
+    }
+}
