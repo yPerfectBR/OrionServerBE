@@ -67,7 +67,8 @@ public sealed class WorldHost : IDisposable
             Dimension dimension = world.CreateDimension(
                 dimensionConfig.Identifier,
                 (DimensionType)dimensionConfig.Type,
-                generator);
+                generator,
+                dimensionConfig.ThreadingAreas);
 
             areaResolvers[dimensionConfig.Identifier] = new AreaResolver(dimensionConfig.ThreadingAreas);
             pregenerator.PregenerateAll(dimension, dimensionConfig.ChunkPregeneration ?? [], dimensionConfig.Identifier);
