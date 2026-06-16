@@ -13,7 +13,7 @@ public sealed class ItemStack {
     public string Identifier => Type.Identifier;
     public ushort StackSize { get; private set; }
     public uint Metadata { get; private set; }
-    public int NetworkStackId { get; } = ++_nextNetworkStackId;
+    public int NetworkStackId { get; private set; } = ++_nextNetworkStackId;
     public ItemInstanceUserData? ExtraData { get; private set; }
 
     public ItemStack(ItemType type, ushort stackSize = 1, uint metadata = 0, ItemInstanceUserData? extraData = null)
@@ -60,6 +60,15 @@ public sealed class ItemStack {
     public void SetExtraData(ItemInstanceUserData? extraData)
     {
         ExtraData = extraData;
+    }
+
+    /// <summary>
+    /// Adopts the stack network id predicted by the client for cursor placements.
+    /// Required when server-authoritative inventory is enabled.
+    /// </summary>
+    internal void SetNetworkStackId(int networkStackId)
+    {
+        NetworkStackId = networkStackId;
     }
 
     public bool Equals(ItemStack other)

@@ -11,6 +11,8 @@ using Log = Orion.Logger.Logger;
 
 internal static class CreativeInventoryLog
 {
+    private static readonly bool Enabled = false;
+
     private static readonly HashSet<PacketId> TrackedClientPackets =
     [
         PacketId.InventoryTransaction,
@@ -24,6 +26,11 @@ internal static class CreativeInventoryLog
 
     public static void LogCatalogInit()
     {
+        if (!Enabled)
+        {
+            return;
+        }
+
         byte[] registryPayload = CuratedItemCatalog.GetItemRegistryPayload();
         byte[] creativePayload = CuratedItemCatalog.GetCreativeContentPayload();
 
@@ -39,6 +46,11 @@ internal static class CreativeInventoryLog
 
     public static void LogItemRegistrySent(string context, string player, byte[] payload)
     {
+        if (!Enabled)
+        {
+            return;
+        }
+
         string summary = DescribeItemRegistryPayload(payload);
         Log.Info(
             LogCategory.Orion,
@@ -52,6 +64,11 @@ internal static class CreativeInventoryLog
 
     public static void LogCreativeContentSent(string context, string player, byte[] payload)
     {
+        if (!Enabled)
+        {
+            return;
+        }
+
         Log.Info(
             LogCategory.Orion,
             "[CreativeInv] {0} sent CreativeContent to {1} bytes={2} hex={3} {4}",
@@ -64,6 +81,11 @@ internal static class CreativeInventoryLog
 
     public static void LogSpawnSequence(string player, Gamemode gamemode, int startGamePlayerGameMode, int registryBytes, int creativeBytes)
     {
+        if (!Enabled)
+        {
+            return;
+        }
+
         Log.Info(
             LogCategory.Orion,
             "[CreativeInv] spawn sequence for {0}: StartGame -> ItemRegistry({1}b) -> AvailableActorIdentifiers -> PlayStatus(PlayerSpawn) -> CreativeContent({2}b) gamemode={3} startGame.PlayerGameMode={4}",
@@ -76,6 +98,11 @@ internal static class CreativeInventoryLog
 
     public static void LogSetGamemodeSequence(string player, Gamemode gamemode, int registryBytes, int creativeBytes)
     {
+        if (!Enabled)
+        {
+            return;
+        }
+
         Log.Info(
             LogCategory.Orion,
             "[CreativeInv] SetGamemode sequence for {0}: SetPlayerGameType({1}) -> UpdateAbilities -> ItemRegistry({2}b) -> CreativeContent({3}b)",
@@ -87,6 +114,11 @@ internal static class CreativeInventoryLog
 
     public static void LogRegistryCreativeItems()
     {
+        if (!Enabled)
+        {
+            return;
+        }
+
         List<string> entries = [];
         for (uint index = 0; index < 16; index++)
         {
@@ -108,6 +140,11 @@ internal static class CreativeInventoryLog
 
     public static void TryLogClientPacket(Server server, NetworkConnection connection, PacketId packetId, ReadOnlySpan<byte> packetBuffer)
     {
+        if (!Enabled)
+        {
+            return;
+        }
+
         if (!TrackedClientPackets.Contains(packetId))
         {
             return;
@@ -148,11 +185,34 @@ internal static class CreativeInventoryLog
 
     public static void LogItemStackResponse(string player, int requestCount, IReadOnlyList<ItemStackResponse> responses)
     {
+        if (!Enabled)
+        {
+            return;
+        }
+
         List<string> parts = [];
         for (int i = 0; i < responses.Count; i++)
         {
             ItemStackResponse response = responses[i];
-            parts.Add($"req={response.RequestId} status={response.Status} containers={response.ContainerInfo.Count}");
+            List<string> containers = [];
+            foreach (StackResponseContainerInfo containerInfo in response.ContainerInfo)
+            {
+                string dynamicId = containerInfo.Container.DynamicContainerId.HasValue
+                    ? containerInfo.Container.DynamicContainerId.Value.ToString()
+                    : "none";
+
+                List<string> slots = [];
+                foreach (StackResponseSlotInfo slot in containerInfo.SlotInfo)
+                {
+                    slots.Add($"slot={slot.Slot} count={slot.Count} stackId={slot.StackNetworkId}");
+                }
+
+                containers.Add(
+                    $"c={(ContainerName)containerInfo.Container.ContainerId}({containerInfo.Container.ContainerId}) dyn={dynamicId} [{string.Join(", ", slots)}]");
+            }
+
+            parts.Add(
+                $"req={response.RequestId} status={response.Status} containers={response.ContainerInfo.Count} [{string.Join("; ", containers)}]");
         }
 
         Log.Info(
