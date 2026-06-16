@@ -37,6 +37,7 @@ public class CommandRegistry
         Register(new PluginsCommand());
         Register(new WorldSchedulerDebugCommand());
         Register(new AreaDebugCommand());
+        Register(new DebugHudCommand());
     }
 
     public void Register(Command command)
