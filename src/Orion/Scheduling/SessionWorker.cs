@@ -28,6 +28,8 @@ public sealed class SessionWorker
 
     internal int WorkerThreadId { get; private set; }
 
+    internal double LastTickWorkMs { get; private set; }
+
     public SessionWorker(int workerId, Server server)
     {
         WorkerId = workerId;
@@ -90,6 +92,8 @@ public sealed class SessionWorker
             long tickStartTimestamp = Stopwatch.GetTimestamp();
             DrainInbox(MaxMessagesPerDrain);
             TickPlayerTraits();
+            long tickEndTimestamp = Stopwatch.GetTimestamp();
+            LastTickWorkMs = (tickEndTimestamp - tickStartTimestamp) * 1000.0 / Stopwatch.Frequency;
             SleepUntilDeadline(tickStartTimestamp + (long)(TickIntervalMs * Stopwatch.Frequency / 1000.0), token);
         }
     }

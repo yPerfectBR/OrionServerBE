@@ -140,7 +140,10 @@ public sealed class AreaWorker
             return;
         }
 
+        world.AttachedWorkerId = WorkerId;
+        Stopwatch worldWork = Stopwatch.StartNew();
         world.Tick();
+        world.TickWork = worldWork.Elapsed.TotalMilliseconds;
     }
 
     void UpdateMetrics(long timestamp)
@@ -170,6 +173,10 @@ public sealed class AreaWorker
         double currentTps = Math.Min(20.0, tickDelta / elapsedSeconds);
         Metrics.Tps = Metrics.Tps == 0 ? currentTps : Metrics.Tps + ((currentTps - Metrics.Tps) * 0.2);
         Metrics.TickLagMs = Math.Max(0, Metrics.LastTickWorkMs - TickIntervalMs);
+        if (WorkerId == 0)
+        {
+            _server.SetTps(Metrics.Tps);
+        }
         _lastTpsTimestamp = timestamp;
         _lastTpsTick = _tickValue;
     }
