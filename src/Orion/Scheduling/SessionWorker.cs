@@ -89,12 +89,12 @@ public sealed class SessionWorker
         {
             long tickStartTimestamp = Stopwatch.GetTimestamp();
             DrainInbox(MaxMessagesPerDrain);
-            TickChunkStreaming();
+            TickPlayerTraits();
             SleepUntilDeadline(tickStartTimestamp + (long)(TickIntervalMs * Stopwatch.Frequency / 1000.0), token);
         }
     }
 
-    void TickChunkStreaming()
+    void TickPlayerTraits()
     {
         foreach (PlayerSession session in _sessions.Values)
         {
@@ -103,7 +103,13 @@ public sealed class SessionWorker
                 continue;
             }
 
-            player.GetTrait<PlayerChunkRenderingTrait>()?.TickChunkStreaming();
+            foreach (Entity.Traits.EntityTrait trait in player.GetTraits())
+            {
+                if (trait is ISessionTickableTrait sessionTickable)
+                {
+                    sessionTickable.OnSessionTick();
+                }
+            }
         }
     }
 
