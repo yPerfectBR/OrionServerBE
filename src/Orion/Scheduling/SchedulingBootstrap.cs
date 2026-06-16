@@ -1,4 +1,6 @@
 using System.Diagnostics;
+using Orion.World;
+using WorldInstance = Orion.World.World;
 
 namespace Orion.Scheduling;
 
@@ -76,6 +78,10 @@ public sealed class SchedulingBootstrap : IDisposable
                 if (_server.World is not null)
                 {
                     _server.World.Tick();
+                    if (!_server.Properties.SessionThreadingEnabled)
+                    {
+                        TickEntities(_server.World);
+                    }
                 }
 
                 _server.Scheduler.DrainMainQueue();
@@ -84,6 +90,18 @@ public sealed class SchedulingBootstrap : IDisposable
             }
 
             Thread.Sleep(1);
+        }
+    }
+
+    static void TickEntities(WorldInstance world)
+    {
+        ulong tick = world.TickValue;
+        foreach (Orion.World.Dimension dimension in world.Dimensions)
+        {
+            foreach (global::Orion.Entity.Entity entity in dimension.GetEntities())
+            {
+                entity.Tick(tick, 1);
+            }
         }
     }
 }
