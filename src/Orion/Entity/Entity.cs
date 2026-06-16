@@ -129,6 +129,11 @@ public class Entity : IAreaStoredEntity, IAreaEntity
         return GetTrait<T>() is not null;
     }
 
+    public IEnumerable<EntityTrait> GetTraits()
+    {
+        return _traits;
+    }
+
     public void Tick(ulong currentTick, uint deltaTick)
     {
         TraitOnTickDetails details = new(currentTick, deltaTick);

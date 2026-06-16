@@ -10,7 +10,7 @@ using Entity = Orion.Entity.Entity;
 using Orion.Entity.Traits.Types;
 using Orion.Entity.Traits;
 
-public sealed class DebugTrait : PlayerTrait
+public sealed class DebugTrait : PlayerTrait, ISessionTickableTrait
 {
     private const double TargetTps = 20.0;
     private const ulong SendIntervalTicks = 20;
@@ -29,6 +29,12 @@ public sealed class DebugTrait : PlayerTrait
     {
         _lastSentTick = Player.Dimension?.World is Tickable tickable ? tickable.TickValue : 0;
         _averageMspt = 0;
+    }
+
+    public void OnSessionTick()
+    {
+        ulong currentTick = Player.Dimension?.World is Tickable tickable ? tickable.TickValue : 0;
+        OnTick(new TraitOnTickDetails(currentTick, 1));
     }
 
     public override void OnTick(TraitOnTickDetails details)

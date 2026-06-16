@@ -16,7 +16,7 @@ using Orion.World.Coordinates;
 using ChunkColumn = Orion.World.Chunk.Chunk;
 using Entity = Orion.Entity.Entity;
 
-public sealed class PlayerChunkRenderingTrait : PlayerTrait
+public sealed class PlayerChunkRenderingTrait : PlayerTrait, ISessionTickableTrait
 {
     private const int ChunksPerTick = 64;
 
@@ -776,7 +776,7 @@ public sealed class PlayerChunkRenderingTrait : PlayerTrait
         AreaPlayerPresence.SyncViewHalo(server, dimension, Player, ViewDistance, simulationDistance);
     }
 
-    internal void TickChunkStreaming()
+    public void OnSessionTick()
     {
         RunChunkStreamingTick();
     }
