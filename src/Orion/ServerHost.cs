@@ -42,7 +42,7 @@ public sealed class ServerHost : IDisposable
         {
             TicksPerSecond = config.Server.Orion.TicksPerSecond,
             AreaThreadingEnabled = threadBudget.AreaThreadingEnabled,
-            SessionThreadingEnabled = threadBudget.AreaThreadingEnabled,
+            SessionThreadingEnabled = threadBudget.SessionWorkerCount > 0,
             AreaThreadCount = threadBudget.AreaWorkerCount,
             SessionThreadCount = threadBudget.SessionWorkerCount,
             SimulationDistance = config.Server.WorldDefaultSettings.Dimensions.FirstOrDefault()?.SimulationDistance ?? 10,
