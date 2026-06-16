@@ -15,6 +15,9 @@ public readonly record struct SchedulingThreadBudget(
 /// </summary>
 public static class SchedulingThreadRequirements
 {
+    /// <summary>World simulation always runs on the area worker loop (worker 0 minimum).</summary>
+    public const int MinimumAreaWorkerCount = 1;
+
     /// <summary>One session worker is enough to process all player sessions sequentially.</summary>
     public const int MinimumSessionWorkerCount = 1;
 
@@ -22,13 +25,9 @@ public static class SchedulingThreadRequirements
     {
         ArgumentNullException.ThrowIfNull(config);
 
-        bool areaThreading = config.Server.WorldDefaultSettings.Dimensions
-            .Any(d => d.ThreadingAreas is { Count: > 0 });
-
-        int areaWorkers = areaThreading
-            ? CountAreaWorkersFromConfig(config)
-            : 1;
-        int sessionWorkers = areaThreading ? MinimumSessionWorkerCount : 0;
+        bool areaThreading = true;
+        int areaWorkers = Math.Max(MinimumAreaWorkerCount, CountAreaWorkersFromConfig(config));
+        int sessionWorkers = MinimumSessionWorkerCount;
         int dedicatedWorkers = areaWorkers + sessionWorkers;
 
         return new SchedulingThreadBudget(
