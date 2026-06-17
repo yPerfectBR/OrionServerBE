@@ -37,8 +37,8 @@ public sealed class EntityContainer : Containers.Container
         {
             player.Send(new InventorySlotPacket
             {
-                WindowId = Identifier ?? 0,
-                Slot = slot,
+                WindowId = (uint)(Identifier ?? 0),
+                Slot = (uint)slot,
                 Container = new Optional<FullContainerName>
                 {
                     HasValue = true,
