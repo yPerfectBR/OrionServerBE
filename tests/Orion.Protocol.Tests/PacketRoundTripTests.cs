@@ -75,6 +75,29 @@ public sealed class PacketRoundTripTests
         Assert.Equal(original.IsLoggingChat, decoded.IsLoggingChat);
     }
 
+
+    [Fact]
+    public void LevelSoundEvent_RoundTrip_PreservesStringIdentifier()
+    {
+        LevelSoundEventPacket original = new()
+        {
+            Event = LevelSoundEvent.BreakBlock,
+            Position = new Vec3f { X = 1f, Y = 64f, Z = 2f },
+            Data = 3,
+            ActorIdentifier = "minecraft:player",
+            IsBabyMob = false,
+            IsGlobal = false,
+            UniqueActorId = 42
+        };
+
+        LevelSoundEventPacket decoded = PacketTestHelper.RoundTrip(original);
+
+        Assert.Equal("break.block", decoded.SoundEvent);
+        Assert.Equal(original.Position.Y, decoded.Position.Y);
+        Assert.Equal(original.Data, decoded.Data);
+        Assert.Equal(original.ActorIdentifier, decoded.ActorIdentifier);
+    }
+
     [Fact]
     public void PlayerAuthInput_RoundTrip_PreservesFields()
     {

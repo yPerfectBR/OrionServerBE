@@ -10,9 +10,20 @@ namespace Orion.Protocol.Packets;
 public sealed record LevelSoundEventPacket : DataPacket
 {
     /// <summary>
-    /// Level sound event id.
+    /// Level sound event identifier (protocol 1001+).
     /// </summary>
-    public LevelSoundEvent Event;
+    public string SoundEvent = string.Empty;
+
+    /// <summary>
+    /// Legacy enum accessor for game code. Serializes via <see cref="SoundEvent"/>.
+    /// </summary>
+    public LevelSoundEvent Event
+    {
+        get => LevelSoundEventIdentifiers.TryParse(SoundEvent, out LevelSoundEvent value)
+            ? value
+            : LevelSoundEvent.Undefined;
+        set => SoundEvent = LevelSoundEventIdentifiers.ToIdentifier(value);
+    }
 
     /// <summary>
     /// Sound world position.
@@ -51,13 +62,13 @@ public sealed record LevelSoundEventPacket : DataPacket
 
     public override void Deserialize(BinaryReader reader)
     {
-        Event = (LevelSoundEvent)reader.ReadVarUInt();
+        SoundEvent = reader.ReadVarString();
 
         Vec3f position = Position;
         position.Read(reader);
         Position = position;
 
-        Data = reader.ReadVarInt();
+        Data = reader.ReadZigZag();
         ActorIdentifier = reader.ReadVarString();
         IsBabyMob = reader.ReadBool();
         IsGlobal = reader.ReadBool();
@@ -67,7 +78,7 @@ public sealed record LevelSoundEventPacket : DataPacket
 
     public override void Serialize(BinaryWriter writer)
     {
-        writer.WriteVarUInt((uint)Event);
+        writer.WriteVarString(SoundEvent);
         Position.Write(writer);
         writer.WriteZigZag(Data);
         writer.WriteVarString(ActorIdentifier);
