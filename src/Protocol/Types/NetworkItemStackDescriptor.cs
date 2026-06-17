@@ -65,7 +65,6 @@ public sealed class NetworkItemStackDescriptor : DataType
         bool hasNetId = reader.ReadBool();
         if (hasNetId)
         {
-            // its always 0 for some reason
             _ = reader.ReadVarUInt();
             StackNetworkId = reader.ReadVarInt();
         }
@@ -89,6 +88,10 @@ public sealed class NetworkItemStackDescriptor : DataType
 
         if (extraLength == 0)
         {
+            Nbt = null;
+            CanPlaceOn = [];
+            CanDestroy = [];
+            BlockingTick = 0;
             return;
         }
 
