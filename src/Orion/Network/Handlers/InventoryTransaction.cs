@@ -133,7 +133,7 @@ public static class InventoryTransaction
         if (missingBlockPosition && FindBlockFromView(player, pitch, yaw, out BlockPos viewedBlock, out int viewedFace))
         {
             transaction.BlockPosition = viewedBlock;
-            transaction.BlockFace = viewedFace;
+            transaction.BlockFace = (byte)viewedFace;
         }
         else if (missingBlockPosition)
         {
