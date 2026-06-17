@@ -12,12 +12,12 @@ public sealed record InventorySlotPacket : DataPacket
     /// <summary>
     /// Window id of the inventory.
     /// </summary>
-    public int WindowId;
+    public uint WindowId;
 
     /// <summary>
     /// Slot index in the container.
     /// </summary>
-    public int Slot;
+    public uint Slot;
 
     /// <summary>
     /// Optional full container identity.
@@ -36,8 +36,8 @@ public sealed record InventorySlotPacket : DataPacket
 
     public override void Deserialize(BinaryReader reader)
     {
-        WindowId = reader.ReadVarInt();
-        Slot = reader.ReadVarInt();
+        WindowId = reader.ReadVarUInt();
+        Slot = reader.ReadVarUInt();
         Container.Read(reader);
         StorageItem.Read(reader);
         NewItem.Read(reader);
@@ -45,8 +45,8 @@ public sealed record InventorySlotPacket : DataPacket
 
     public override void Serialize(BinaryWriter writer)
     {
-        writer.WriteVarInt(WindowId);
-        writer.WriteVarInt(Slot);
+        writer.WriteVarUInt(WindowId);
+        writer.WriteVarUInt(Slot);
         Container.Write(writer);
         StorageItem.Write(writer);
         NewItem.Write(writer);
