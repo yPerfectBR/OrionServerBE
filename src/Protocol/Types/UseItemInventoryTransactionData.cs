@@ -11,76 +11,87 @@ public sealed class UseItemInventoryTransactionData : IInventoryTransactionData
     /// <summary>
     /// Use-item action type.
     /// </summary>
-    public uint ActionType;
+    public int ActionType;
+
     /// <summary>
     /// Trigger source for this transaction.
     /// </summary>
-    public uint TriggerType;
+    public byte TriggerType;
+
     /// <summary>
     /// Target block position.
     /// </summary>
     public BlockPos BlockPosition;
+
     /// <summary>
     /// Block face used for the action.
     /// </summary>
-    public int BlockFace;
+    public byte BlockFace;
+
     /// <summary>
     /// Hotbar slot used by the client.
     /// </summary>
     public int HotBarSlot;
+
     /// <summary>
     /// Item held by the player.
     /// </summary>
     public ItemInstance HeldItem = new();
+
     /// <summary>
     /// Player position at action time.
     /// </summary>
     public Vec3f Position;
+
     /// <summary>
     /// Clicked position relative to target.
     /// </summary>
     public Vec3f ClickedPosition;
+
     /// <summary>
     /// Block runtime id seen by the client.
     /// </summary>
     public uint BlockRuntimeId;
+
     /// <summary>
     /// Client-side prediction state.
     /// </summary>
-    public uint ClientPrediction;
+    public byte ClientPrediction;
+
     /// <summary>
     /// Client cooldown state value.
     /// </summary>
     public byte ClientCooldownState;
+
     public void Read(BinaryReader reader)
     {
-        ActionType = reader.ReadVarUInt();
-        TriggerType = reader.ReadVarUInt();
+        ActionType = reader.ReadZigZag();
+        TriggerType = reader.ReadUInt8();
         BlockPos blockPosition = BlockPosition;
         blockPosition.Read(reader);
         BlockPosition = blockPosition;
-        BlockFace = reader.ReadZigZag();
+        BlockFace = reader.ReadUInt8();
         HotBarSlot = reader.ReadZigZag();
         HeldItem.Read(reader);
         Position.Read(reader);
         ClickedPosition.Read(reader);
         BlockRuntimeId = reader.ReadVarUInt();
-        ClientPrediction = reader.ReadVarUInt();
+        ClientPrediction = reader.ReadUInt8();
         ClientCooldownState = reader.ReadUInt8();
     }
 
     public void Write(BinaryWriter writer)
     {
-        writer.WriteVarUInt(ActionType);
-        writer.WriteVarUInt(TriggerType);
+        writer.WriteZigZag(ActionType);
+        writer.WriteUInt8(TriggerType);
         BlockPosition.Write(writer);
-        writer.WriteZigZag(BlockFace);
+        writer.WriteUInt8(BlockFace);
         writer.WriteZigZag(HotBarSlot);
         HeldItem.Write(writer);
         Position.Write(writer);
         ClickedPosition.Write(writer);
         writer.WriteVarUInt(BlockRuntimeId);
-        writer.WriteVarUInt(ClientPrediction);
+        writer.WriteUInt8(ClientPrediction);
         writer.WriteUInt8(ClientCooldownState);
     }
 }
