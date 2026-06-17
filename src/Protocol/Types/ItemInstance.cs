@@ -1,5 +1,6 @@
 using BinaryReader = Basalt.Binary.BinaryReader;
 using BinaryWriter = Basalt.Binary.BinaryWriter;
+using Orion.Protocol.Nbt;
 
 namespace Orion.Protocol.Types;
 
@@ -9,82 +10,71 @@ public sealed class ItemInstance : DataType
     /// Item stack payload.
     /// </summary>
     public LegacyItem Stack = new();
+
     /// <summary>
     /// Stack network id value.
     /// </summary>
     public int StackNetworkId;
+
     public void Read(BinaryReader reader)
     {
-        Stack.NetworkId = reader.ReadZigZag();
-        if (Stack.NetworkId == 0)
+        NetworkItemStackDescriptor descriptor = new();
+        descriptor.Read(reader);
+        ApplyDescriptor(descriptor);
+    }
+
+    public void Write(BinaryWriter writer)
+    {
+        ToDescriptor().Write(writer);
+    }
+
+    public NetworkItemStackDescriptor ToDescriptor()
+    {
+        if (Stack.NetworkId == 0 || Stack.StackSize == 0)
         {
-            Stack.StackSize = 0;
-            Stack.Metadata = 0;
-            Stack.NetworkBlockId = 0;
-            Stack.ExtraData = null;
+            return new NetworkItemStackDescriptor();
+        }
+
+        return new NetworkItemStackDescriptor
+        {
+            NetworkId = Stack.NetworkId,
+            Count = Stack.StackSize,
+            Metadata = unchecked((uint)Stack.Metadata),
+            StackNetworkId = StackNetworkId,
+            BlockRuntimeId = Stack.NetworkBlockId,
+            Nbt = Stack.ExtraData?.Nbt,
+            CanPlaceOn = Stack.ExtraData?.CanPlaceOn ?? [],
+            CanDestroy = Stack.ExtraData?.CanDestroy ?? [],
+            BlockingTick = Stack.ExtraData?.Ticking ?? 0
+        };
+    }
+
+    public void ApplyDescriptor(NetworkItemStackDescriptor descriptor)
+    {
+        if (descriptor.NetworkId == 0 || descriptor.Count == 0)
+        {
+            Stack = new LegacyItem();
             StackNetworkId = 0;
             return;
         }
 
-        Stack.StackSize = reader.ReadUInt16(true);
-        Stack.Metadata = reader.ReadVarInt();
-        bool hasNetId = reader.ReadBool();
-        StackNetworkId = hasNetId ? reader.ReadZigZag() : 0;
-        Stack.NetworkBlockId = reader.ReadZigZag();
-
-        int extrasLength = checked((int)reader.ReadVarUInt());
-        if (extrasLength > reader.Remaining)
+        Stack = new LegacyItem
         {
-            throw new FormatException("Invalid extras length in item instance.");
-        }
-        if (extrasLength == 0)
-        {
-            Stack.ExtraData = null;
-            return;
-        }
-
-        int extrasEndOffset = reader.Offset + extrasLength;
-        ItemInstanceUserData extraData = new();
-        extraData.Read(reader, Stack.NetworkId);
-        Stack.ExtraData = extraData;
-        if (reader.Offset < extrasEndOffset)
-        {
-            reader.Seek(extrasEndOffset);
-        }
+            NetworkId = descriptor.NetworkId,
+            StackSize = descriptor.Count,
+            Metadata = unchecked((int)descriptor.Metadata),
+            ItemStackId = descriptor.StackNetworkId != 0 ? descriptor.StackNetworkId : null,
+            NetworkBlockId = descriptor.BlockRuntimeId,
+            ExtraData = descriptor.Nbt is null && descriptor.CanPlaceOn.Count == 0 && descriptor.CanDestroy.Count == 0
+                ? null
+                : new ItemInstanceUserData
+                {
+                    Nbt = descriptor.Nbt,
+                    CanPlaceOn = descriptor.CanPlaceOn,
+                    CanDestroy = descriptor.CanDestroy,
+                    Ticking = descriptor.BlockingTick
+                }
+        };
+        StackNetworkId = descriptor.StackNetworkId;
     }
-
-
-    public void Write(BinaryWriter writer)
-    {
-        writer.WriteZigZag(Stack.NetworkId);
-        if (Stack.NetworkId == 0)
-        {
-            return;
-        }
-
-        writer.WriteUInt16(Stack.StackSize, true);
-        writer.WriteVarInt(Stack.Metadata);
-        bool hasNetId = StackNetworkId != 0;
-        writer.WriteBool(hasNetId);
-        if (hasNetId)
-        {
-            writer.WriteZigZag(StackNetworkId);
-        }
-
-        writer.WriteZigZag(Stack.NetworkBlockId);
-        if (Stack.ExtraData is null)
-        {
-            writer.WriteVarUInt(0);
-            return;
-        }
-
-        byte[] payloadBuffer = new byte[8192];
-        int offset = 0;
-        BinaryWriter payloadWriter = new(payloadBuffer, ref offset);
-        Stack.ExtraData.Write(payloadWriter, Stack.NetworkId);
-        ReadOnlySpan<byte> payload = payloadWriter.GetProcessedBytes();
-        writer.WriteVarUInt((uint)payload.Length);
-        writer.WriteBytes(payloadBuffer[payloadWriter.GetProcessedRange()]);
-    }
-
 }
