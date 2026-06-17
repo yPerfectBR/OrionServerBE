@@ -146,6 +146,23 @@ public sealed class PacketRoundTripTests
         Assert.Equal((ushort)4, decoded.NewItem.Count);
     }
 
+
+    [Fact]
+    public void InventoryTransaction_RoundTrip_PreservesCerealFields()
+    {
+        InventoryTransactionPacket original = new()
+        {
+            LegacyRequestId = 0,
+            TransactionData = new NormalInventoryTransactionData(),
+            Actions = []
+        };
+
+        InventoryTransactionPacket decoded = PacketTestHelper.RoundTrip(original);
+
+        Assert.Equal(original.LegacyRequestId, decoded.LegacyRequestId);
+        Assert.Empty(decoded.Actions);
+    }
+
     [Fact]
     public void PlayerAuthInput_RoundTrip_PreservesFields()
     {

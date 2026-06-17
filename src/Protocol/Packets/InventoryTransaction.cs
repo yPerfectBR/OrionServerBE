@@ -29,11 +29,15 @@ public sealed record InventoryTransactionPacket : DataPacket
     /// </summary>
     public List<InventoryAction> Actions = [];
 
+    private static bool HasLegacySetItemSlots(int legacyRequestId) =>
+        legacyRequestId < -1 && (legacyRequestId & 1) == 0;
+
     public override void Deserialize(BinaryReader reader)
     {
         LegacyRequestId = reader.ReadZigZag();
         LegacySetItemSlots = [];
-        if (LegacyRequestId != 0)
+        bool hasLegacy = reader.ReadBool();
+        if (hasLegacy)
         {
             int legacySetItemSlotCount = checked((int)reader.ReadVarUInt());
             LegacySetItemSlots = new(legacySetItemSlotCount);
@@ -45,8 +49,18 @@ public sealed record InventoryTransactionPacket : DataPacket
             }
         }
 
+        if (!reader.ReadBool())
+        {
+            throw new InvalidOperationException("Inventory transaction type presence flag must be true.");
+        }
+
         InventoryTransactionType type = (InventoryTransactionType)reader.ReadVarUInt();
         IInventoryTransactionData transactionData = InventoryTransactionDataFactory.Create(type);
+
+        if (!reader.ReadBool())
+        {
+            throw new InvalidOperationException("Inventory transaction actions presence flag must be true.");
+        }
 
         int actionCount = checked((int)reader.ReadVarUInt());
         if (actionCount < 0 || actionCount > 4096)
@@ -69,7 +83,9 @@ public sealed record InventoryTransactionPacket : DataPacket
     public override void Serialize(BinaryWriter writer)
     {
         writer.WriteZigZag(LegacyRequestId);
-        if (LegacyRequestId != 0)
+        bool hasLegacy = HasLegacySetItemSlots(LegacyRequestId);
+        writer.WriteBool(hasLegacy);
+        if (hasLegacy)
         {
             writer.WriteVarUInt((uint)LegacySetItemSlots.Count);
             for (int i = 0; i < LegacySetItemSlots.Count; i++)
@@ -78,8 +94,10 @@ public sealed record InventoryTransactionPacket : DataPacket
             }
         }
 
+        writer.WriteBool(true);
         writer.WriteVarUInt((uint)TransactionData.Type);
 
+        writer.WriteBool(true);
         writer.WriteVarUInt((uint)Actions.Count);
         for (int i = 0; i < Actions.Count; i++)
         {
