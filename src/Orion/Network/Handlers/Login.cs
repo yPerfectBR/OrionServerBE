@@ -176,14 +176,14 @@ public static class Login
     {
         LoginEnvelope envelope = LoginEnvelope.Parse(packet.Identity);
 
+        if (!server.Properties.OnlineMode)
+        {
+            return OfflineIdentity.VerifyOffline(envelope, packet.Client);
+        }
+
         if (OfflineIdentity.IsOfflineLogin(envelope))
         {
-            if (server.Properties.OnlineMode)
-            {
-                throw new InvalidOperationException("Offline authentication is disabled.");
-            }
-
-            return OfflineIdentity.VerifyOffline(envelope, packet.Client);
+            throw new InvalidOperationException("Offline authentication is disabled.");
         }
 
         return LoginIdentity.Verify(packet.Identity);
