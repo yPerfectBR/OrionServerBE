@@ -542,5 +542,19 @@ public enum LevelSoundEvent : uint
     GoldenSpearUse = 594,
     DiamondSpearUse = 595,
     NetheriteSpearUse = 596,
-    Undefined = 597
+    PauseGrowth = 597,
+    ResetGrowth = 598,
+    PushedByPlayer = 599,
+    Bounce = 600,
+    SlimeLanding = 601,
+    AbsorbBlock = 602,
+    EjectBlock = 603,
+    GeyserEruptionStart = 604,
+    GeyserEruptionActive = 605,
+    RecordBounce = 606,
+    BucketFillLandAnimal = 607,
+    BucketEmptyLandAnimal = 608,
+    GeyserContinuousEruptionStart = 609,
+    GeyserContinuousEruptionActive = 610,
+    Undefined = 611
 }
