@@ -9,61 +9,74 @@ public sealed class UseItemTransactionData : DataType
     /// Legacy request id from older inventory flow.
     /// </summary>
     public int LegacyRequestId;
+
     /// <summary>
     /// Legacy slot updates tied to the legacy request.
     /// </summary>
     public List<LegacySetItemSlot> LegacySetItemSlots = [];
+
     /// <summary>
     /// Inventory actions included in this transaction.
     /// </summary>
     public List<InventoryAction> Actions = [];
+
     /// <summary>
     /// Use-item action type.
     /// </summary>
-    public uint ActionType;
+    public int ActionType;
+
     /// <summary>
     /// Trigger source for this transaction.
     /// </summary>
-    public uint TriggerType;
+    public byte TriggerType;
+
     /// <summary>
     /// Target block position.
     /// </summary>
     public BlockPos BlockPosition;
+
     /// <summary>
     /// Block face used for the action.
     /// </summary>
-    public int BlockFace;
+    public byte BlockFace;
+
     /// <summary>
     /// Hotbar slot used by the client.
     /// </summary>
     public int HotBarSlot;
+
     /// <summary>
     /// Item held by the player.
     /// </summary>
     public ItemInstance HeldItem = new();
+
     /// <summary>
     /// Player position at action time.
     /// </summary>
     public Vec3f Position;
+
     /// <summary>
     /// Clicked position relative to target.
     /// </summary>
     public Vec3f ClickedPosition;
+
     /// <summary>
     /// Block runtime id seen by the client.
     /// </summary>
     public uint BlockRuntimeId;
+
     /// <summary>
     /// Client-side prediction state.
     /// </summary>
-    public uint ClientPrediction;
+    public byte ClientPrediction;
+
     /// <summary>
     /// Client cooldown state value.
     /// </summary>
     public byte ClientCooldownState;
+
     public void Read(BinaryReader reader)
     {
-        int startOffset = reader.Offset;
         LegacyRequestId = reader.ReadZigZag();
         LegacySetItemSlots = [];
         if (LegacyRequestId < -1 && (LegacyRequestId & 1) == 0)
@@ -87,23 +100,19 @@ public sealed class UseItemTransactionData : DataType
             Actions.Add(action);
         }
 
-        ActionType = reader.ReadVarUInt();
-        TriggerType = reader.ReadVarUInt();
+        ActionType = reader.ReadZigZag();
+        TriggerType = reader.ReadUInt8();
         BlockPos blockPosition = BlockPosition;
         blockPosition.Read(reader);
         BlockPosition = blockPosition;
-        BlockFace = reader.ReadZigZag();
+        BlockFace = reader.ReadUInt8();
         HotBarSlot = reader.ReadZigZag();
         HeldItem.Read(reader);
         Position.Read(reader);
         ClickedPosition.Read(reader);
         BlockRuntimeId = reader.ReadVarUInt();
-        ClientPrediction = reader.ReadVarUInt();
+        ClientPrediction = reader.ReadUInt8();
         ClientCooldownState = reader.ReadUInt8();
-
-        int endOffset = reader.Offset;
-        ReadOnlySpan<byte> payload = reader.Buffer.Slice(startOffset, endOffset - startOffset);
-        Console.WriteLine($"[UseItemTxDump] bytes={payload.Length} hex={Convert.ToHexString(payload)} legacy={LegacyRequestId} actions={Actions.Count} action={ActionType} trigger={TriggerType} pos={BlockPosition.X},{BlockPosition.Y},{BlockPosition.Z} face={BlockFace} hotbar={HotBarSlot} runtime={BlockRuntimeId} prediction={ClientPrediction} cooldown={ClientCooldownState}");
     }
 
     public void Write(BinaryWriter writer)
@@ -124,16 +133,16 @@ public sealed class UseItemTransactionData : DataType
             Actions[i].Write(writer);
         }
 
-        writer.WriteVarUInt(ActionType);
-        writer.WriteVarUInt(TriggerType);
+        writer.WriteZigZag(ActionType);
+        writer.WriteUInt8(TriggerType);
         BlockPosition.Write(writer);
-        writer.WriteZigZag(BlockFace);
+        writer.WriteUInt8(BlockFace);
         writer.WriteZigZag(HotBarSlot);
         HeldItem.Write(writer);
         Position.Write(writer);
         ClickedPosition.Write(writer);
         writer.WriteVarUInt(BlockRuntimeId);
-        writer.WriteVarUInt(ClientPrediction);
+        writer.WriteUInt8(ClientPrediction);
         writer.WriteUInt8(ClientCooldownState);
     }
 }
