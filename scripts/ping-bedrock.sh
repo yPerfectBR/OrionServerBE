@@ -62,8 +62,8 @@ print(f"  {motd}")
 exit_code = 0
 if len(parts) >= 3:
     print(f"  protocolo={parts[2]} versão={parts[3] if len(parts) > 3 else '?'}")
-if "975" not in motd:
-    print("WARN: protocolo 975 não encontrado no MOTD (cliente 1.26.20 pode recusar)")
+if "1001" not in motd:
+    print("WARN: protocolo 1001 não encontrado no MOTD (cliente 1.26.30 pode recusar)")
     exit_code = 2
 
 sys.exit(exit_code)

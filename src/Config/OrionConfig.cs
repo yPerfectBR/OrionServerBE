@@ -210,10 +210,10 @@ public sealed class RaknetConfig
     public ushort PortIPV6 { get; init; } = 19133;
 
     [JsonPropertyName("Protocol")]
-    public int Protocol { get; init; } = 975;
+    public int Protocol { get; init; } = 1001;
 
     [JsonPropertyName("Version")]
-    public string Version { get; init; } = "1.26.20";
+    public string Version { get; init; } = "1.26.30";
 
     [JsonPropertyName("Message")]
     public string Message { get; init; } = "Orion";
