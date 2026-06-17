@@ -12,7 +12,7 @@ public sealed class PacketRoundTripTests
     {
         LoginPacket original = new()
         {
-            Protocol = 975,
+            Protocol = 1001,
             Identity = "eyJ0ZXN0IjoidGVzdCJ9",
             Client = "{\"ThirdPartyName\":\"Test\"}"
         };

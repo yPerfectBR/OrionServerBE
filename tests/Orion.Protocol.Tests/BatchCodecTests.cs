@@ -11,7 +11,7 @@ public sealed class BatchCodecTests
     {
         byte[] login = PacketCodec.SerializeToBytes(new LoginPacket
         {
-            Protocol = 975,
+            Protocol = 1001,
             Identity = "a",
             Client = "b"
         });
