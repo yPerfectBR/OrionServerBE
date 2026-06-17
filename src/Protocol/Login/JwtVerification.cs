@@ -9,6 +9,7 @@ internal static class JwtVerification
 {
     internal static TokenParts ParseTokenParts(string token)
     {
+        token = NormalizeToken(token);
         int firstDot = token.IndexOf('.');
         int secondDot = firstDot > 0 ? token.IndexOf('.', firstDot + 1) : -1;
 
@@ -38,6 +39,7 @@ internal static class JwtVerification
 
         try
         {
+            token = NormalizeToken(token);
             TokenParts parts = ParseTokenParts(token);
             byte[] headerBytes = JsonValue.DecodeBase64Url(token.AsSpan(parts.HeaderStart, parts.HeaderLength));
             byte[] payloadBytes = JsonValue.DecodeBase64Url(token.AsSpan(parts.PayloadStart, parts.PayloadLength));
@@ -65,8 +67,53 @@ internal static class JwtVerification
         return signingInput.AsSpan(0, written).ToArray();
     }
 
+    internal static void VerifyServiceJwtSignature(
+        ReadOnlySpan<char> token,
+        TokenParts parts,
+        string algorithm,
+        RSA rsaKey,
+        byte[] signature)
+    {
+        VerifyRsa256Signature(token, parts, rsaKey, signature);
+    }
+
+    internal static void VerifyServiceJwtSignature(
+        ReadOnlySpan<char> token,
+        TokenParts parts,
+        string algorithm,
+        ECDsa ecdsaKey,
+        byte[] signature)
+    {
+        byte[] signingInput = GetSigningInput(token, parts);
+        HashAlgorithmName hashAlgorithm = string.Equals(algorithm, "ES384", StringComparison.OrdinalIgnoreCase)
+            ? HashAlgorithmName.SHA384
+            : HashAlgorithmName.SHA256;
+
+        if (!ecdsaKey.VerifyData(signingInput, signature, hashAlgorithm, DSASignatureFormat.IeeeP1363FixedFieldConcatenation))
+        {
+            throw new InvalidOperationException("Invalid token signature.");
+        }
+    }
+
+    internal static string NormalizeToken(string token)
+    {
+        if (token.StartsWith("MCToken ", StringComparison.OrdinalIgnoreCase))
+        {
+            return token["MCToken ".Length..];
+        }
+
+        return token;
+    }
+
+    internal static bool IsSupportedServiceAlgorithm(string algorithm)
+    {
+        return string.Equals(algorithm, "ES384", StringComparison.OrdinalIgnoreCase)
+            || string.Equals(algorithm, "RS256", StringComparison.OrdinalIgnoreCase);
+    }
+
     internal static void VerifyJwtSignature(string token, string identityPublicKey)
     {
+        token = NormalizeToken(token);
         TokenParts parts = ParseTokenParts(token);
         string algorithm = GetAlgorithm(token);
         byte[] signature = JsonValue.DecodeBase64Url(token.AsSpan(parts.SignatureStart, parts.SignatureLength));
