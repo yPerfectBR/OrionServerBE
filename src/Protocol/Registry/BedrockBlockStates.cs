@@ -1,8 +1,5 @@
 namespace Orion.Protocol.Registry;
 
-/// <summary>
-/// Bedrock runtime block state hashes (protocol 975) for Orion curated blocks.
-/// </summary>
 public static class BedrockBlockStates
 {
     public const int Air = -604749536;
