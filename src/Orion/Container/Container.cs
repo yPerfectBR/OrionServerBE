@@ -311,8 +311,8 @@ public class Container
 
             InventorySlotPacket packet = new()
             {
-                WindowId = windowId,
-                Slot = slot,
+                WindowId = (uint)windowId,
+                Slot = (uint)slot,
                 Container = new Optional<FullContainerName>
                 {
                     HasValue = true,
@@ -339,15 +339,15 @@ public class Container
 
             InventoryContentPacket packet = new()
             {
-                WindowId = windowId,
-                Content = new List<LegacyItem>(Storage.Count),
+                WindowId = (uint)windowId,
+                Content = new List<NetworkItemStackDescriptor>(Storage.Count),
                 Container = GetFullContainerName(windowId),
-                StorageItem = new LegacyItem()
+                StorageItem = new NetworkItemStackDescriptor()
             };
 
             for (int i = 0; i < Storage.Count; i++)
             {
-                packet.Content.Add(ToNetworkItem(Storage[i]));
+                packet.Content.Add(ToItemInstanceNew(Storage[i]));
             }
 
             player.Send(packet);
