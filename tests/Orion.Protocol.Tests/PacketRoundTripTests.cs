@@ -98,6 +98,35 @@ public sealed class PacketRoundTripTests
         Assert.Equal(original.ActorIdentifier, decoded.ActorIdentifier);
     }
 
+
+    [Fact]
+    public void InventoryContent_RoundTrip_PreservesFields()
+    {
+        InventoryContentPacket original = new()
+        {
+            WindowId = 7,
+            Content =
+            [
+                new NetworkItemStackDescriptor
+                {
+                    NetworkId = 1,
+                    Count = 16,
+                    Metadata = 0,
+                    BlockRuntimeId = 0
+                }
+            ],
+            Container = new FullContainerName { ContainerId = (byte)ContainerName.Inventory },
+            StorageItem = new NetworkItemStackDescriptor()
+        };
+
+        InventoryContentPacket decoded = PacketTestHelper.RoundTrip(original);
+
+        Assert.Equal(original.WindowId, decoded.WindowId);
+        Assert.Single(decoded.Content);
+        Assert.Equal(1, decoded.Content[0].NetworkId);
+        Assert.Equal((ushort)16, decoded.Content[0].Count);
+    }
+
     [Fact]
     public void PlayerAuthInput_RoundTrip_PreservesFields()
     {
