@@ -301,6 +301,16 @@ public sealed record StartGamePacket : DataPacket
     public bool DisablePlayerInteractions;
 
     /// <summary>
+    /// Server editor connection policy.
+    /// </summary>
+    public int ServerEditorConnectionPolicy;
+
+    /// <summary>
+    /// Whether anonymous block drops are allowed in hybrid editor worlds.
+    /// </summary>
+    public bool AllowAnonymousBlockDropsInEditorWorlds;
+
+    /// <summary>
     /// Level id.
     /// </summary>
     public string LevelId = string.Empty;
@@ -384,6 +394,11 @@ public sealed record StartGamePacket : DataPacket
     /// Whether sound is server authoritative.
     /// </summary>
     public bool ServerAuthoritativeSound;
+
+    /// <summary>
+    /// Whether chat logging is enabled (education edition).
+    /// </summary>
+    public bool IsLoggingChat;
 
     /// <summary>
     /// Optional server join information.
@@ -487,6 +502,8 @@ public sealed record StartGamePacket : DataPacket
         ForceExperimentalGameplay.Read(reader);
         ChatRestrictionLevel = (ChatRestrictionLevel)reader.ReadUInt8();
         DisablePlayerInteractions = reader.ReadBool();
+        ServerEditorConnectionPolicy = reader.ReadZigZag();
+        AllowAnonymousBlockDropsInEditorWorlds = reader.ReadBool();
         LevelId = reader.ReadVarString();
         WorldName = reader.ReadVarString();
         TemplateContentIdentity = reader.ReadVarString();
@@ -538,6 +555,12 @@ public sealed record StartGamePacket : DataPacket
         }
 
         ServerAuthoritativeSound = reader.ReadBool();
+        if (reader.Remaining < 1)
+        {
+            return;
+        }
+
+        IsLoggingChat = reader.ReadBool();
         if (reader.Remaining < 1)
         {
             return;
@@ -645,6 +668,8 @@ public sealed record StartGamePacket : DataPacket
         ForceExperimentalGameplay.Write(writer);
         writer.WriteUInt8((byte)ChatRestrictionLevel);
         writer.WriteBool(DisablePlayerInteractions);
+        writer.WriteZigZag(ServerEditorConnectionPolicy);
+        writer.WriteBool(AllowAnonymousBlockDropsInEditorWorlds);
         writer.WriteVarString(LevelId);
         writer.WriteVarString(WorldName);
         writer.WriteVarString(TemplateContentIdentity);
@@ -668,6 +693,7 @@ public sealed record StartGamePacket : DataPacket
         writer.WriteBool(ClientSideGeneration);
         writer.WriteBool(UseBlockNetworkIdHashes);
         writer.WriteBool(ServerAuthoritativeSound);
+        writer.WriteBool(IsLoggingChat);
         ServerJoinInformation.Write(writer, static (BinaryWriter w, ServerJoinInformation value) => value.Write(w));
         writer.WriteVarString(ServerId);
         writer.WriteVarString(ScenarioId);
