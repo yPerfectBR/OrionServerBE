@@ -1,6 +1,4 @@
-using System.Buffers;
 using System.Security.Cryptography;
-using System.Text;
 using System.Text.Json;
 
 namespace Orion.Protocol.Login;
@@ -19,7 +17,7 @@ public static class LoginIdentity
     public static VerifiedIdentity Verify(string identityJson)
     {
         using JsonDocument envelope = JsonDocument.Parse(identityJson);
-        string token = ResolveToken(envelope.RootElement);
+        string token = JwtVerification.NormalizeToken(ResolveToken(envelope.RootElement));
 
         if (string.IsNullOrEmpty(token))
             throw new InvalidOperationException("Missing identity token.");
@@ -36,11 +34,34 @@ public static class LoginIdentity
             .Or(JsonValue.GetString(payload, "sub"));
 
         return new VerifiedIdentity(
-            JsonValue.GetString(payload, "cpk"),
-            JsonValue.GetString(payload, "xname"),
-            JsonValue.GetString(payload, "xid"),
+            FirstNonEmpty(
+                JsonValue.GetString(payload, "cpk"),
+                JsonValue.GetString(payload, "clientPublicKey")),
+            FirstNonEmpty(
+                JsonValue.GetString(payload, "xname"),
+                JsonValue.GetString(payload, "displayName")),
+            FirstNonEmpty(
+                JsonValue.GetString(payload, "xid"),
+                JsonValue.GetString(payload, "XUID"),
+                JsonValue.GetString(payload, "xuid")),
             uuid
         );
+    }
+
+    internal static void SetCachedAuthConfigForTesting(AuthConfig config)
+    {
+        lock (AuthLock)
+        {
+            CachedAuth = config;
+        }
+    }
+
+    internal static void ClearCachedAuthConfigForTesting()
+    {
+        lock (AuthLock)
+        {
+            CachedAuth = null;
+        }
     }
 
     private static void VerifyServiceToken(ReadOnlySpan<char> token, TokenParts parts)
@@ -57,8 +78,9 @@ public static class LoginIdentity
         string alg = JsonValue.GetString(header, "alg");
         string kid = JsonValue.GetString(header, "kid");
         string typ = JsonValue.GetString(header, "typ");
+        string x5u = JsonValue.GetString(header, "x5u");
 
-        if (!string.Equals(alg, "RS256", StringComparison.Ordinal))
+        if (!JwtVerification.IsSupportedServiceAlgorithm(alg))
             throw new InvalidOperationException("Unsupported authentication algorithm.");
 
         if (!string.IsNullOrEmpty(typ) && !string.Equals(typ, "JWT", StringComparison.Ordinal))
@@ -78,9 +100,7 @@ public static class LoginIdentity
         if (!string.Equals(JsonValue.GetString(payload, "iss"), config.Issuer, StringComparison.Ordinal))
             throw new InvalidOperationException("Invalid issuer.");
 
-        if (!config.Keys.TryGetValue(kid, out RSA? key))
-            throw new InvalidOperationException("Unknown key id.");
-
+        byte[] signature = JsonValue.DecodeBase64Url(token.Slice(parts.SignatureStart, parts.SignatureLength));
         JwtVerification.TokenParts jwtParts = new(
             parts.HeaderStart,
             parts.HeaderLength,
@@ -89,11 +109,56 @@ public static class LoginIdentity
             parts.SignatureStart,
             parts.SignatureLength);
 
-        JwtVerification.VerifyRsa256Signature(
-            token,
-            jwtParts,
-            key,
-            JsonValue.DecodeBase64Url(token.Slice(parts.SignatureStart, parts.SignatureLength)));
+        if (!string.IsNullOrEmpty(x5u))
+        {
+            VerifyWithX5u(token, jwtParts, alg, x5u, signature);
+            return;
+        }
+
+        if (!config.Keys.TryGetValue(kid, out CachedVerificationKey? key))
+            throw new InvalidOperationException("Unknown key id.");
+
+        VerifyWithCachedKey(token, jwtParts, alg, key, signature);
+    }
+
+    private static void VerifyWithX5u(
+        ReadOnlySpan<char> token,
+        JwtVerification.TokenParts parts,
+        string algorithm,
+        string x5u,
+        byte[] signature)
+    {
+        if (string.Equals(algorithm, "RS256", StringComparison.OrdinalIgnoreCase))
+        {
+            using RSA rsaKey = JwtVerification.ImportRsaPublicKey(x5u);
+            JwtVerification.VerifyServiceJwtSignature(token, parts, algorithm, rsaKey, signature);
+            return;
+        }
+
+        using ECDsa ecdsaKey = JwtVerification.ImportEcdsaPublicKey(x5u);
+        JwtVerification.VerifyServiceJwtSignature(token, parts, algorithm, ecdsaKey, signature);
+    }
+
+    private static void VerifyWithCachedKey(
+        ReadOnlySpan<char> token,
+        JwtVerification.TokenParts parts,
+        string algorithm,
+        CachedVerificationKey key,
+        byte[] signature)
+    {
+        if (key.Rsa is not null)
+        {
+            JwtVerification.VerifyServiceJwtSignature(token, parts, algorithm, key.Rsa, signature);
+            return;
+        }
+
+        if (key.Ecdsa is not null)
+        {
+            JwtVerification.VerifyServiceJwtSignature(token, parts, algorithm, key.Ecdsa, signature);
+            return;
+        }
+
+        throw new InvalidOperationException("Unknown key id.");
     }
 
     private static AuthConfig GetAuthConfig()
@@ -115,25 +180,38 @@ public static class LoginIdentity
             string jwksJson = Http.GetStringAsync(JsonValue.GetString(configRoot, "jwks_uri")).GetAwaiter().GetResult();
             using JsonDocument jwksDoc = JsonDocument.Parse(jwksJson);
 
-            Dictionary<string, RSA> keys = JsonValue.GetArray(jwksDoc.RootElement, "keys")
-                .Where(jwk =>
-                    string.Equals(JsonValue.GetString(jwk, "kty"), "RSA", StringComparison.Ordinal) &&
-                    !string.IsNullOrEmpty(JsonValue.GetString(jwk, "kid")) &&
-                    !string.IsNullOrEmpty(JsonValue.GetString(jwk, "n")) &&
-                    !string.IsNullOrEmpty(JsonValue.GetString(jwk, "e")))
-                .ToDictionary(
-                    jwk => JsonValue.GetString(jwk, "kid"),
-                    jwk =>
+            Dictionary<string, CachedVerificationKey> keys = [];
+            foreach (JsonElement jwk in JsonValue.GetArray(jwksDoc.RootElement, "keys"))
+            {
+                string kid = JsonValue.GetString(jwk, "kid");
+                if (string.IsNullOrEmpty(kid))
+                {
+                    continue;
+                }
+
+                string kty = JsonValue.GetString(jwk, "kty");
+                if (string.Equals(kty, "RSA", StringComparison.Ordinal)
+                    && !string.IsNullOrEmpty(JsonValue.GetString(jwk, "n"))
+                    && !string.IsNullOrEmpty(JsonValue.GetString(jwk, "e")))
+                {
+                    RSA rsa = RSA.Create();
+                    rsa.ImportParameters(new RSAParameters
                     {
-                        RSA rsa = RSA.Create();
-                        rsa.ImportParameters(new RSAParameters
-                        {
-                            Modulus = JsonValue.DecodeBase64Url(JsonValue.GetString(jwk, "n")),
-                            Exponent = JsonValue.DecodeBase64Url(JsonValue.GetString(jwk, "e"))
-                        });
-                        return rsa;
-                    },
-                    StringComparer.Ordinal);
+                        Modulus = JsonValue.DecodeBase64Url(JsonValue.GetString(jwk, "n")),
+                        Exponent = JsonValue.DecodeBase64Url(JsonValue.GetString(jwk, "e"))
+                    });
+                    keys[kid] = new CachedVerificationKey(rsa, null);
+                    continue;
+                }
+
+                if (string.Equals(kty, "EC", StringComparison.Ordinal)
+                    && !string.IsNullOrEmpty(JsonValue.GetString(jwk, "x"))
+                    && !string.IsNullOrEmpty(JsonValue.GetString(jwk, "y")))
+                {
+                    ECDsa ecdsa = ImportEcJwk(jwk);
+                    keys[kid] = new CachedVerificationKey(null, ecdsa);
+                }
+            }
 
             return CachedAuth = new AuthConfig(
                 JsonValue.GetString(configRoot, "issuer"),
@@ -142,6 +220,29 @@ public static class LoginIdentity
                 DateTimeOffset.UtcNow.AddHours(1)
             );
         }
+    }
+
+    private static ECDsa ImportEcJwk(JsonElement jwk)
+    {
+        string curveName = JsonValue.GetString(jwk, "crv");
+        ECCurve curve = curveName switch
+        {
+            "P-384" => ECCurve.NamedCurves.nistP384,
+            "P-256" => ECCurve.NamedCurves.nistP256,
+            _ => throw new InvalidOperationException("Unsupported EC curve.")
+        };
+
+        ECDsa ecdsa = ECDsa.Create();
+        ecdsa.ImportParameters(new ECParameters
+        {
+            Curve = curve,
+            Q = new ECPoint
+            {
+                X = JsonValue.DecodeBase64Url(JsonValue.GetString(jwk, "x")),
+                Y = JsonValue.DecodeBase64Url(JsonValue.GetString(jwk, "y"))
+            }
+        });
+        return ecdsa;
     }
 
     private static string ResolveToken(JsonElement root)
@@ -180,17 +281,36 @@ public static class LoginIdentity
     private static string Or(this string value, string fallback) =>
         string.IsNullOrEmpty(value) ? fallback : value;
 
+    private static string FirstNonEmpty(params string[] values)
+    {
+        for (int i = 0; i < values.Length; i++)
+        {
+            if (!string.IsNullOrWhiteSpace(values[i]))
+            {
+                return values[i];
+            }
+        }
+
+        return string.Empty;
+    }
+
     private readonly record struct TokenParts(
         int HeaderStart, int HeaderLength,
         int PayloadStart, int PayloadLength,
         int SignatureStart, int SignatureLength
     );
 
-    private sealed class AuthConfig(string issuer, HashSet<string> algorithms, Dictionary<string, RSA> keys, DateTimeOffset expiresAt)
+    internal sealed class AuthConfig(string issuer, HashSet<string> algorithms, Dictionary<string, CachedVerificationKey> keys, DateTimeOffset expiresAt)
     {
         public string Issuer { get; } = issuer;
         public HashSet<string> Algorithms { get; } = algorithms;
-        public Dictionary<string, RSA> Keys { get; } = keys;
+        public Dictionary<string, CachedVerificationKey> Keys { get; } = keys;
         public DateTimeOffset ExpiresAt { get; } = expiresAt;
+    }
+
+    internal sealed class CachedVerificationKey(RSA? rsa, ECDsa? ecdsa)
+    {
+        public RSA? Rsa { get; } = rsa;
+        public ECDsa? Ecdsa { get; } = ecdsa;
     }
 }
