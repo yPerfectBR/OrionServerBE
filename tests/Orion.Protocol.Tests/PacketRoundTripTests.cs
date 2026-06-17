@@ -58,8 +58,11 @@ public sealed class PacketRoundTripTests
             Yaw = 20f,
             WorldName = "Orion",
             LevelId = "OrionWorld",
-            BaseGameVersion = "1.26.21",
-            GameVersion = "1.26.21"
+            BaseGameVersion = "1.26.30",
+            GameVersion = "1.26.30",
+            ServerEditorConnectionPolicy = 0,
+            AllowAnonymousBlockDropsInEditorWorlds = false,
+            IsLoggingChat = false
         };
 
         StartGamePacket decoded = PacketTestHelper.RoundTrip(original);
@@ -69,6 +72,7 @@ public sealed class PacketRoundTripTests
         Assert.Equal(original.PlayerPosition.X, decoded.PlayerPosition.X);
         Assert.Equal(original.WorldName, decoded.WorldName);
         Assert.Equal(original.LevelId, decoded.LevelId);
+        Assert.Equal(original.IsLoggingChat, decoded.IsLoggingChat);
     }
 
     [Fact]
