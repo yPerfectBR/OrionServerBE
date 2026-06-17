@@ -127,6 +127,25 @@ public sealed class PacketRoundTripTests
         Assert.Equal((ushort)16, decoded.Content[0].Count);
     }
 
+
+    [Fact]
+    public void InventorySlot_RoundTrip_PreservesFields()
+    {
+        InventorySlotPacket original = new()
+        {
+            WindowId = 12,
+            Slot = 3,
+            NewItem = new NetworkItemStackDescriptor { NetworkId = 2, Count = 4 }
+        };
+
+        InventorySlotPacket decoded = PacketTestHelper.RoundTrip(original);
+
+        Assert.Equal(original.WindowId, decoded.WindowId);
+        Assert.Equal(original.Slot, decoded.Slot);
+        Assert.Equal(2, decoded.NewItem.NetworkId);
+        Assert.Equal((ushort)4, decoded.NewItem.Count);
+    }
+
     [Fact]
     public void PlayerAuthInput_RoundTrip_PreservesFields()
     {
