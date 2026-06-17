@@ -69,4 +69,7 @@ public enum ContainerName : byte
     SmithingTableTemplate = 61,
     Crafter = 62,
     Dynamic = 63,
+    RecipeFood = 64,
+    RecipeBlocks = 65,
+    RecipeFurnaceItems = 66,
 }
