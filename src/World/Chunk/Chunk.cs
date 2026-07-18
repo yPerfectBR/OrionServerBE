@@ -250,15 +250,31 @@ public sealed class Chunk
             SubChunk.Serialize(subChunk, writer, nbt);
         }
 
-        for (int index = 0; index < subChunkCount; index++)
+        if (nbt)
         {
-            SubChunk? subChunk = chunk.SubChunks[index];
-            if (subChunk is null || subChunk.IsEmpty())
+            // Disk/custom path: biomes only for non-empty sections that were written above.
+            for (int index = 0; index < subChunkCount; index++)
             {
-                continue;
-            }
+                SubChunk? subChunk = chunk.SubChunks[index];
+                if (subChunk is null || subChunk.IsEmpty())
+                {
+                    continue;
+                }
 
-            BiomeStorage.Serialize(subChunk.Biomes, ref writer, nbt);
+                BiomeStorage.Serialize(subChunk.Biomes, ref writer, nbt);
+            }
+        }
+        else
+        {
+            // Network (1.18.30+): client always reads biomes for the full dimension height,
+            // independent of SubChunkCount (see PMMP ChunkSerializer / Geyser).
+            BiomeStorage fallback = new([1]); // plains
+            for (int index = 0; index < MaxSubChunks; index++)
+            {
+                SubChunk? subChunk = chunk.SubChunks[index];
+                BiomeStorage biomes = subChunk?.Biomes ?? fallback;
+                BiomeStorage.Serialize(biomes, ref writer, disk: false);
+            }
         }
 
         writer.WriteUInt8(0);
