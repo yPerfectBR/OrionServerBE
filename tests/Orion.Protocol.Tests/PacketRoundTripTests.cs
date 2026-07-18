@@ -85,8 +85,8 @@ public sealed class PacketRoundTripTests
             Position = new Vec3f { X = 1f, Y = 64f, Z = 2f },
             Data = 3,
             ActorIdentifier = "minecraft:player",
-            IsBabyMob = false,
-            IsGlobal = false,
+            BabyMob = false,
+            DisableRelativeVolume = false,
             UniqueActorId = 42
         };
 
