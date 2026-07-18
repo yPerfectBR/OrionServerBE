@@ -10,7 +10,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\Config\Config.csproj" />
-    <ProjectReference Include="..\..\..\..\Downloads\dotnet-span-zlib-main\dotnet-span-zlib\dotnet-span-zlib.csproj" />
+    <PackageReference Include="conmaster.compression.spanzlib" Version="1.1.0" />
   </ItemGroup>
 
 </Project>

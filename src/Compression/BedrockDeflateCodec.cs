@@ -4,12 +4,12 @@ using System.IO.Compression;
 namespace Orion.Compression;
 
 /// <summary>
-/// Raw RFC 1951 deflate for Bedrock batches. Uses a per-thread <see cref="ReusableDeflateCompressor"/>
+/// Raw RFC 1951 deflate for Bedrock batches. Uses a per-thread <see cref="DeflateCompressor"/>
 /// (zero managed allocations on the hot path after warmup).
 /// </summary>
 public static class BedrockDeflateCodec
 {
-    private static readonly ThreadLocal<ReusableDeflateCompressor> Compressor = new(CreateCompressor, trackAllValues: false);
+    private static readonly ThreadLocal<DeflateCompressor> Compressor = new(CreateCompressor, trackAllValues: false);
 
     public static int Compress(ReadOnlySpan<byte> input, Span<byte> output)
     {
@@ -31,14 +31,11 @@ public static class BedrockDeflateCodec
         return Compressor.Value!.TryDecompress(input, output, out bytesWritten);
     }
 
-    public static int GetCompressBound(int sourceLength)
-    {
-        return Compressor.Value!.GetCompressBound(sourceLength);
-    }
+    public static int GetCompressBound(int sourceLength) => sourceLength + 64;
 
-    private static ReusableDeflateCompressor CreateCompressor()
+    private static DeflateCompressor CreateCompressor()
     {
-        return new ReusableDeflateCompressor
+        return new DeflateCompressor
         {
             CompressionLevel = CompressionLevel.Fastest,
             MemoryLevel = 8
