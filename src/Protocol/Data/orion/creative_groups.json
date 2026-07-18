@@ -1,7 +1,8 @@
 [
   {
     "category": 2,
-    "name": "itemGroup.name.grass",
-    "icon": "minecraft:grass_block"
+    "name": "",
+    "icon": "minecraft:air",
+    "_comment": "Layout is built in CuratedItemCatalog.BuildScaffoldedCreativePacket (4 anonymous category groups). This file is kept for documentation only."
   }
 ]
