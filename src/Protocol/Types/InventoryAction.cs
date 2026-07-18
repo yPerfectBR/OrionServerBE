@@ -44,14 +44,14 @@ public sealed class InventoryAction : DataType
     {
         SourceType = reader.ReadVarUInt();
         _ = reader.ReadBool();
-        bool hasContainerId = SourceType is SourceContainer or SourceTodo;
+        bool hasContainerId = reader.ReadBool();
         if (hasContainerId)
         {
             WindowId = unchecked((sbyte)reader.ReadUInt8());
         }
 
         _ = reader.ReadBool();
-        bool hasFlags = SourceType == SourceWorld;
+        bool hasFlags = reader.ReadBool();
         if (hasFlags)
         {
             SourceFlags = reader.ReadVarUInt();
