@@ -111,10 +111,10 @@ public static class InventoryTransaction
 
         UseItemInventoryTransactionData transaction = new()
         {
-            ActionType = data.ActionType,
-            TriggerType = data.TriggerType,
+            ActionType = unchecked((int)data.ActionType),
+            TriggerType = unchecked((byte)data.TriggerType),
             BlockPosition = data.BlockPosition,
-            BlockFace = data.BlockFace,
+            BlockFace = unchecked((byte)data.BlockFace),
             HotBarSlot = data.HotBarSlot,
             HeldItem = data.HeldItem,
             Position = data.Position,
@@ -539,8 +539,8 @@ public static class InventoryTransaction
             },
             Data = placedPermutation.NetworkId,
             ActorIdentifier = string.Empty,
-            IsBabyMob = false,
-            IsGlobal = false,
+            BabyMob = false,
+            DisableRelativeVolume = false,
             UniqueActorId = 0,
             FireAtPosition = new Optional<Vec3f> { HasValue = false, Value = default }
         });
