@@ -1,9 +1,11 @@
 using System.Collections.Concurrent;
 using System.Diagnostics;
+using Orion.Config;
 using Orion.Network;
 using Orion.Player;
 using Orion.Player.Traits;
 using Orion.Scheduling.Messages;
+using Log = Orion.Logger.Logger;
 
 namespace Orion.Scheduling;
 
@@ -16,6 +18,7 @@ public sealed class SessionWorker
     private readonly Server _server;
     private readonly ConcurrentQueue<ISessionMessage> _inbox = new();
     private readonly ConcurrentDictionary<Orion.RakNet.NetworkConnection, PlayerSession> _sessions = new();
+    private readonly ConcurrentDictionary<ulong, byte> _loggedTransferSkip = new();
 
     private CancellationTokenSource? _runCancellation;
     private Thread? _workerThread;
@@ -102,10 +105,26 @@ public sealed class SessionWorker
     {
         foreach (PlayerSession session in _sessions.Values)
         {
-            if (session.ActiveEntity is not Player.Player player || session.TransferState == TransferState.Transferring)
+            if (session.ActiveEntity is not Player.Player player)
             {
                 continue;
             }
+
+            if (session.TransferState == TransferState.Transferring)
+            {
+                if (_loggedTransferSkip.TryAdd(player.RuntimeId, 0))
+                {
+                    Log.Info(
+                        LogCategory.Orion,
+                        "[Teleport:Session] pausing chunk ticks while Transferring player={0} worker={1}",
+                        player.Username,
+                        WorkerId);
+                }
+
+                continue;
+            }
+
+            _loggedTransferSkip.TryRemove(player.RuntimeId, out _);
 
             foreach (Entity.Traits.EntityTrait trait in player.GetTraits())
             {

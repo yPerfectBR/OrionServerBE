@@ -93,6 +93,20 @@ internal static class CrossAreaTransferHandler
                 if (entity is Orion.Player.Player transferredPlayer)
                 {
                     bool crossWorker = snapshot.CrossWorker;
+                    Log.Info(
+                        LogCategory.Orion,
+                        "[Teleport:Area] complete player={0} area={1}->{2} crossWorker={3} " +
+                        "pos=({4:0.##},{5:0.##},{6:0.##}) owningArea={7} aw{8}",
+                        transferredPlayer.Username,
+                        snapshot.SourceAreaIndex,
+                        snapshot.TargetAreaIndex,
+                        crossWorker,
+                        transferredPlayer.Position.X,
+                        transferredPlayer.Position.Y,
+                        transferredPlayer.Position.Z,
+                        transferredPlayer.OwningAreaIndex?.ToString() ?? "-",
+                        targetWorker.WorkerId);
+
                     if (server.ConnectionCoordinator is ConnectionCoordinator coordinator && coordinator.IsActive)
                     {
                         coordinator.RunOnSessionThread(session, () => transferredPlayer.ResyncAfterRegionHandoff(crossWorker));
