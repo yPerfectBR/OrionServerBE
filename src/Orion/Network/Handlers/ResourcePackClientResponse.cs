@@ -170,7 +170,8 @@ public static class ResourcePackClientResponse
                     Trial = false,
                     PlayerMovementSettings = new PlayerMovementSettings
                     {
-                        RewindHistorySize = 0,
+                        // Client needs rewind history for CorrectPlayerMovePrediction / teleport ticks.
+                        RewindHistorySize = 100,
                         ServerAuthoritativeBlockBreaking = true
                     },
                     Time = 0,
