@@ -1,5 +1,6 @@
 namespace Orion.Player.Traits;
 
+using Orion.Config;
 using Orion.Protocol.Enums;
 using Orion.Protocol.Packets;
 using Orion.Protocol.Types;
@@ -11,6 +12,7 @@ using Orion.Traits;
 using Orion.World;
 using Orion.World.Block;
 using Orion.World.Coordinates;
+using Log = Orion.Logger.Logger;
 
 using ChunkColumn = Orion.World.Chunk.Chunk;
 using Entity = Orion.Entity.Entity;
@@ -42,6 +44,18 @@ public sealed class PlayerChunkRenderingTrait : PlayerTrait, ISessionTickableTra
 
     private bool _started;
 
+    /// <summary>
+    /// Session ticks remaining while waiting for the client to apply a server teleport
+    /// before LevelChunks are sent (avoids far chunks being discarded at the old position).
+    /// Also used as a max-wait fallback if AuthInput never catches up.
+    /// </summary>
+    private int _teleportHoldTicks;
+
+    /// <summary>
+    /// True until the first accepted AuthInput near the post-teleport server position (or timeout).
+    /// </summary>
+    private bool _awaitingTeleportChunkSync;
+
     public int ViewDistance { get; private set; } = 16;
 
     public PlayerChunkRenderingTrait(Entity entity) : base(entity)
@@ -62,7 +76,8 @@ public sealed class PlayerChunkRenderingTrait : PlayerTrait, ISessionTickableTra
                 $"chunk=({_currentChunkX},{_currentChunkZ}) " +
                 $"loaded={_loadedChunks.Count}/{expected} " +
                 $"req={_requestedChunks.Count} ready={_readyChunks.Count} " +
-                $"scan={_scanRadius}/{ViewDistance} started={_started}";
+                $"scan={_scanRadius}/{ViewDistance} started={_started}" +
+                (_awaitingTeleportChunkSync ? $" hold={_teleportHoldTicks}" : "");
         }
     }
 
@@ -102,6 +117,8 @@ public sealed class PlayerChunkRenderingTrait : PlayerTrait, ISessionTickableTra
     {
         lock (_lock)
         {
+            _teleportHoldTicks = 0;
+            _awaitingTeleportChunkSync = false;
             _started = true;
             UpdateTrackedChunkPosition();
             UpdateSpatialPlayerIndex();
@@ -112,6 +129,15 @@ public sealed class PlayerChunkRenderingTrait : PlayerTrait, ISessionTickableTra
             ResetScan();
             SendPublisherUpdate();
             SyncRegionPresence();
+            Log.Info(
+                LogCategory.Orion,
+                "[Teleport:Chunks] StartChunkLoad player={0} chunk=({1},{2}) vd={3} pub={4}b expected={5}",
+                Player.Username,
+                _currentChunkX,
+                _currentChunkZ,
+                ViewDistance,
+                ChunkViewMath.PublisherRadiusBlocks(ViewDistance),
+                ((ViewDistance * 2) + 1) * ((ViewDistance * 2) + 1));
         }
     }
 
@@ -132,21 +158,86 @@ public sealed class PlayerChunkRenderingTrait : PlayerTrait, ISessionTickableTra
     {
         lock (_lock)
         {
-            if (!_started || Player.Dimension is null)
+            Log.Info(
+                LogCategory.Orion,
+                "[Teleport:Chunks] ForceReloadViewDistance player={0} started={1} chunk=({2},{3}) loaded={4} vd={5} hold={6}",
+                Player.Username,
+                _started,
+                _currentChunkX,
+                _currentChunkZ,
+                _loadedChunks.Count,
+                ViewDistance,
+                _teleportHoldTicks);
+
+            if (Player.Dimension is null)
             {
-                StartChunkLoad();
                 return;
             }
 
-            ResetScan();
+            UnloadChunks(Player.Dimension, clearClient: true, force: true);
+            _loadedChunks.Clear();
             _requestedChunks.Clear();
             _readyChunks.Clear();
+            ResetScan();
             UpdateTrackedChunkPosition();
-            UnloadChunks(Player.Dimension, clearClient: true);
+            UpdateSpatialPlayerIndex();
             UpdateSimulationChunks(Player.Dimension);
             SendPublisherUpdate();
             SyncRegionPresence(force: true);
+            _started = true;
+            // Brief hold so NetworkChunkPublisherUpdate / MovePlayer land before LevelChunks.
+            ArmTeleportChunkHold(minTicks: 2);
         }
+    }
+
+    /// <summary>
+    /// Called when AuthInput movement is accepted after a server teleport — client is at the destination.
+    /// </summary>
+    public void NotifyClientAtTeleportDestination()
+    {
+        lock (_lock)
+        {
+            if (!_awaitingTeleportChunkSync)
+            {
+                return;
+            }
+
+            Log.Info(
+                LogCategory.Orion,
+                "[Teleport:Chunks] clientCaughtUp player={0} chunk=({1},{2}) holdLeft={3}",
+                Player.Username,
+                _currentChunkX,
+                _currentChunkZ,
+                _teleportHoldTicks);
+            ReleaseTeleportChunkHold(reason: "clientCaughtUp");
+        }
+    }
+
+    void ArmTeleportChunkHold(int minTicks)
+    {
+        _awaitingTeleportChunkSync = true;
+        _teleportHoldTicks = Math.Max(_teleportHoldTicks, Math.Max(minTicks, 20));
+    }
+
+    void ReleaseTeleportChunkHold(string reason)
+    {
+        if (!_awaitingTeleportChunkSync && _teleportHoldTicks <= 0)
+        {
+            return;
+        }
+
+        _awaitingTeleportChunkSync = false;
+        _teleportHoldTicks = 0;
+        Log.Info(
+            LogCategory.Orion,
+            "[Teleport:Chunks] teleportHold released player={0} reason={1} chunk=({2},{3}) loaded={4}",
+            Player.Username,
+            reason,
+            _currentChunkX,
+            _currentChunkZ,
+            _loadedChunks.Count);
+        ResetScan();
+        SendPublisherUpdate();
     }
 
     /// <summary>
@@ -159,12 +250,27 @@ public sealed class PlayerChunkRenderingTrait : PlayerTrait, ISessionTickableTra
         {
             if (!_started || Player.Dimension is null)
             {
+                Log.Warn(
+                    LogCategory.Orion,
+                    "[Teleport:Chunks] AfterRegionHandoff skipped player={0} started={1} dim={2}",
+                    Player.Username,
+                    _started,
+                    Player.Dimension is not null);
                 return;
             }
 
             Dimension dimension = Player.Dimension;
 
             UpdateTrackedChunkPosition();
+            Log.Info(
+                LogCategory.Orion,
+                "[Teleport:Chunks] AfterRegionHandoff player={0} chunk=({1},{2}) loaded={3} pubWas=({4},{5})",
+                Player.Username,
+                _currentChunkX,
+                _currentChunkZ,
+                _loadedChunks.Count,
+                _publisherChunkX,
+                _publisherChunkZ);
             SendPublisherUpdate();
 
             _lastPresenceArea = null;
@@ -254,10 +360,27 @@ public sealed class PlayerChunkRenderingTrait : PlayerTrait, ISessionTickableTra
     {
         lock (_lock)
         {
+            ChunkCoord fromChunk = ChunkCoord.FromBlock(details.From.X, details.From.Z);
+            ChunkCoord toChunk = ChunkCoord.FromBlock(details.To.X, details.To.Z);
+            Log.Info(
+                LogCategory.Orion,
+                "[Teleport:Chunks] OnTeleport player={0} fromChunk=({1},{2}) toChunk=({3},{4}) " +
+                "loadedBefore={5} started={6} vd={7}",
+                Player.Username,
+                fromChunk.X,
+                fromChunk.Z,
+                toChunk.X,
+                toChunk.Z,
+                _loadedChunks.Count,
+                _started,
+                ViewDistance);
+
             HideAllVisibleEntities();
 
             if (Player.Dimension is not null)
             {
+                // Drop old client chunks; destination LevelChunks wait for teleport hold so the
+                // client does not discard them while still at the previous position.
                 UnloadChunks(Player.Dimension, clearClient: true, force: true);
             }
 
@@ -265,10 +388,23 @@ public sealed class PlayerChunkRenderingTrait : PlayerTrait, ISessionTickableTra
             _requestedChunks.Clear();
             _readyChunks.Clear();
             _visibleEntityUniqueIds.Clear();
+            _publisherChunkX = int.MinValue;
+            _publisherChunkZ = int.MinValue;
+            _currentChunkX = int.MinValue;
+            _currentChunkZ = int.MinValue;
+            _lastPresenceArea = null;
             UpdateTrackedChunkPosition();
             UpdateSpatialPlayerIndex();
             ResetScan();
-            SyncRegionPresence();
+            if (Player.Dimension is not null)
+            {
+                UpdateSimulationChunks(Player.Dimension);
+            }
+            SendPublisherUpdate();
+            SyncRegionPresence(force: true);
+            _started = true;
+            // Hold LevelChunks until AuthInput is accepted at the destination (max ~20 session ticks).
+            ArmTeleportChunkHold(minTicks: 4);
         }
     }
 
@@ -356,6 +492,22 @@ public sealed class PlayerChunkRenderingTrait : PlayerTrait, ISessionTickableTra
             SendChunkChestVisualUpdates(dimension, x, z);
         }
 
+        if (sentChunks.Count > 0)
+        {
+            int expected = ((ViewDistance * 2) + 1) * ((ViewDistance * 2) + 1);
+            Log.Info(
+                LogCategory.Orion,
+                "[Teleport:Chunks] SendChunks player={0} n={1} loaded={2}/{3} ready={4} req={5} first=({6},{7}) transfer={8}",
+                Player.Username,
+                sentChunks.Count,
+                _loadedChunks.Count,
+                expected,
+                _readyChunks.Count,
+                _requestedChunks.Count,
+                sentChunks[0].X,
+                sentChunks[0].Z,
+                Player.Session?.TransferState.ToString() ?? "no-session");
+        }
     }
 
     private void RequestChunks(Dimension dimension)
@@ -786,6 +938,23 @@ public sealed class PlayerChunkRenderingTrait : PlayerTrait, ISessionTickableTra
 
         lock (_lock)
         {
+            if (_awaitingTeleportChunkSync || _teleportHoldTicks > 0)
+            {
+                if (_teleportHoldTicks > 0)
+                {
+                    _teleportHoldTicks--;
+                }
+
+                if (_teleportHoldTicks <= 0)
+                {
+                    ReleaseTeleportChunkHold(reason: "timeout");
+                }
+                else
+                {
+                    return;
+                }
+            }
+
             Dimension dimension = Player.Dimension;
             ChunkCoord playerChunk = ChunkCoord.FromBlock(Player.Position.X, Player.Position.Z);
             int chunkX = playerChunk.X;
