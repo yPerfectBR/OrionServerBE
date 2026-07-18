@@ -3,8 +3,10 @@ using System.Diagnostics;
 using Orion.Config;
 using Log = Orion.Logger.Logger;
 using Orion.Scheduling.Messages;
+using Orion.World;
 using Orion.World.Threading;
 using WorldInstance = Orion.World.World;
+using GameEntity = Orion.Entity.Entity;
 
 namespace Orion.Scheduling;
 
@@ -135,15 +137,86 @@ public sealed class AreaWorker
     void TickAttachedAreas()
     {
         _tickValue++;
-        if (WorkerId != 0 || _server.World is not WorldInstance world)
+
+        WorldInstance? world = _server.World as WorldInstance;
+        if (WorkerId == 0 && world is not null)
+        {
+            world.AttachedWorkerId = WorkerId;
+            Stopwatch worldWork = Stopwatch.StartNew();
+            world.Tick();
+            world.TickWork = worldWork.Elapsed.TotalMilliseconds;
+        }
+
+        TickAttachedEntities(world);
+    }
+
+    void TickAttachedEntities(WorldInstance? world)
+    {
+        if (_attachedAreas.Count == 0)
         {
             return;
         }
 
-        world.AttachedWorkerId = WorkerId;
-        Stopwatch worldWork = Stopwatch.StartNew();
-        world.Tick();
-        world.TickWork = worldWork.Elapsed.TotalMilliseconds;
+        ulong currentTick = world?.TickValue ?? _tickValue;
+        List<GameEntity> pendingRemoves = [];
+
+#if DEBUG
+        int? previousAreaIndex = ThreadGuard.CurrentAreaIndex;
+#endif
+        try
+        {
+            foreach ((AttachedAreaKey key, AreaShard shard) in _attachedAreas)
+            {
+#if DEBUG
+                ThreadGuard.CurrentAreaIndex = key.AreaIndex;
+#endif
+                // Snapshot: entity.Tick may despawn/merge and mutate the shard set.
+                List<IAreaStoredEntity> entities = [.. shard.Entities];
+                for (int i = 0; i < entities.Count; i++)
+                {
+                    if (entities[i] is not GameEntity entity)
+                    {
+                        continue;
+                    }
+
+                    if (entity.PendingDespawn || entity.Dimension is null)
+                    {
+                        pendingRemoves.Add(entity);
+                        continue;
+                    }
+
+                    entity.Tick(currentTick, 1);
+
+                    if (entity.PendingDespawn)
+                    {
+                        pendingRemoves.Add(entity);
+                    }
+                }
+            }
+        }
+        finally
+        {
+#if DEBUG
+            ThreadGuard.CurrentAreaIndex = previousAreaIndex;
+#endif
+        }
+
+        for (int i = 0; i < pendingRemoves.Count; i++)
+        {
+            GameEntity entity = pendingRemoves[i];
+            if (entity.Dimension is Dimension dimension)
+            {
+                dimension.RemoveEntity(entity);
+                continue;
+            }
+
+            foreach (AreaShard shard in _attachedAreas.Values)
+            {
+                shard.RemoveEntity(entity);
+            }
+
+            entity.CompleteDespawn();
+        }
     }
 
     void UpdateMetrics(long timestamp)
@@ -251,7 +324,12 @@ public sealed class AreaWorker
             }
             catch (Exception exception)
             {
-                Log.Warn(LogCategory.Orion, "Area worker {0} message error: {1}", WorkerId, exception.Message);
+                Log.Warn(
+                    LogCategory.Orion,
+                    "Area worker {0} message error ({1}): {2}",
+                    WorkerId,
+                    message.GetType().Name,
+                    exception);
             }
         }
     }
