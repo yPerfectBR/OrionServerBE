@@ -4,6 +4,12 @@ using Orion.Events;
 using Orion.World.Threading;
 using WorldInstance = Orion.World.World;
 
+/// <summary>
+/// Chooses which thread runs signal handlers. Global events
+/// (<see cref="ServerEvent.ServerStart"/>, <see cref="ServerEvent.PlayerJoin"/>) run inline on the caller;
+/// player/entity signals prefer the owning area thread when area threading is active.
+/// Priority ordering is handled by <see cref="Server"/>; this type only affects affinity.
+/// </summary>
 internal static class SignalAffinity
 {
     public static bool IsGlobalEvent(ISignal signal) =>

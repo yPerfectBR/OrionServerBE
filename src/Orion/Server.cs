@@ -1,8 +1,10 @@
 using System.Collections.Concurrent;
 using Orion.Commands;
+using Orion.Config;
 using Orion.Events;
 using Orion.Network;
 using Orion.Player;
+using Orion.Plugins.Network;
 using Orion.Protocol.Packets;
 using Orion.RakNet;
 using Orion.Scheduling;
@@ -15,7 +17,8 @@ public sealed class Server
     private readonly INetworkScheduler _scheduler;
     private readonly IAreaScheduler _areaScheduler;
     private readonly ConnectionCoordinator? _connectionCoordinator;
-    private readonly Dictionary<ServerEvent, List<Delegate>> _signalHandlers = [];
+    private readonly Dictionary<ServerEvent, List<HandlerEntry>> _signalHandlers = [];
+    private readonly object _handlersLock = new();
 
     public ServerProperties Properties { get; }
 
@@ -34,6 +37,9 @@ public sealed class Server
     public ConnectionCoordinator? ConnectionCoordinator => _connectionCoordinator;
 
     public PacketIngress PacketIngress { get; }
+
+    /// <summary>Plugin packet hooks; no-op empty pipeline until PluginHost assigns one.</summary>
+    public PacketPipeline PacketPipeline { get; set; } = new();
 
     public double Tps { get; private set; } = 20.0;
 
@@ -90,16 +96,41 @@ public sealed class Server
 
     public WorldInstance GetWorld() => World ?? throw new InvalidOperationException("World has not been set.");
 
-    public void On<TSignal>(ServerEvent @event, Action<TSignal> handler) where TSignal : ISignal
+    public void On<TSignal>(ServerEvent @event, Action<TSignal> handler) where TSignal : ISignal =>
+        On(@event, handler, EventPriority.Normal);
+
+    public void On<TSignal>(ServerEvent @event, Action<TSignal> handler, EventPriority priority)
+        where TSignal : ISignal
     {
         ArgumentNullException.ThrowIfNull(handler);
-        if (!_signalHandlers.TryGetValue(@event, out List<Delegate>? handlers))
+        lock (_handlersLock)
         {
-            handlers = [];
-            _signalHandlers[@event] = handlers;
-        }
+            if (!_signalHandlers.TryGetValue(@event, out List<HandlerEntry>? handlers))
+            {
+                handlers = [];
+                _signalHandlers[@event] = handlers;
+            }
 
-        handlers.Add(handler);
+            handlers.Add(new HandlerEntry(priority, handler, priority == EventPriority.Monitor));
+        }
+    }
+
+    public void Off<TSignal>(ServerEvent @event, Action<TSignal> handler) where TSignal : ISignal
+    {
+        ArgumentNullException.ThrowIfNull(handler);
+        lock (_handlersLock)
+        {
+            if (!_signalHandlers.TryGetValue(@event, out List<HandlerEntry>? handlers))
+            {
+                return;
+            }
+
+            handlers.RemoveAll(entry => ReferenceEquals(entry.Handler, handler));
+            if (handlers.Count == 0)
+            {
+                _signalHandlers.Remove(@event);
+            }
+        }
     }
 
     public void Emit(ServerEvent @event, ISignal signal)
@@ -158,21 +189,103 @@ public sealed class Server
 
     void EmitHandlersInline(ServerEvent @event, ISignal signal)
     {
-        if (!_signalHandlers.TryGetValue(@event, out List<Delegate>? handlers))
+        HandlerEntry[] snapshot;
+        lock (_handlersLock)
         {
-            return;
+            if (!_signalHandlers.TryGetValue(@event, out List<HandlerEntry>? handlers) || handlers.Count == 0)
+            {
+                return;
+            }
+
+            snapshot = handlers.ToArray();
         }
 
-        for (int i = 0; i < handlers.Count; i++)
+        Array.Sort(snapshot, static (a, b) =>
         {
-            Delegate handler = handlers[i];
-            Type? signalType = handler.Method.GetParameters().FirstOrDefault()?.ParameterType;
+            int cmp = ComparePriority(a.Priority, b.Priority);
+            return cmp != 0 ? cmp : a.Sequence.CompareTo(b.Sequence);
+        });
+
+        for (int i = 0; i < snapshot.Length; i++)
+        {
+            HandlerEntry entry = snapshot[i];
+            Type? signalType = entry.Handler.Method.GetParameters().FirstOrDefault()?.ParameterType;
             if (signalType is null || !signalType.IsInstanceOfType(signal))
             {
                 continue;
             }
 
-            handler.DynamicInvoke(signal);
+            if (entry.IsMonitor && signal is ICancellable cancellable)
+            {
+                bool before = cancellable.Cancelled;
+                entry.Handler.DynamicInvoke(signal);
+                if (!before && cancellable.Cancelled)
+                {
+                    RestoreCancelled(signal, cancelled: false);
+                    Warn(
+                        LogCategory.System,
+                        "Monitor handler for {0} called Cancel(); cancel was ignored.",
+                        @event);
+                }
+
+                continue;
+            }
+
+            entry.Handler.DynamicInvoke(signal);
         }
+    }
+
+    static int ComparePriority(EventPriority a, EventPriority b)
+    {
+        // Highest → Lowest, then Monitor last.
+        int rankA = a == EventPriority.Monitor ? int.MinValue : (int)a;
+        int rankB = b == EventPriority.Monitor ? int.MinValue : (int)b;
+        return rankB.CompareTo(rankA);
+    }
+
+    static void RestoreCancelled(ISignal signal, bool cancelled)
+    {
+        switch (signal)
+        {
+            case PlayerChatSignal chat:
+                chat.SetCancelled(cancelled);
+                break;
+            case PlayerJoinSignal join:
+                join.SetCancelled(cancelled);
+                break;
+            case PlayerSpawnSignal spawn:
+                spawn.SetCancelled(cancelled);
+                break;
+            case PlayerPlaceBlockSignal place:
+                place.SetCancelled(cancelled);
+                break;
+            case PlayerBreakBlockSignal brk:
+                brk.SetCancelled(cancelled);
+                break;
+            case EntityHurtSignal hurt:
+                hurt.SetCancelled(cancelled);
+                break;
+            case EntityDieSignal die:
+                die.SetCancelled(cancelled);
+                break;
+        }
+    }
+
+    private sealed class HandlerEntry
+    {
+        static int _nextSequence;
+
+        public HandlerEntry(EventPriority priority, Delegate handler, bool isMonitor)
+        {
+            Priority = priority;
+            Handler = handler;
+            IsMonitor = isMonitor;
+            Sequence = Interlocked.Increment(ref _nextSequence);
+        }
+
+        public EventPriority Priority { get; }
+        public Delegate Handler { get; }
+        public bool IsMonitor { get; }
+        public int Sequence { get; }
     }
 }

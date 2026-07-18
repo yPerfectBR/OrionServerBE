@@ -3,13 +3,12 @@ namespace Orion.Events;
 using Orion.Player;
 using Orion.Protocol.Types;
 
-
-public sealed class PlayerBreakBlockSignal : PlayerSignal
+public sealed class PlayerBreakBlockSignal : PlayerSignal, ICancellable
 {
     public override ServerEvent Event => ServerEvent.PlayerBreakBlock;
     public BlockPos BlockPosition { get; }
     public int BlockFace { get; }
-    public bool Cancelled;
+    public bool Cancelled { get; private set; }
 
     public PlayerBreakBlockSignal(Player player, BlockPos blockPosition, int blockFace) : base(player)
     {
@@ -26,10 +25,6 @@ public sealed class PlayerBreakBlockSignal : PlayerSignal
     {
         Cancelled = true;
     }
+
+    internal void SetCancelled(bool cancelled) => Cancelled = cancelled;
 }
-
-
-
-
-
-
