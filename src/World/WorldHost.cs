@@ -55,7 +55,10 @@ public sealed class WorldHost : IDisposable
         string dbPath = Path.Combine(resolved.DirectoryPath, "db");
         Directory.CreateDirectory(resolved.DirectoryPath);
 
-        World world = new(resolved.Identifier, new LevelDbProvider(dbPath));
+        World world = new(resolved.Identifier, new LevelDbProvider(dbPath))
+        {
+            Gamerules = resolved.Settings.Gamerules
+        };
         Dictionary<string, AreaResolver> areaResolvers = new(StringComparer.OrdinalIgnoreCase);
         ChunkPregenerator pregenerator = new();
 
@@ -70,6 +73,7 @@ public sealed class WorldHost : IDisposable
                 generator,
                 dimensionConfig.ThreadingAreas);
 
+            GameRulesFactory.Apply(dimension.Gamerules, resolved.Settings.Gamerules);
             areaResolvers[dimensionConfig.Identifier] = new AreaResolver(dimensionConfig.ThreadingAreas);
             pregenerator.PregenerateAll(dimension, dimensionConfig.ChunkPregeneration ?? [], dimensionConfig.Identifier);
         }

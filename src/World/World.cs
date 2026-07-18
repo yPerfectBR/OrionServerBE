@@ -14,6 +14,11 @@ public sealed class World : IDisposable, Tickable
 
     public WorldProvider Provider { get; }
 
+    /// <summary>
+    /// World-level gamerules from resolved world settings (sent to clients on join).
+    /// </summary>
+    public GamerulesConfig Gamerules { get; set; } = new();
+
     public ulong TickValue { get; set; }
 
     public double TickWork { get; set; }
