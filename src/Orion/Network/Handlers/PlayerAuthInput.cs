@@ -70,7 +70,24 @@ public static class PlayerAuthInput
             bool movementRejected = MovedTooFar(player, packet, out ulong tickDelta);
             if (movementRejected)
             {
-                Warn($"Player {player.Username} moved too fast ({packet.Position.X}, {packet.Position.Y}, {packet.Position.Z}) tickDelta={tickDelta}");
+                ulong worldTick = player.Dimension?.World is Tickable wt ? wt.TickValue : 0UL;
+                bool inGrace = MovementGraceUntilTickByRuntimeId.TryGetValue(player.RuntimeId, out ulong graceUntil)
+                    && worldTick <= graceUntil;
+                Warn(
+                    "[Teleport:Move] rejected player={0} client=({1:0.##},{2:0.##},{3:0.##}) " +
+                    "server=({4:0.##},{5:0.##},{6:0.##}) tickDelta={7} worldTick={8} grace={9} until={10} transfer={11}",
+                    player.Username,
+                    packet.Position.X,
+                    packet.Position.Y,
+                    packet.Position.Z,
+                    player.Position.X,
+                    player.Position.Y,
+                    player.Position.Z,
+                    tickDelta,
+                    worldTick,
+                    inGrace,
+                    graceUntil,
+                    player.Session?.TransferState.ToString() ?? "no-session");
 
                 CorrectPlayerMovePredictionPacket correction = new()
                 {
@@ -95,6 +112,19 @@ public static class PlayerAuthInput
             else if (player.Session?.TransferState != TransferState.Transferring)
             {
                 MovePlayer(server, player, packet);
+                player.GetTrait<PlayerChunkRenderingTrait>()?.NotifyClientAtTeleportDestination();
+            }
+            else
+            {
+                Debug(
+                    "[Teleport:Move] AuthInput ignored (Transferring) player={0} client=({1:0.##},{2:0.##},{3:0.##}) server=({4:0.##},{5:0.##},{6:0.##})",
+                    player.Username,
+                    packet.Position.X,
+                    packet.Position.Y,
+                    packet.Position.Z,
+                    player.Position.X,
+                    player.Position.Y,
+                    player.Position.Z);
             }
 
             ProcessGameplayInput(server, connection, player, packet);
@@ -267,6 +297,21 @@ public static class PlayerAuthInput
     public static void BeginMovementGrace(ulong runtimeId, ulong currentTick)
     {
         MovementGraceUntilTickByRuntimeId[runtimeId] = currentTick + MovementGraceTicks;
+    }
+
+    /// <summary>
+    /// Most recent PlayerAuthInput tick for this player (PlayerInputTick).
+    /// MovePlayer / movement packets must use this — not the world tick.
+    /// </summary>
+    public static ulong GetLastInputTick(ulong runtimeId) =>
+        LastInputTickByRuntimeId.TryGetValue(runtimeId, out ulong tick) ? tick : 0UL;
+
+    /// <summary>
+    /// After a server-driven teleport: keep the last input tick, open a short grace window.
+    /// </summary>
+    public static void OnServerTeleport(ulong runtimeId, ulong worldTick)
+    {
+        MovementGraceUntilTickByRuntimeId[runtimeId] = worldTick + MovementGraceTicks;
     }
 
     private static void ProcessGameplayInput(
