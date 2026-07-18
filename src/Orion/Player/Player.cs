@@ -19,7 +19,7 @@ using Orion.Entity.Traits;
 using Orion.Entity.Traits.Types;
 using Orion.Player.Traits;
 
-public sealed class Player : global::Orion.Entity.Entity, IAreaEntity
+public sealed class Player : global::Orion.Entity.Entity, IAreaEntity, IPlayerWithSession
 {
         Vec3f IAreaEntity.Position => Position;
 

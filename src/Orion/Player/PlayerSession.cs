@@ -56,6 +56,7 @@ public sealed class PlayerSession
 
     public void SendMessage(string message)
     {
+        string safeMessage = string.IsNullOrEmpty(message) ? " " : message;
         Send(new TextPacket
         {
             VariantType = TextVariantType.MessageOnly,
@@ -65,7 +66,7 @@ public sealed class PlayerSession
             PlatformChatId = string.Empty,
             Variant = new TextVariant
             {
-                Message = message,
+                Message = safeMessage,
                 Parameters = [],
                 Source = string.Empty,
                 Type = TextType.Raw
