@@ -148,7 +148,11 @@ public sealed class SessionWorker
             }
             catch (Exception exception)
             {
-                Warn("Session worker {0} message error: {1}", WorkerId, exception.Message);
+                Warn(
+                    "Session worker {0} message error ({1}): {2}",
+                    WorkerId,
+                    message.GetType().Name,
+                    exception);
             }
         }
     }

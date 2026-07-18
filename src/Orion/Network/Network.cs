@@ -2,6 +2,7 @@ namespace Orion.Network;
 
 using System.Buffers;
 using Basalt.Binary;
+using Orion.Config;
 using Orion.Events;
 using Orion.Network.Handlers;
 using Orion.Scheduling;
@@ -13,6 +14,7 @@ using Orion.RakNet;
 using Orion.RakNet.Packets.Enums;
 using BinaryReader = Basalt.Binary.BinaryReader;
 using BinaryWriter = Basalt.Binary.BinaryWriter;
+using Log = Orion.Logger.Logger;
 
 
 
@@ -158,68 +160,80 @@ public sealed class NetworkHandler
     {
         CreativeInventoryLog.TryLogClientPacket(_server, connection, packetId, packetBuffer);
 
-        // Debug($"Received packet {packetId}");
-        switch (packetId)
+        try
         {
-            case PacketId.Login:
-                Login.Handle(_server, connection, packetBuffer);
-                break;
+            switch (packetId)
+            {
+                case PacketId.Login:
+                    Login.Handle(_server, connection, packetBuffer);
+                    break;
 
-            case PacketId.RequestNetworkSettings:
-                RequestNetworkSettings.Handle(_server, connection, packetBuffer);
-                break;
+                case PacketId.RequestNetworkSettings:
+                    RequestNetworkSettings.Handle(_server, connection, packetBuffer);
+                    break;
 
-            case PacketId.ResourcePackClientResponse:
-                ResourcePackClientResponse.Handle(_server, connection, packetBuffer);
-                break;
+                case PacketId.ResourcePackClientResponse:
+                    ResourcePackClientResponse.Handle(_server, connection, packetBuffer);
+                    break;
 
-            case PacketId.RequestChunkRadius:
-                RequestChunkRadius.Handle(_server, connection, packetBuffer);
-                break;
+                case PacketId.RequestChunkRadius:
+                    RequestChunkRadius.Handle(_server, connection, packetBuffer);
+                    break;
 
-            case PacketId.SetLocalPlayerAsInitialized:
-                SetLocalPlayerAsInitialized.Handle(_server, connection, packetBuffer);
-                break;
+                case PacketId.SetLocalPlayerAsInitialized:
+                    SetLocalPlayerAsInitialized.Handle(_server, connection, packetBuffer);
+                    break;
 
-            case PacketId.PlayerAuthInput:
-                PlayerAuthInput.Handle(_server, connection, packetBuffer);
-                break;
+                case PacketId.PlayerAuthInput:
+                    PlayerAuthInput.Handle(_server, connection, packetBuffer);
+                    break;
 
-            case PacketId.Interact:
-                Interact.Handle(_server, connection, packetBuffer);
-                break;
+                case PacketId.Interact:
+                    Interact.Handle(_server, connection, packetBuffer);
+                    break;
 
-            case PacketId.ContainerClose:
-                ContainerClose.Handle(_server, connection, packetBuffer);
-                break;
+                case PacketId.ContainerClose:
+                    ContainerClose.Handle(_server, connection, packetBuffer);
+                    break;
 
-            case PacketId.InventoryTransaction:
-                InventoryTransaction.Handle(_server, connection, packetBuffer);
-                break;
+                case PacketId.InventoryTransaction:
+                    InventoryTransaction.Handle(_server, connection, packetBuffer);
+                    break;
 
-            case PacketId.MobEquipment:
-                MobEquipment.Handle(_server, connection, packetBuffer);
-                break;
+                case PacketId.MobEquipment:
+                    MobEquipment.Handle(_server, connection, packetBuffer);
+                    break;
 
-            case PacketId.PlayerAction:
-                PlayerAction.Handle(_server, connection, packetBuffer);
-                break;
+                case PacketId.PlayerAction:
+                    PlayerAction.Handle(_server, connection, packetBuffer);
+                    break;
 
-            case PacketId.ItemStackRequest:
-                ItemStackRequest.Handle(_server, connection, packetBuffer);
-                break;
+                case PacketId.ItemStackRequest:
+                    ItemStackRequest.Handle(_server, connection, packetBuffer);
+                    break;
 
-            case PacketId.ClientCacheStatus:
-                ClientCacheStatus.Handle(_server, connection, packetBuffer);
-                break;
+                case PacketId.ClientCacheStatus:
+                    ClientCacheStatus.Handle(_server, connection, packetBuffer);
+                    break;
 
-            case PacketId.CommandRequest:
-                CommandRequest.Handle(_server, connection, packetBuffer);
-                break;
+                case PacketId.CommandRequest:
+                    CommandRequest.Handle(_server, connection, packetBuffer);
+                    break;
 
-            case PacketId.Text:
-                Text.Handle(_server, connection, packetBuffer);
-                break;
+                case PacketId.Text:
+                    Text.Handle(_server, connection, packetBuffer);
+                    break;
+            }
+        }
+        catch (Exception exception)
+        {
+            Log.Warn(
+                LogCategory.Orion,
+                "[Inv] HandleGamePacket failed packet={0} bytes={1}: {2}",
+                packetId,
+                packetBuffer.Length,
+                exception);
+            throw;
         }
     }
 

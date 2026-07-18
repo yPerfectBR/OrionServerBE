@@ -4,6 +4,7 @@ using Orion.Commands;
 using Orion;
 using Orion.Entity.Traits;
 using Orion.Item;
+using Orion.Network.Handlers;
 using Player = global::Orion.Player.Player;
 
 public class GiveCommand : Command
@@ -143,6 +144,25 @@ public class GiveCommand : Command
             inventory.Container.Update();
             inventory.SyncToPlayer(player);
             inventory.SyncHeldItemToClient(player);
+            ItemStack? first = inventory.Container.GetItem(0);
+            for (int i = 0; i < inventory.Container.GetSize(); i++)
+            {
+                ItemStack? slot = inventory.Container.GetItem(i);
+                if (slot is not null && slot.Type == type)
+                {
+                    first = slot;
+                    break;
+                }
+            }
+
+            CreativeInventoryLog.LogGive(
+                player.Username,
+                type.Identifier,
+                amount,
+                given,
+                type.NetworkId,
+                ItemBlockRuntimeIds.Resolve(type),
+                first?.NetworkStackId ?? 0);
         }
 
         return given;
