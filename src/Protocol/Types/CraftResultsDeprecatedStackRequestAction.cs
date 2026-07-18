@@ -11,21 +11,22 @@ public sealed class CraftResultsDeprecatedStackRequestAction : IStackRequestActi
     public byte ActionType => 19;
 
     /// <summary>
-    /// Crafted result items.
+    /// Crafted result items (legacy ZigZag descriptor — same wire as Basalt LegacyNetworkItemStackDescriptor).
     /// </summary>
-    public List<NetworkItemStackDescriptor> ResultItems = [];
+    public List<CreativeItemInstanceDescriptor> ResultItems = [];
 
     /// <summary>
     /// Amount of times the recipe was crafted.
     /// </summary>
     public byte TimesCrafted;
+
     public void Read(BinaryReader reader)
     {
         int count = checked((int)reader.ReadVarUInt());
         ResultItems = new(count);
         for (int i = 0; i < count; i++)
         {
-            NetworkItemStackDescriptor item = new();
+            CreativeItemInstanceDescriptor item = new();
             item.Read(reader);
             ResultItems.Add(item);
         }
