@@ -258,8 +258,8 @@ public class BarrelTrait : BlockTrait
             },
             Data = Block.Permutation.NetworkId,
             ActorIdentifier = string.Empty,
-            IsBabyMob = false,
-            IsGlobal = false,
+            BabyMob = false,
+            DisableRelativeVolume = false,
             UniqueActorId = -1
         });
     }

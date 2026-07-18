@@ -43,12 +43,12 @@ public sealed record LevelSoundEventPacket : DataPacket
     /// <summary>
     /// Whether actor is a baby variant.
     /// </summary>
-    public bool IsBabyMob;
+    public bool BabyMob;
 
     /// <summary>
-    /// Whether sound should be global.
+    /// Whether distance-based volume is disabled.
     /// </summary>
-    public bool IsGlobal;
+    public bool DisableRelativeVolume;
 
     /// <summary>
     /// Unique actor id tied to this sound.
@@ -70,8 +70,8 @@ public sealed record LevelSoundEventPacket : DataPacket
 
         Data = reader.ReadZigZag();
         ActorIdentifier = reader.ReadVarString();
-        IsBabyMob = reader.ReadBool();
-        IsGlobal = reader.ReadBool();
+        BabyMob = reader.ReadBool();
+        DisableRelativeVolume = reader.ReadBool();
         UniqueActorId = reader.ReadInt64(true);
         FireAtPosition.Read(reader);
     }
@@ -82,8 +82,8 @@ public sealed record LevelSoundEventPacket : DataPacket
         Position.Write(writer);
         writer.WriteZigZag(Data);
         writer.WriteVarString(ActorIdentifier);
-        writer.WriteBool(IsBabyMob);
-        writer.WriteBool(IsGlobal);
+        writer.WriteBool(BabyMob);
+        writer.WriteBool(DisableRelativeVolume);
         writer.WriteInt64(UniqueActorId, true);
         FireAtPosition.Write(writer);
     }

@@ -604,8 +604,8 @@ public static class PlayerAuthInput
                 Position = creativeBlockCenter,
                 Data = effectRuntime,
                 ActorIdentifier = string.Empty,
-                IsBabyMob = false,
-                IsGlobal = false,
+                BabyMob = false,
+                DisableRelativeVolume = false,
                 UniqueActorId = 0,
                 FireAtPosition = new Optional<Vec3f> { HasValue = false, Value = default }
             });
@@ -658,8 +658,8 @@ public static class PlayerAuthInput
             Position = blockCenter,
             Data = block.NetworkId,
             ActorIdentifier = string.Empty,
-            IsBabyMob = false,
-            IsGlobal = false,
+            BabyMob = false,
+            DisableRelativeVolume = false,
             UniqueActorId = 0,
             FireAtPosition = new Optional<Vec3f> { HasValue = false, Value = default }
         });

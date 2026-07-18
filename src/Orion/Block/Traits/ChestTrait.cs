@@ -746,8 +746,8 @@ public class ChestTrait : BlockTrait
             },
             Data = runtimeId,
             ActorIdentifier = string.Empty,
-            IsBabyMob = false,
-            IsGlobal = false,
+            BabyMob = false,
+            DisableRelativeVolume = false,
             UniqueActorId = -1
         });
     }
