@@ -200,8 +200,8 @@ public static class InventoryTransaction
                 continue;
             }
 
-            LegacyItem stack = action.NewItem.Stack;
-            if (stack.NetworkId == 0 || stack.StackSize == 0)
+            NetworkItemStackDescriptor stack = action.NewItem;
+            if (stack.NetworkId == 0 || stack.Count == 0)
             {
                 container.ClearSlot(slot);
                 continue;
@@ -246,22 +246,22 @@ public static class InventoryTransaction
                 continue;
             }
 
-            LegacyItem candidateOld = candidate.OldItem.Stack;
-            LegacyItem candidateNew = candidate.NewItem.Stack;
-            LegacyItem dropped = action.NewItem.Stack;
+            NetworkItemStackDescriptor candidateOld = candidate.OldItem;
+            NetworkItemStackDescriptor candidateNew = candidate.NewItem;
+            NetworkItemStackDescriptor dropped = action.NewItem;
 
             if (candidateOld.NetworkId == 0 || dropped.NetworkId == 0)
             {
                 continue;
             }
 
-            if (candidateOld.NetworkId != dropped.NetworkId || candidateOld.StackSize <= candidateNew.StackSize)
+            if (candidateOld.NetworkId != dropped.NetworkId || candidateOld.Count <= candidateNew.Count)
             {
                 continue;
             }
 
-            int delta = candidateOld.StackSize - candidateNew.StackSize;
-            if (delta == dropped.StackSize)
+            int delta = candidateOld.Count - candidateNew.Count;
+            if (delta == dropped.Count)
             {
                 return (int)candidate.InventorySlot;
             }
@@ -282,8 +282,8 @@ public static class InventoryTransaction
             return;
         }
 
-        LegacyItem dropped = action.NewItem.Stack;
-        if (dropped.NetworkId == 0 || dropped.StackSize == 0)
+        NetworkItemStackDescriptor dropped = action.NewItem;
+        if (dropped.NetworkId == 0 || dropped.Count == 0)
         {
             return;
         }
