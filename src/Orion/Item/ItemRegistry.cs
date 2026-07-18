@@ -74,6 +74,9 @@ public static class ItemRegistry
             : null;
     }
 
+    public static ItemStack? GetCreativeItem(uint creativeItemNetworkId) =>
+        TryGetCreativeItem(creativeItemNetworkId);
+
     public static ItemStack? TryGetCreativePickFromSlotByte(byte slotByte, out string resolution)
     {
         EnsureLoaded();
@@ -136,7 +139,7 @@ public static class ItemRegistry
     static void LoadCreativeItems(List<ItemRegistryDto> items)
     {
         Dictionary<uint, ItemStack> creative = [];
-        uint creativeIndex = 0;
+        uint creativeItemNetworkId = 1;
         foreach (ItemRegistryDto dto in items)
         {
             if (!dto.Creative)
@@ -147,7 +150,7 @@ public static class ItemRegistry
             ItemType? type = ItemType.GetByNetwork(dto.NetworkId);
             if (type is not null)
             {
-                creative[creativeIndex++] = new ItemStack(type, 1);
+                creative[creativeItemNetworkId++] = new ItemStack(type, checked((ushort)type.MaxStackSize));
             }
         }
 
