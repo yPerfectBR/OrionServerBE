@@ -24,17 +24,16 @@ internal static class CrossAreaTransferHandler
             return;
         }
 
-        if (server.Properties.AreaSchedulerDebug)
-        {
-            Log.Debug(
-                LogCategory.Orion,
-                "[Area:Transfer] prepare worker={0} entity={1} {2}->{3} | {4}",
-                sourceWorker.WorkerId,
-                AreaTransferLog.DescribeEntity(entity),
-                snapshot.SourceAreaIndex,
-                snapshot.TargetAreaIndex,
-                AreaTransferLog.FormatExecutionContext());
-        }
+            if (server.Properties.AreaSchedulerDebug)
+            {
+                Log.Debug(
+                    LogCategory.Orion,
+                    "[Area:Transfer] prepare worker={0} entity={1} {2}->{3}",
+                    sourceWorker.WorkerId,
+                    DescribeEntity(entity),
+                    snapshot.SourceAreaIndex,
+                    snapshot.TargetAreaIndex);
+            }
 
         dimension.ShardManager.GetShard(snapshot.SourceAreaIndex).RemoveEntity((IAreaStoredEntity)entity);
 
@@ -76,29 +75,33 @@ internal static class CrossAreaTransferHandler
             {
                 Log.Debug(
                     LogCategory.Orion,
-                    "[Area:Transfer] complete worker={0} entity={1} area={2} | {3}",
+                    "[Area:Transfer] complete worker={0} entity={1} {2}->{3} crossWorker={4}",
                     targetWorker.WorkerId,
-                    AreaTransferLog.DescribeEntity(entity),
+                    DescribeEntity(entity),
+                    snapshot.SourceAreaIndex,
                     snapshot.TargetAreaIndex,
-                    AreaTransferLog.FormatExecutionContext());
+                    snapshot.CrossWorker);
             }
 
             dimension.AddEntity((IAreaStoredEntity)entity, snapshot.TargetAreaIndex);
-
-            AreaShard sourceShard = dimension.GetAreaShard(snapshot.SourceAreaIndex);
-            AreaShard targetShard = dimension.GetAreaShard(snapshot.TargetAreaIndex);
-            AreaTransferLog.Info(
-                session,
-                $"complete {AreaTransferLog.DescribeEntity(entity)} {dimension.Identifier} " +
-                $"'{sourceShard.Name}'({snapshot.SourceAreaIndex}) -> '{targetShard.Name}'({snapshot.TargetAreaIndex}) " +
-                $"aw{targetWorker.WorkerId} workerTid={targetWorker.WorkerThreadId} " +
-                $"crossWorker={snapshot.CrossWorker} tick={dimension.World?.TickValue ?? 0}");
-
             if (session is not null)
             {
                 session.ActiveEntity = entity as Orion.Player.Player;
                 session.TransferState = TransferState.Idle;
                 session.PendingTransferAreaIndex = null;
+
+                if (entity is Orion.Player.Player transferredPlayer)
+                {
+                    bool crossWorker = snapshot.CrossWorker;
+                    if (server.ConnectionCoordinator is ConnectionCoordinator coordinator && coordinator.IsActive)
+                    {
+                        coordinator.RunOnSessionThread(session, () => transferredPlayer.ResyncAfterRegionHandoff(crossWorker));
+                    }
+                    else
+                    {
+                        transferredPlayer.ResyncAfterRegionHandoff(crossWorker);
+                    }
+                }
             }
             else
             {
@@ -116,7 +119,7 @@ internal static class CrossAreaTransferHandler
 
     static void AbortTransfer(Server server, AreaEntitySnapshot snapshot, string reason)
     {
-        AreaTransferLog.Error(snapshot.Session, reason);
+        Log.Error(LogCategory.Orion, "[Area:Transfer] abort: {0}", reason);
         InFlightMobTransfers.TryRemove(snapshot.Entity, out _);
 
         if (snapshot.Session is not null)
@@ -130,4 +133,11 @@ internal static class CrossAreaTransferHandler
 
     static Dimension? GetEntityDimension(object entity) =>
         entity is IAreaEntity areaEntity ? areaEntity.Dimension : null;
+
+    static string DescribeEntity(object entity) =>
+        entity is Orion.Player.Player player
+            ? $"player={player.Username}"
+            : entity is IAreaEntity areaEntity
+                ? $"entity runtime={areaEntity.RuntimeId}"
+                : $"entity={entity.GetType().Name}";
 }

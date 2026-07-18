@@ -1,4 +1,6 @@
 using System.Collections.Concurrent;
+using Orion.Config;
+using Log = Orion.Logger.Logger;
 using Orion.Player;
 using Orion.Protocol.Types;
 using Orion.World;
@@ -111,22 +113,35 @@ public static class AreaBorderTransfer
         int? targetWorkerId = targetShard.AttachedWorkerId;
         if (!sourceWorkerId.HasValue || !targetWorkerId.HasValue)
         {
-            AreaTransferLog.Warn(
-                session,
-                $"skipped {AreaTransferLog.DescribeEntity(entity)} {dimension.Identifier} " +
-                $"'{sourceShard.Name}'({sourceAreaIndex}) -> '{targetShard.Name}'({targetAreaIndex}): " +
-                $"worker missing (source={sourceWorkerId?.ToString() ?? "none"}, target={targetWorkerId?.ToString() ?? "none"}) " +
-                $"tick={dimension.World?.TickValue ?? 0}");
+            if (server.Properties.AreaSchedulerDebug)
+            {
+                Log.Warn(
+                    LogCategory.Orion,
+                    "[Area:Transfer] skipped {0} {1} '{2}'({3}) -> '{4}'({5}): worker missing",
+                    DescribeEntity(entity),
+                    dimension.Identifier,
+                    sourceShard.Name,
+                    sourceAreaIndex,
+                    targetShard.Name,
+                    targetAreaIndex);
+            }
             return;
         }
 
         bool crossWorker = sourceWorkerId.Value != targetWorkerId.Value;
-        AreaTransferLog.Info(
-            session,
-            $"begin {AreaTransferLog.DescribeEntity(entity)} {dimension.Identifier} " +
-            $"'{sourceShard.Name}'({sourceAreaIndex}) -> '{targetShard.Name}'({targetAreaIndex}) " +
-            $"aw{sourceWorkerId.Value}->aw{targetWorkerId.Value} crossWorker={crossWorker} " +
-            $"pos=({position.X:F1},{position.Y:F1},{position.Z:F1}) tick={dimension.World?.TickValue ?? 0}");
+        if (server.Properties.AreaSchedulerDebug)
+        {
+            Log.Debug(
+                LogCategory.Orion,
+                "[Area:Transfer] begin {0} {1} '{2}'({3}) -> '{4}'({5}) crossWorker={6}",
+                DescribeEntity(entity),
+                dimension.Identifier,
+                sourceShard.Name,
+                sourceAreaIndex,
+                targetShard.Name,
+                targetAreaIndex,
+                crossWorker);
+        }
 
         AreaEntitySnapshot snapshot = AreaEntitySnapshot.Capture(
             entity,
@@ -150,4 +165,11 @@ public static class AreaBorderTransfer
         scheduler.RequestAttachArea(dimension, source);
         scheduler.RequestAttachArea(dimension, target);
     }
+
+    static string DescribeEntity(object entity) =>
+        entity is Orion.Player.Player player
+            ? $"player={player.Username}"
+            : entity is IAreaEntity areaEntity
+                ? $"entity runtime={areaEntity.RuntimeId}"
+                : $"entity={entity.GetType().Name}";
 }
