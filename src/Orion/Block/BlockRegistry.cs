@@ -1,5 +1,4 @@
 using System.Reflection;
-using System.Runtime.CompilerServices;
 using Orion.Block.Traits;
 using Orion.Block.Types;
 using Orion.Protocol.Registry;
@@ -10,9 +9,18 @@ public static class BlockRegistry
 {
     private static readonly object LoadLock = new();
     private static bool _loaded;
+    private static readonly List<PendingBlockRegistration> PendingPluginBlocks = [];
 
-    [ModuleInitializer]
-    public static void Initialize() => EnsureLoaded();
+    public static bool IsLoaded
+    {
+        get
+        {
+            lock (LoadLock)
+            {
+                return _loaded;
+            }
+        }
+    }
 
     public static void EnsureLoaded()
     {
@@ -29,9 +37,47 @@ public static class BlockRegistry
             }
 
             RegisterFromBedrockStates();
+            FlushPendingPluginBlocks();
             BlockTraitRegistry.RegisterFromAssembly(Assembly.GetExecutingAssembly());
             _loaded = true;
         }
+    }
+
+    /// <summary>
+    /// Queues a plugin block registration until <see cref="EnsureLoaded"/> (must be before freeze).
+    /// </summary>
+    public static void RegisterPluginBlock(string identifier, int defaultStateHash, bool solid = true, bool air = false)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(identifier);
+        lock (LoadLock)
+        {
+            if (_loaded)
+            {
+                throw new InvalidOperationException(
+                    "Blocks must be registered before BlockRegistry.EnsureLoaded (plugin Load / pre-catalog).");
+            }
+
+            PendingPluginBlocks.Add(new PendingBlockRegistration(identifier, defaultStateHash, solid, air));
+        }
+    }
+
+    internal static void ResetForTests()
+    {
+        lock (LoadLock)
+        {
+            _loaded = false;
+            PendingPluginBlocks.Clear();
+        }
+    }
+
+    static void FlushPendingPluginBlocks()
+    {
+        foreach (PendingBlockRegistration pending in PendingPluginBlocks)
+        {
+            RegisterBlock(pending.Identifier, pending.DefaultStateHash, air: pending.Air, solid: pending.Solid);
+        }
+
+        PendingPluginBlocks.Clear();
     }
 
     static void RegisterFromBedrockStates()
@@ -54,4 +100,10 @@ public static class BlockRegistry
         BlockPermutation.Permutations[hash] = permutation;
         type.RegisterPermutation(permutation);
     }
+
+    private readonly record struct PendingBlockRegistration(
+        string Identifier,
+        int DefaultStateHash,
+        bool Solid,
+        bool Air);
 }
