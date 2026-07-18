@@ -137,5 +137,10 @@
       "MinIoCompletionThreads": 1,
       "MaxIoCompletionThreads": 5
     }
+  },
+  "Plugins": {
+    "Enabled": true,
+    "Directory": "plugins",
+    "ConflictMode": "warn"
   }
 }

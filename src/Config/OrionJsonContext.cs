@@ -7,6 +7,7 @@ namespace Orion.Config;
     PropertyNamingPolicy = JsonKnownNamingPolicy.Unspecified,
     DefaultIgnoreCondition = JsonIgnoreCondition.Never)]
 [JsonSerializable(typeof(OrionConfig))]
+[JsonSerializable(typeof(ConflictMode))]
 [JsonSerializable(typeof(WorldProperties))]
 [JsonSerializable(typeof(WorldJsonFile))]
 [JsonSerializable(typeof(ChunkPregenerationConfig))]

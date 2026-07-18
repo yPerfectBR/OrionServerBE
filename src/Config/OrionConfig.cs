@@ -15,6 +15,9 @@ public sealed class OrionConfig
 
     [JsonPropertyName("Runtime")]
     public RuntimeConfig Runtime { get; init; } = new();
+
+    [JsonPropertyName("Plugins")]
+    public PluginsConfig Plugins { get; init; } = new();
 }
 
 public sealed class LoggingConfig
