@@ -23,12 +23,12 @@ public sealed class UseItemTransactionData : DataType
     /// <summary>
     /// Use-item action type.
     /// </summary>
-    public int ActionType;
+    public uint ActionType;
 
     /// <summary>
     /// Trigger source for this transaction.
     /// </summary>
-    public byte TriggerType;
+    public uint TriggerType;
 
     /// <summary>
     /// Target block position.
@@ -38,7 +38,7 @@ public sealed class UseItemTransactionData : DataType
     /// <summary>
     /// Block face used for the action.
     /// </summary>
-    public byte BlockFace;
+    public int BlockFace;
 
     /// <summary>
     /// Hotbar slot used by the client.
@@ -100,12 +100,12 @@ public sealed class UseItemTransactionData : DataType
             Actions.Add(action);
         }
 
-        ActionType = reader.ReadZigZag();
-        TriggerType = reader.ReadUInt8();
+        ActionType = reader.ReadVarUInt();
+        TriggerType = reader.ReadVarUInt();
         BlockPos blockPosition = BlockPosition;
         blockPosition.Read(reader);
         BlockPosition = blockPosition;
-        BlockFace = reader.ReadUInt8();
+        BlockFace = reader.ReadZigZag();
         HotBarSlot = reader.ReadZigZag();
         HeldItem.Read(reader);
         Position.Read(reader);
@@ -133,10 +133,10 @@ public sealed class UseItemTransactionData : DataType
             Actions[i].Write(writer);
         }
 
-        writer.WriteZigZag(ActionType);
-        writer.WriteUInt8(TriggerType);
+        writer.WriteVarUInt(ActionType);
+        writer.WriteVarUInt(TriggerType);
         BlockPosition.Write(writer);
-        writer.WriteUInt8(BlockFace);
+        writer.WriteZigZag(BlockFace);
         writer.WriteZigZag(HotBarSlot);
         HeldItem.Write(writer);
         Position.Write(writer);
