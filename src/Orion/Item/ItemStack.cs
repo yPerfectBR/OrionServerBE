@@ -155,7 +155,42 @@ public sealed class ItemStack {
         ItemType type = ItemType.GetByNetwork(descriptor.NetworkId)
                         ?? throw new InvalidOperationException($"Unknown item network id '{descriptor.NetworkId}'.");
 
-        return new ItemStack(type, descriptor.StackSize, unchecked((uint)descriptor.Metadata), descriptor.ExtraData);
+        ItemStack stack = new(type, descriptor.StackSize, unchecked((uint)descriptor.Metadata), descriptor.ExtraData);
+        if (descriptor.ItemStackId is int stackId && stackId != 0)
+        {
+            stack.SetNetworkStackId(stackId);
+        }
+
+        return stack;
+    }
+
+    public static ItemStack FromNetworkStack(NetworkItemStackDescriptor descriptor)
+    {
+        ItemType type = ItemType.GetByNetwork(descriptor.NetworkId)
+                        ?? throw new InvalidOperationException($"Unknown item network id '{descriptor.NetworkId}'.");
+
+        bool hasExtra = descriptor.Nbt is not null
+            || descriptor.CanPlaceOn.Count > 0
+            || descriptor.CanDestroy.Count > 0
+            || descriptor.BlockingTick != 0;
+
+        ItemInstanceUserData? extraData = hasExtra
+            ? new ItemInstanceUserData
+            {
+                Nbt = descriptor.Nbt,
+                CanPlaceOn = descriptor.CanPlaceOn,
+                CanDestroy = descriptor.CanDestroy,
+                Ticking = descriptor.BlockingTick
+            }
+            : null;
+
+        ItemStack stack = new(type, descriptor.Count, descriptor.Metadata, extraData);
+        if (descriptor.StackNetworkId != 0)
+        {
+            stack.SetNetworkStackId(descriptor.StackNetworkId);
+        }
+
+        return stack;
     }
 
     public static ItemStack Empty()
