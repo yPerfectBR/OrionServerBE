@@ -5,6 +5,8 @@ namespace Orion.Protocol.Types;
 
 public sealed class CreativeItemInstanceDescriptor : DataType
 {
+    private static readonly byte[] EmptyExtras = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
+
     /// <summary>
     /// Optional raw encoded payload.
     /// </summary>
@@ -89,7 +91,9 @@ public sealed class CreativeItemInstanceDescriptor : DataType
 
         if (ExtraData is null)
         {
-            writer.WriteVarInt(0);
+            // Bedrock rejects / misparses creative descriptors with a zero-length user-data blob.
+            writer.WriteVarInt(EmptyExtras.Length);
+            writer.WriteBytes(EmptyExtras);
             return;
         }
 

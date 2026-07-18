@@ -26,7 +26,7 @@ public sealed class CuratedCatalogTests
     }
 
     [Fact]
-    public void CreativeContent_ContainsAllFiveBlocks()
+    public void CreativeContent_ContainsOnlyCreativeBlocks()
     {
         byte[] payload = CuratedItemCatalog.GetCreativeContentPayload();
 
@@ -38,10 +38,11 @@ public sealed class CuratedCatalogTests
         Assert.Single(packet.Groups);
         Assert.Equal("itemGroup.name.grass", packet.Groups[0].Name);
         Assert.Equal(2, packet.Groups[0].Category);
-        Assert.Equal(5, packet.Items.Count);
-        Assert.All(packet.Items, item => Assert.Equal(0, item.GroupIndex));
-        Assert.Contains(packet.Items, item => item.ItemInstance.NetworkId == -161);
-        Assert.Contains(packet.Items, item => item.ItemInstance.NetworkId == 217);
+        Assert.Equal(3, packet.Items.Count);
+        Assert.All(packet.Items, item => Assert.Equal(0u, item.GroupIndex));
+        Assert.DoesNotContain(packet.Items, item => item.ItemInstance.NetworkId == -161);
+        Assert.DoesNotContain(packet.Items, item => item.ItemInstance.NetworkId == 217);
+        Assert.Equal([1u, 2u, 3u], packet.Items.Select(item => item.CreativeItemNetworkId));
     }
 
     [Fact]
@@ -54,12 +55,10 @@ public sealed class CuratedCatalogTests
         CreativeContentPacket packet = new();
         packet.Deserialize(reader);
 
-        Assert.Equal(5, packet.Items.Count);
+        Assert.Equal(3, packet.Items.Count);
         Assert.Equal(2, packet.Items[0].ItemInstance.NetworkId);
         Assert.Equal(3, packet.Items[1].ItemInstance.NetworkId);
         Assert.Equal(7, packet.Items[2].ItemInstance.NetworkId);
-        Assert.Equal(-161, packet.Items[3].ItemInstance.NetworkId);
-        Assert.Equal(217, packet.Items[4].ItemInstance.NetworkId);
         Assert.Equal(BedrockBlockStates.GrassBlock, packet.Items[0].ItemInstance.NetworkBlockId);
         Assert.Equal(BedrockBlockStates.Dirt, packet.Items[1].ItemInstance.NetworkBlockId);
         Assert.Equal(BedrockBlockStates.Bedrock, packet.Items[2].ItemInstance.NetworkBlockId);
