@@ -3,14 +3,14 @@ namespace Orion.Events;
 using Orion.Protocol.Enums;
 using Entity = Entity.Entity;
 
-public sealed class EntityHurtSignal : EntitySignal
+public sealed class EntityHurtSignal : EntitySignal, ICancellable
 {
     public override ServerEvent Event => ServerEvent.EntityHurt;
     public global::Orion.Entity.Entity Entity { get; }
     public float Amount;
     public ActorDamageCause? Cause { get; }
     public global::Orion.Entity.Entity? Damager { get; }
-    public bool Cancelled;
+    public bool Cancelled { get; private set; }
 
     public EntityHurtSignal(Entity entity, float amount, ActorDamageCause? cause, Entity? damager)
     {
@@ -29,10 +29,6 @@ public sealed class EntityHurtSignal : EntitySignal
     {
         Cancelled = true;
     }
+
+    internal void SetCancelled(bool cancelled) => Cancelled = cancelled;
 }
-
-
-
-
-
-

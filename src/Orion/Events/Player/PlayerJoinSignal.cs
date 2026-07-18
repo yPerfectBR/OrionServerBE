@@ -2,10 +2,10 @@ namespace Orion.Events;
 
 using Orion.Player;
 
-public sealed class PlayerJoinSignal : PlayerSignal
+public sealed class PlayerJoinSignal : PlayerSignal, ICancellable
 {
     public override ServerEvent Event => ServerEvent.PlayerJoin;
-    public bool Cancelled;
+    public bool Cancelled { get; private set; }
 
     public PlayerJoinSignal(Player player) : base(player)
     {
@@ -20,10 +20,6 @@ public sealed class PlayerJoinSignal : PlayerSignal
     {
         Cancelled = true;
     }
+
+    internal void SetCancelled(bool cancelled) => Cancelled = cancelled;
 }
-
-
-
-
-
-

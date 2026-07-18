@@ -3,11 +3,17 @@ namespace Orion.Events;
 using Orion.Entity;
 using Orion.Entity.Traits.Types;
 
-public sealed class EntityDieSignal : EntitySignal
+public sealed class EntityDieSignal : EntitySignal, ICancellable
 {
     public override ServerEvent Event => ServerEvent.EntityDie;
     public Entity Entity { get; }
     public EntityDeathOptions Options;
+
+    public bool Cancelled
+    {
+        get => Options.Cancel;
+        private set => Options = Options with { Cancel = value };
+    }
 
     public EntityDieSignal(Entity entity, EntityDeathOptions options)
     {
@@ -17,17 +23,13 @@ public sealed class EntityDieSignal : EntitySignal
 
     public bool Emit()
     {
-        return !Options.Cancel;
+        return !Cancelled;
     }
 
     public void Cancel()
     {
-        Options = Options with { Cancel = true };
+        Cancelled = true;
     }
+
+    internal void SetCancelled(bool cancelled) => Cancelled = cancelled;
 }
-
-
-
-
-
-
