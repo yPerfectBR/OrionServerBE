@@ -51,10 +51,11 @@ public sealed class ActorMetadataItem : DataType
         switch (Type)
         {
             case ActorDataType.Byte:
-                writer.WriteInt8(Convert.ToSByte(Value));
+                // Unchecked: Convert.ToSByte throws OverflowException for byte 128..255 / out-of-range ints.
+                writer.WriteInt8(unchecked((sbyte)Convert.ToInt32(Value)));
                 break;
             case ActorDataType.Short:
-                writer.WriteInt16(Convert.ToInt16(Value), true);
+                writer.WriteInt16(unchecked((short)Convert.ToInt32(Value)), true);
                 break;
             case ActorDataType.Int:
                 writer.WriteZigZag(Convert.ToInt32(Value));
