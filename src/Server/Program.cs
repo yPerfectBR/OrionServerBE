@@ -24,7 +24,14 @@ try
         WorldLogger.Warn(LogCategory.System, warning);
     }
 
+    Orion.Plugins.PluginHost.LoadConfigured(OrionInfo.Config);
+    Orion.Item.ItemRegistry.EnsureLoaded();
+    Orion.Plugins.PluginHost.NotifyCatalogLoaded();
+
     using ServerHost host = ServerHost.Bootstrap(OrionInfo.Config, worldsRoot);
+    Orion.Plugins.PluginHost.NotifyWorldBootstrapped();
+    Orion.Plugins.PluginHost.EnableAll(host.Server);
+    Orion.Plugins.PluginHost.InitializeWorld();
     OrionInfo.ActivePlayerCountProvider = () => host.Server.Sessions.Count;
 
     NetworkServer network = new();
@@ -84,6 +91,7 @@ try
     }
 
     WorldLogger.Info(LogCategory.System, "Shutting down...");
+    Orion.Plugins.PluginHost.DisableAll();
     network.Stop();
     host.Scheduling.Stop();
 
