@@ -145,11 +145,14 @@ public static class ItemStackRequest
         Dictionary<string, StackResponseContainerInfo> changed)
     {
         if (_pendingCreativeItem is not null
-            && action.Source.Container.ContainerId is (byte)ContainerName.CreativeOutput
-                or (byte)ContainerId.CreatedOutput)
+            && IsCreatedOutputContainer(action.Source.Container.ContainerId))
         {
             if (!TryResolveSlot(player, action.Destination, out Container creativeDestination, out int creativeSlot))
             {
+                CreativeInventoryLog.LogItemStackAction(
+                    player.Username,
+                    "creative-transfer-dst-miss",
+                    Slot(action.Destination));
                 return ItemStackResponseStatus.InvalidSourceContainer;
             }
 
@@ -333,6 +336,9 @@ public static class ItemStackRequest
         _pendingCreativeStackId = item.NetworkStackId;
         return ItemStackResponseStatus.Ok;
     }
+
+    private static bool IsCreatedOutputContainer(byte containerId) =>
+        containerId is (byte)ContainerName.CreativeOutput or (byte)ContainerId.CreatedOutput;
 
     private static bool TryResolveSlot(
         global::Orion.Player.Player player,
