@@ -84,7 +84,9 @@ Sem isso o cliente pode interpretar o payload errado e falhar ao renderizar terr
 ## Handoff entre áreas
 
 - Mesmo worker: `AfterRegionHandoff()` — refresca publisher e presença, sem unload forçado.
-- Cross-worker: `ForceReloadViewDistance()` — reseta scan e reenvia a view (via `Player.ResyncAfterRegionHandoff(crossWorker: true)`).
+- Cross-worker: `ForceReloadViewDistance()` — unload forçado, limpa `_loadedChunks` e arma o hold de teleport antes de reenviar a view (via `Player.ResyncAfterRegionHandoff(crossWorker: true)`).
+
+Após `/tp`, o streaming também espera o hold de teleporte (`_awaitingTeleportChunkSync`) para não marcar chunks do destino como `loaded` antes do cliente aplicar o `MovePlayer`. Detalhes em [teleport.md](teleport.md).
 
 ## Debug
 
