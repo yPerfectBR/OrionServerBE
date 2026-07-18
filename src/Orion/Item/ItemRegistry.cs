@@ -1,9 +1,7 @@
 using System.Reflection;
-using System.Runtime.CompilerServices;
-using System.Text.Json;
 using Orion.Item.Traits;
-using Orion.Protocol.Io;
 using Orion.Protocol.Nbt;
+using Orion.Protocol.Registry;
 using Orion.Config;
 using Log = Orion.Logger.Logger;
 
@@ -14,18 +12,8 @@ public static class ItemRegistry
     private static readonly object LoadLock = new();
     private static bool _loaded;
 
-    private static readonly JsonSerializerOptions JsonOptions = new()
-    {
-        PropertyNameCaseInsensitive = true
-    };
-
-    private static readonly TagOptions NetworkNbtOptions = new(Name: true, Type: true, VarInt: true);
-
     private static Dictionary<uint, ItemStack>? _creativeItems;
     private static HashSet<string> _giveableIdentifiers = new(StringComparer.Ordinal);
-
-    [ModuleInitializer]
-    public static void Initialize() => EnsureLoaded();
 
     public static void EnsureLoaded()
     {
@@ -42,28 +30,66 @@ public static class ItemRegistry
             }
 
             Block.BlockRegistry.EnsureLoaded();
-            string path = Path.Combine(ResolveDataRoot(), "items.json");
-            List<ItemRegistryDto>? items = JsonSerializer.Deserialize<List<ItemRegistryDto>>(File.ReadAllBytes(path), JsonOptions) ?? [];
+            CuratedItemCatalog.EnsureInitialized();
+
             _giveableIdentifiers = new HashSet<string>(StringComparer.Ordinal);
-            foreach (ItemRegistryDto dto in items)
+            IReadOnlyCollection<string> allowlist = CuratedItemCatalog.GetAllowlistedIdentifiers();
+            bool restrictGive = allowlist.Count > 0;
+
+            foreach (string identifier in CuratedItemCatalog.GetRegisteredIdentifiers())
             {
-                _giveableIdentifiers.Add(dto.Identifier);
-                CompoundTag properties = ReadPropertiesNbt(dto.PropertiesBase64);
+                if (!CuratedItemCatalog.TryGetByIdentifier(identifier, out CuratedItem curated))
+                {
+                    continue;
+                }
+
+                if (!restrictGive || allowlist.Contains(identifier))
+                {
+                    _giveableIdentifiers.Add(identifier);
+                }
+
+                if (ItemType.Get(identifier) is not null)
+                {
+                    continue;
+                }
+
+                // Only materialize ItemType for allowlisted / fallback curated entries to keep
+                // server item space aligned with Orion policy (vanilla palette stays on the wire).
+                if (restrictGive && !allowlist.Contains(identifier))
+                {
+                    continue;
+                }
+
                 _ = new ItemType(
-                    dto.Identifier,
-                    dto.NetworkId,
-                    maxStackSize: dto.MaxStackSize > 0 ? dto.MaxStackSize : 64,
+                    curated.Identifier,
+                    curated.NetworkId,
+                    maxStackSize: ResolveMaxStack(curated),
                     tags: null,
-                    isComponentBased: dto.ComponentBased,
-                    version: dto.ItemVersion,
-                    properties: properties);
+                    isComponentBased: curated.ComponentBased,
+                    version: curated.ItemVersion,
+                    properties: curated.PropertiesNbt);
             }
 
             _ = ItemType.GetOrAir("minecraft:air");
-            LoadCreativeItems(items);
+            LoadCreativeItems();
             ItemTraitRegistry.RegisterFromAssembly(Assembly.GetExecutingAssembly());
+            WarnIfCreativeTabsSparse();
             _loaded = true;
         }
+    }
+
+    static void WarnIfCreativeTabsSparse()
+    {
+        if (!CuratedItemCatalog.NonNatureCreativeTabsEmpty)
+        {
+            return;
+        }
+
+        Log.Warn(
+            LogCategory.Orion,
+            "Creative inventory: Construction / Equipment / Items have no items. " +
+            "Bedrock may show an empty creative menu. See docs/pt_br/first-run.md or docs/en_us/first-run.md " +
+            "(enable Plugins and build plugins/MinimalInventoryItems, or call CuratedItemCatalog.RegisterCreativeTabEntries).");
     }
 
     public static ItemStack? TryGetCreativeItem(uint creativeItemNetworkId)
@@ -136,76 +162,41 @@ public static class ItemRegistry
         return _giveableIdentifiers.Contains(identifier);
     }
 
-    static void LoadCreativeItems(List<ItemRegistryDto> items)
+    static void LoadCreativeItems()
     {
         Dictionary<uint, ItemStack> creative = [];
-        uint creativeItemNetworkId = 1;
-        foreach (ItemRegistryDto dto in items)
+        IReadOnlyList<CuratedItem> menu = CuratedItemCatalog.GetCreativeMenuItems();
+        for (int i = 0; i < menu.Count; i++)
         {
-            if (!dto.Creative)
+            CuratedItem curated = menu[i];
+            ItemType? type = ItemType.GetByNetwork(curated.NetworkId) ?? ItemType.Get(curated.Identifier);
+            if (type is null)
             {
                 continue;
             }
 
-            ItemType? type = ItemType.GetByNetwork(dto.NetworkId);
-            if (type is not null)
-            {
-                creative[creativeItemNetworkId++] = new ItemStack(type, checked((ushort)type.MaxStackSize));
-            }
+            creative[checked((uint)(i + 1))] = new ItemStack(type, checked((ushort)type.MaxStackSize));
         }
 
         _creativeItems = creative;
         Log.Info(
             LogCategory.Orion,
-            "[CreativeInv] ItemRegistry loaded creativeCount={0}",
-            creative.Count);
+            "[CreativeInv] ItemRegistry loaded creativeCount={0} source={1} registered={2}",
+            creative.Count,
+            CuratedItemCatalog.Source,
+            CuratedItemCatalog.GetRegisteredIdentifiers().Count);
     }
 
-    private static string ResolveDataRoot()
+    static int ResolveMaxStack(CuratedItem curated)
     {
-        string[] candidates =
-        [
-            Path.Combine(AppContext.BaseDirectory, "Protocol", "Data", "orion"),
-            Path.Combine(AppContext.BaseDirectory, "Data", "orion"),
-            Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..", "src", "Protocol", "Data", "orion"))
-        ];
-        foreach (string path in candidates)
+        if (curated.PropertiesNbt.Get<CompoundTag>("components") is CompoundTag components
+            && components.Get<CompoundTag>("item_properties") is CompoundTag itemProperties
+            && itemProperties.Get<IntTag>("max_stack_size") is IntTag maxStack
+            && maxStack.Value > 0)
         {
-            if (File.Exists(Path.Combine(path, "items.json")))
-            {
-                return path;
-            }
+            return maxStack.Value;
         }
 
-        throw new FileNotFoundException("Could not locate Protocol/Data/orion/items.json");
-    }
-
-    private sealed class ItemRegistryDto
-    {
-        public int NetworkId { get; set; }
-        public string Identifier { get; set; } = "";
-        public bool ComponentBased { get; set; }
-        public int ItemVersion { get; set; }
-        public bool Creative { get; set; } = true;
-        public int MaxStackSize { get; set; }
-        public string PropertiesBase64 { get; set; } = "CgAAAA==";
-    }
-
-    static CompoundTag ReadPropertiesNbt(string propertiesBase64)
-    {
-        if (string.IsNullOrWhiteSpace(propertiesBase64))
-        {
-            return new CompoundTag();
-        }
-
-        byte[] payload = Convert.FromBase64String(propertiesBase64);
-        if (payload.Length == 0)
-        {
-            return new CompoundTag();
-        }
-
-        int offset = 0;
-        Basalt.Binary.BinaryReader reader = new(payload, ref offset);
-        return NBT.ReadTag<CompoundTag>(reader, NetworkNbtOptions);
+        return 64;
     }
 }

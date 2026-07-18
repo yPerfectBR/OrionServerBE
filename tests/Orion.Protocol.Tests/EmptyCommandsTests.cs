@@ -2,6 +2,7 @@ using Orion.Protocol.Packets;
 
 namespace Orion.Protocol.Tests;
 
+[Collection(nameof(CuratedCatalogCollection))]
 public sealed class EmptyCommandsTests
 {
     [Fact]

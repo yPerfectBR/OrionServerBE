@@ -3,6 +3,7 @@ using Orion.Commands.List.Operator;
 using Orion.Item;
 using Orion.Protocol.Enums;
 using Orion.Protocol.Packets;
+using Orion.Protocol.Registry;
 using ProtocolCommand = Orion.Protocol.Types.Command;
 using ProtocolCommandParameter = Orion.Protocol.Types.CommandParameter;
 
@@ -55,6 +56,7 @@ public sealed class GiveCommandTests
         Assert.Equal(5, packet.DynamicEnums[0].Values.Count);
         Assert.Contains("grass_block", packet.DynamicEnums[0].Values);
         Assert.Contains("dirt", packet.DynamicEnums[0].Values);
+        Assert.DoesNotContain("cobblestone", packet.DynamicEnums[0].Values);
         Assert.DoesNotContain("diamond", packet.DynamicEnums[0].Values);
         Assert.DoesNotContain(packet.Enums, commandEnum => commandEnum.Type == "Item");
     }
@@ -64,11 +66,16 @@ public sealed class GiveCommandTests
     {
         ItemRegistry.EnsureLoaded();
 
-        Assert.NotNull(ItemType.GetCreativeItem(0));
+        // CreativeItemNetworkId is 1-based (protocol): grass, dirt, bedrock (Nature only by default).
         Assert.NotNull(ItemType.GetCreativeItem(1));
         Assert.NotNull(ItemType.GetCreativeItem(2));
-        Assert.Null(ItemType.GetCreativeItem(3));
+        Assert.NotNull(ItemType.GetCreativeItem(3));
+        Assert.Null(ItemType.GetCreativeItem(0));
         Assert.Null(ItemType.GetCreativeItem(4));
         Assert.Null(ItemType.GetCreativeItem(999));
+
+        Assert.Equal(
+            ["minecraft:grass_block", "minecraft:dirt", "minecraft:bedrock"],
+            CuratedItemCatalog.GetCreativeMenuItems().Select(i => i.Identifier).ToArray());
     }
 }
