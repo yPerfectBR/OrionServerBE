@@ -11,4 +11,4 @@ O OrionServer está atualmente em fase instável, com mudanças frequentes de ar
 
 - Geração natural de mundo é desejada no futuro, mas não é prioridade de curto prazo.
 - Paridade vanilla completa não é objetivo principal.
-- APIs e suporte oficial de plugins ainda estão em evolução e devem ser tratados como in progress.
+- APIs e suporte oficial de plugins ainda estão em evolução e devem ser tratados como in progress. A arquitetura está especificada em [plugins/README.md](plugins/README.md) (`spec`); o runtime hoje é um stub opt-in.
