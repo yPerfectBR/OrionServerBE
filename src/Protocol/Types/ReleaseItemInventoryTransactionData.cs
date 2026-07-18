@@ -21,7 +21,7 @@ public sealed class ReleaseItemInventoryTransactionData : IInventoryTransactionD
     /// <summary>
     /// Item held by the player.
     /// </summary>
-    public ItemInstance HeldItem = new();
+    public NetworkItemStackDescriptor HeldItem = new();
 
     /// <summary>
     /// Head position at release time.
