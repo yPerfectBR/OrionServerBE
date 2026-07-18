@@ -3,7 +3,6 @@ namespace Orion.Commands.List.Operator;
 using Orion.Protocol.Enums;
 using Orion.Commands;
 using Orion.Player;
-using Orion.Scheduling;
 using Vec3f = Orion.Protocol.Types.Vec3f;
 using Orion.World;
 using Player = global::Orion.Player.Player;
@@ -438,24 +437,6 @@ public class TpCommand : Command
                     {
                         messages.Add($"§7Transferindo §a{player.Username} §7para §a{sameWorkerLabel}§7.");
                         player.SendMessage($"§7Transferindo para §a{sameWorkerLabel}§7.");
-                    }
-
-                    continue;
-                }
-
-                if (dimension.UsesAreaThreading()
-                    && state.Server.AreaScheduler.IsActive
-                    && AreaBorderTransfer.TryAfterTeleport(state.Server, player, resolvedTransform.Position))
-                {
-                    successCount++;
-                    if (ReferenceEquals(executor, player))
-                    {
-                        messages.Add($"§7Teleported you to §a{resolvedTransform.Position.X:0.##} {resolvedTransform.Position.Y:0.##} {resolvedTransform.Position.Z:0.##}§7.");
-                    }
-                    else
-                    {
-                        messages.Add($"§7Teleported §a{player.Username} §7to §a{resolvedTransform.Position.X:0.##} {resolvedTransform.Position.Y:0.##} {resolvedTransform.Position.Z:0.##}§7.");
-                        player.SendMessage($"§7You were teleported to §a{resolvedTransform.Position.X:0.##} {resolvedTransform.Position.Y:0.##} {resolvedTransform.Position.Z:0.##}§7.");
                     }
 
                     continue;
