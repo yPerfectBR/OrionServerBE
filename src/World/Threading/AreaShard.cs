@@ -4,7 +4,7 @@ using ChunkColumn = Orion.World.Chunk.Chunk;
 namespace Orion.World.Threading;
 
 /// <summary>
-/// Static spatial shard owning chunks (and later entities) for one threading area.
+/// Static spatial shard owning chunks and entities for one threading area.
 /// Index 0 is the default shard for coordinates outside configured areas.
 /// </summary>
 public sealed class AreaShard
