@@ -1,4 +1,3 @@
-using Orion.World.Coordinates;
 namespace Orion.Player.Traits;
 
 using Orion.Protocol.Enums;
@@ -44,10 +43,27 @@ public sealed class PlayerChunkRenderingTrait : PlayerTrait, ISessionTickableTra
     private bool _started;
 
     public int ViewDistance { get; private set; } = 16;
-    public int LoadedChunkCount => _loadedChunks.Count;
 
     public PlayerChunkRenderingTrait(Entity entity) : base(entity)
     {
+    }
+
+    /// <summary>
+    /// Compact one-line status for the debug tip HUD.
+    /// </summary>
+    public string FormatDebugHudLine()
+    {
+        int expected = ((ViewDistance * 2) + 1);
+        expected *= expected;
+        lock (_lock)
+        {
+            return
+                $"view vd={ViewDistance} pub={ChunkViewMath.PublisherRadiusBlocks(ViewDistance)}b " +
+                $"chunk=({_currentChunkX},{_currentChunkZ}) " +
+                $"loaded={_loadedChunks.Count}/{expected} " +
+                $"req={_requestedChunks.Count} ready={_readyChunks.Count} " +
+                $"scan={_scanRadius}/{ViewDistance} started={_started}";
+        }
     }
 
     public void SetViewDistance(int distance)
@@ -77,7 +93,7 @@ public sealed class PlayerChunkRenderingTrait : PlayerTrait, ISessionTickableTra
 
             UpdateTrackedChunkPosition();
             UnloadChunks(Player.Dimension, clearClient: true);
-            SendPublisherUpdate(includeSavedChunks: true);
+            SendPublisherUpdate();
             SyncRegionPresence();
         }
     }
@@ -94,7 +110,7 @@ public sealed class PlayerChunkRenderingTrait : PlayerTrait, ISessionTickableTra
                 UpdateSimulationChunks(Player.Dimension);
             }
             ResetScan();
-            SendPublisherUpdate(includeSavedChunks: true);
+            SendPublisherUpdate();
             SyncRegionPresence();
         }
     }
@@ -128,13 +144,14 @@ public sealed class PlayerChunkRenderingTrait : PlayerTrait, ISessionTickableTra
             UpdateTrackedChunkPosition();
             UnloadChunks(Player.Dimension, clearClient: true);
             UpdateSimulationChunks(Player.Dimension);
-            SendPublisherUpdate(includeSavedChunks: true);
+            SendPublisherUpdate();
             SyncRegionPresence(force: true);
         }
     }
 
     /// <summary>
-    /// Updates publisher after cross-region handoff without clearing loaded client chunks.
+    /// Updates publisher after same-worker region handoff without clearing loaded client chunks.
+    /// Cross-worker handoffs should call <see cref="ForceReloadViewDistance"/> instead.
     /// </summary>
     public void AfterRegionHandoff()
     {
@@ -148,11 +165,7 @@ public sealed class PlayerChunkRenderingTrait : PlayerTrait, ISessionTickableTra
             Dimension dimension = Player.Dimension;
 
             UpdateTrackedChunkPosition();
-            ChunkCoord chunkCoord = ChunkCoord.FromBlock(Player.Position.X, Player.Position.Z);
-            if (Math.Abs(chunkCoord.X - _publisherChunkX) > 2 || Math.Abs(chunkCoord.Z - _publisherChunkZ) > 2)
-            {
-                SendPublisherUpdate(includeSavedChunks: false);
-            }
+            SendPublisherUpdate();
 
             _lastPresenceArea = null;
             SyncRegionPresence(force: true);
@@ -272,21 +285,19 @@ public sealed class PlayerChunkRenderingTrait : PlayerTrait, ISessionTickableTra
             int chunkX = chunkCoord.X;
             int chunkZ = chunkCoord.Z;
 
-            if (!UpdateChunkPosition(chunkX, chunkZ))
+            bool chunkChanged = UpdateChunkPosition(chunkX, chunkZ);
+            if (chunkChanged)
             {
-                return;
+                UpdateSpatialPlayerIndex(chunkCoord);
+                SyncRegionPresence();
+                UnloadChunks(Player.Dimension, clearClient: true);
+                UpdateSimulationChunks(Player.Dimension);
             }
 
-            UpdateSpatialPlayerIndex(chunkCoord);
-
-            SyncRegionPresence();
-
-            UnloadChunks(Player.Dimension, clearClient: true);
-            UpdateSimulationChunks(Player.Dimension);
-
-            if (Math.Abs(chunkX - _publisherChunkX) > 2 || Math.Abs(chunkZ - _publisherChunkZ) > 2)
+            // Publisher must track every chunk change (Geyser updateChunkPosition).
+            if (chunkX != _publisherChunkX || chunkZ != _publisherChunkZ)
             {
-                SendPublisherUpdate(includeSavedChunks: true);
+                SendPublisherUpdate();
             }
         }
     }
@@ -344,6 +355,7 @@ public sealed class PlayerChunkRenderingTrait : PlayerTrait, ISessionTickableTra
             dimension.AddChunkViewer(x, z);
             SendChunkChestVisualUpdates(dimension, x, z);
         }
+
     }
 
     private void RequestChunks(Dimension dimension)
@@ -617,42 +629,26 @@ public sealed class PlayerChunkRenderingTrait : PlayerTrait, ISessionTickableTra
         }
     }
 
-    private void SendPublisherUpdate(bool includeSavedChunks)
+    private void SendPublisherUpdate()
     {
-        Player.Send(CreateChunkPublisherPacket(includeSavedChunks));
+        NetworkChunkPublisherUpdatePacket packet = CreateChunkPublisherPacket();
+        Player.Send(packet);
         _publisherChunkX = _currentChunkX;
         _publisherChunkZ = _currentChunkZ;
     }
 
-    private NetworkChunkPublisherUpdatePacket CreateChunkPublisherPacket(bool includeSavedChunks)
+    private NetworkChunkPublisherUpdatePacket CreateChunkPublisherPacket()
     {
-        NetworkChunkPublisherUpdatePacket packet = new()
+        // SavedChunks is only for ClientSideGeneration (docs). Orion has CSG off — always empty.
+        // Radius matches Geyser: squareToCircle(viewDistance) << 4.
+        return new NetworkChunkPublisherUpdatePacket
         {
             CoordinateX = (int)MathF.Floor(Player.Position.X),
             CoordinateY = (int)MathF.Floor(Player.Position.Y),
             CoordinateZ = (int)MathF.Floor(Player.Position.Z),
-            Radius = (uint)(ViewDistance << 4),
+            Radius = ChunkViewMath.PublisherRadiusBlocks(ViewDistance),
             SavedChunks = []
         };
-
-        if (!includeSavedChunks)
-        {
-            return packet;
-        }
-
-        foreach (long hash in _loadedChunks)
-        {
-            ChunkCoord chunkCoord = ChunkCoord.FromHash(hash);
-            int x = chunkCoord.X;
-            int z = chunkCoord.Z;
-
-            if (ChunkInRange(x, z))
-            {
-                packet.SavedChunks.Add((x, z));
-            }
-        }
-
-        return packet;
     }
 
     private bool ChunkInRange(int x, int z)
@@ -795,8 +791,19 @@ public sealed class PlayerChunkRenderingTrait : PlayerTrait, ISessionTickableTra
             int chunkX = playerChunk.X;
             int chunkZ = playerChunk.Z;
 
-            UpdateChunkPosition(chunkX, chunkZ);
+            bool chunkChanged = UpdateChunkPosition(chunkX, chunkZ);
             UpdateSpatialPlayerIndex(playerChunk);
+            if (chunkChanged)
+            {
+                SyncRegionPresence();
+            }
+
+            // Publisher before LevelChunks when the view center moves (Geyser order).
+            if (chunkX != _publisherChunkX || chunkZ != _publisherChunkZ)
+            {
+                SendPublisherUpdate();
+            }
+
             UnloadChunks(dimension, clearClient: true);
             UpdateSimulationChunks(dimension);
             SendChunks(dimension);
