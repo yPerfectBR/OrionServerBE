@@ -9,7 +9,8 @@ using BinaryReader = Basalt.Binary.BinaryReader;
 namespace Orion.Protocol.Registry;
 
 /// <summary>
-/// Minimal curated item registry (5 vanilla blocks). Creative menu uses items flagged creative in items.json.
+/// Minimal curated item registry (arbitrary blocks only). Creative menu is built from
+/// items.json entries with creative != false, using 1-based CreativeItemNetworkId.
 /// </summary>
 public static class CuratedItemCatalog
 {
@@ -101,9 +102,10 @@ public static class CuratedItemCatalog
 
     public static IReadOnlyCollection<string> GetRegisteredIdentifiers() => ItemsByIdentifier.Keys;
 
-    public static bool TryGetCreativeMenuItem(int index, out CuratedItem item)
+    public static bool TryGetCreativeMenuItem(int creativeItemNetworkId, out CuratedItem item)
     {
         EnsureInitialized();
+        int index = creativeItemNetworkId - 1;
         if (index < 0 || index >= CreativeMenuItems.Count)
         {
             item = default;
@@ -166,43 +168,31 @@ public static class CuratedItemCatalog
             });
         }
 
-        int creativeIndex = 0;
-        foreach (CreativeContentDto contentEntry in contentOverrides)
+        uint creativeItemNetworkId = 1;
+        foreach (CuratedItemDto dto in items)
         {
-            CuratedItem item = ResolveCreativeContentItem(contentEntry);
+            if (!dto.Creative || !ItemsByIdentifier.TryGetValue(dto.Identifier, out CuratedItem item))
+            {
+                continue;
+            }
+
+            CreativeContentDto? contentEntry = contentOverrides.FirstOrDefault(entry =>
+                string.Equals(entry.Type, dto.Identifier, StringComparison.Ordinal) ||
+                entry.NetworkId == dto.NetworkId);
 
             packet.Items.Add(new CreativeItem
             {
-                ItemIndex = creativeIndex,
-                GroupIndex = contentEntry.GroupIndex,
-                ItemInstance = ReadCreativeDescriptor(contentEntry, item)
+                CreativeItemNetworkId = creativeItemNetworkId++,
+                GroupIndex = checked((uint)(contentEntry?.GroupIndex ?? 0)),
+                ItemInstance = contentEntry is null
+                    ? BuildCreativeDescriptor(item)
+                    : ReadCreativeDescriptor(contentEntry, item)
             });
 
             CreativeMenuItems.Add(item);
-            creativeIndex++;
         }
 
         return packet;
-    }
-
-    private static CuratedItem ResolveCreativeContentItem(CreativeContentDto entry)
-    {
-        if (!string.IsNullOrWhiteSpace(entry.Type))
-        {
-            if (!ItemsByIdentifier.TryGetValue(entry.Type, out CuratedItem byType))
-            {
-                throw new InvalidDataException($"Creative content type '{entry.Type}' is not registered.");
-            }
-
-            return byType;
-        }
-
-        if (entry.NetworkId != 0 && ItemsByNetworkId.TryGetValue(entry.NetworkId, out CuratedItem byNetwork))
-        {
-            return byNetwork;
-        }
-
-        throw new InvalidDataException("Creative content entry must specify type or networkId.");
     }
 
     private static CreativeItemInstanceDescriptor ReadCreativeDescriptor(CreativeContentDto entry, CuratedItem item)
@@ -244,22 +234,15 @@ public static class CuratedItemCatalog
 
     private static CreativeItemInstanceDescriptor BuildCreativeDescriptor(CuratedItem item)
     {
+        // ExtraData=null → CreativeItemInstanceDescriptor writes the 10-byte EmptyExtras blob (Basalt).
         return new CreativeItemInstanceDescriptor
         {
             NetworkId = item.NetworkId,
             StackSize = 1,
             Metadata = 0,
-            NetworkBlockId = item.IsBlock ? item.BlockStateHash : 0,
-            ExtraData = EmptyItemInstanceUserData
+            NetworkBlockId = item.IsBlock ? item.BlockStateHash : 0
         };
     }
-
-    /// <summary>
-    /// Bedrock expects a 10-byte empty user-data block (marker + empty canPlaceOn/canDestroy),
-    /// not a zero-length extras section.
-    /// </summary>
-    private static readonly ItemInstanceUserData EmptyItemInstanceUserData = new();
-
     private static CompoundTag ReadPropertiesNbt(string propertiesBase64)
     {
         if (string.IsNullOrWhiteSpace(propertiesBase64))
