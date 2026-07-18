@@ -31,11 +31,13 @@ public sealed class SuperFlatGenerator : Generator
     public override ChunkColumn Generate(DimensionType dimensionType, int x, int z)
     {
         ChunkColumn chunk = new(x, z, dimensionType);
+        const int plainsBiomeId = 1;
 
         for (int i = 0; i < _layers.Length; i++)
         {
             (int y, BlockPermutation permutation) = _layers[i];
             SubChunk subChunk = chunk.GetSubChunk(y >> 4);
+            subChunk.Biomes = new BiomeStorage([plainsBiomeId]);
             BlockStorage storage = subChunk.GetLayer(0);
             int by = y & 0xF;
             int networkId = permutation.NetworkId;

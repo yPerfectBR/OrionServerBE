@@ -51,7 +51,8 @@ public sealed class BiomeStorage
     {
         int bitsPerBiome = ResolveBitsPerValue(storage.Palette.Count, true);
 
-        writer.WriteUInt8((byte)(bitsPerBiome << 1));
+        // Network biomes use the same non-persistence flag bit as block palettes (PMMP).
+        writer.WriteUInt8((byte)((bitsPerBiome << 1) | (disk ? 0 : 1)));
 
         if (bitsPerBiome == 0)
         {
