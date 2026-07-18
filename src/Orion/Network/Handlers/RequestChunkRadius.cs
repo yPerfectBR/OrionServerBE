@@ -4,6 +4,7 @@ using Orion;
 using Orion.Player.Traits;
 using Orion.Protocol.Packets;
 using Orion.RakNet;
+using Orion.World.Coordinates;
 
 
 public static class RequestChunkRadius
@@ -16,16 +17,22 @@ public static class RequestChunkRadius
         packet = (RequestChunkRadiusPacket)Protocol.Io.Packet.Deserialize(reader);
 
         int requestedRadius = packet.ChunkRadius;
-        int maxViewDistance = Math.Clamp(server.Properties.MaxViewDistance, 4, 120);
-        int radius = Math.Clamp(requestedRadius, 4, maxViewDistance);
-        // UpdateChunkRadiusPacket response = new()
-        // {
-        //     ChunkRadius = radius
-        // };  
+        int maxViewDistance = Math.Clamp(server.Properties.MaxViewDistance, 4, ChunkViewMath.MaxBedrockViewDistance);
+        int clientMax = packet.MaxChunkRadius > 0
+            ? packet.MaxChunkRadius
+            : ChunkViewMath.MaxBedrockViewDistance;
 
-        // THIS STUPID PACKET CRASHES MOBILE DEVICES!!!
-        /// PLEASE KEEP IT COMMENTED OUT!
-        // server.Network.SendPacket(connection, response);
+        // Cap the Chebyshev stream so SquareToCircle(stream) still fits in clientMax.
+        // Clamping only ChunkRadiusUpdated to clientMax (while streaming a larger square)
+        // makes the client cull the corners — void returns at high render distances.
+        int maxChebyshev = ChunkViewMath.MaxChebyshevForClientCircle(clientMax);
+        int radius = Math.Clamp(requestedRadius, 4, Math.Min(maxViewDistance, maxChebyshev));
+        int bedrockRadius = ChunkViewMath.SquareToCircle(radius);
+
+        server.Network.SendPacket(connection, new UpdateChunkRadiusPacket
+        {
+            ChunkRadius = bedrockRadius
+        });
 
         if (!SessionLookup.TryGetPlayer(server, connection, out global::Orion.Player.Player? player))
         {
@@ -41,13 +48,3 @@ public static class RequestChunkRadius
         chunkRendering.ApplyViewDistance(radius);
     }
 }
-
-
-
-
-
-
-
-
-
-
