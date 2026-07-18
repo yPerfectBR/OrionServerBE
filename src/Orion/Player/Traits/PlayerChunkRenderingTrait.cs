@@ -334,6 +334,33 @@ public sealed class PlayerChunkRenderingTrait : PlayerTrait, ISessionTickableTra
         }
     }
 
+    internal static void InvalidateVisibleEntity(
+        Dimension dimension,
+        ulong runtimeId,
+        global::Orion.Entity.Entity[]? except)
+    {
+        global::Orion.Server? server = dimension.World?.Server as global::Orion.Server;
+        if (server is null)
+        {
+            return;
+        }
+
+        foreach (PlayerSession session in server.Sessions.Values)
+        {
+            if (session.ActiveEntity is not Player observer || observer.Dimension != dimension)
+            {
+                continue;
+            }
+
+            if (except is not null && Array.IndexOf(except, observer) >= 0)
+            {
+                continue;
+            }
+
+            observer.GetTrait<PlayerChunkRenderingTrait>()?.InvalidateVisibleEntity(runtimeId);
+        }
+    }
+
     internal bool IsEntityVisible(ulong runtimeId)
     {
         lock (_lock)

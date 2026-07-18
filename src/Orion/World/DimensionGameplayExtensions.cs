@@ -135,15 +135,22 @@ public static class DimensionGameplayExtensions
         return true;
     }
 
-    public static Vec3f GetPacketPosition(DataPacket packet) => packet switch
+    /// <summary>
+    /// Position used for spatial broadcast filtering. Returns null for packets without a
+    /// meaningful world position so they are delivered to all players in the dimension
+    /// (Basalt behaviour) — critical for RemoveActor / TakeItemActor / AddItemActor.
+    /// </summary>
+    public static Vec3f? GetPacketPosition(DataPacket packet) => packet switch
     {
         MovePlayerPacket move => move.Position,
-        SetActorMotionPacket motion => motion.Velocity,
         MoveActorAbsolutePacket absolute => absolute.Position,
         MoveActorDeltaPacket delta => delta.Position,
+        AddItemActorPacket addItem => addItem.Position,
+        AddActorPacket addActor => addActor.Position,
+        AddPlayerPacket addPlayer => addPlayer.Position,
         LevelEventPacket levelEvent => levelEvent.Position,
         UpdateBlockPacket update => new Vec3f { X = update.Position.X, Y = update.Position.Y, Z = update.Position.Z },
-        _ => default
+        _ => null
     };
 
     static DimensionGameplayState GetState(Dimension dimension) =>
