@@ -35,8 +35,9 @@ public sealed record NetworkChunkPublisherUpdatePacket : DataPacket
 
     public override void Deserialize(BinaryReader reader)
     {
+        // Protocol >= 937: NetworkBlockPosition was replaced by BlockPos (ZigZag X/Y/Z).
         CoordinateX = reader.ReadZigZag();
-        CoordinateY = unchecked((int)reader.ReadVarUInt());
+        CoordinateY = reader.ReadZigZag();
         CoordinateZ = reader.ReadZigZag();
         Radius = reader.ReadVarUInt();
 
@@ -57,8 +58,9 @@ public sealed record NetworkChunkPublisherUpdatePacket : DataPacket
 
     public override void Serialize(BinaryWriter writer)
     {
+        // Protocol >= 937: NetworkBlockPosition was replaced by BlockPos (ZigZag X/Y/Z).
         writer.WriteZigZag(CoordinateX);
-        writer.WriteVarUInt(unchecked((uint)CoordinateY));
+        writer.WriteZigZag(CoordinateY);
         writer.WriteZigZag(CoordinateZ);
         writer.WriteVarUInt(Radius);
 
