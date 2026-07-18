@@ -5,3 +5,4 @@
 *.lscache
 .idea/
 worlds/
+config/
