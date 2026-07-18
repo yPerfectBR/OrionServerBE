@@ -5,6 +5,8 @@ using Basalt.Binary;
 using Orion.Config;
 using Orion.Events;
 using Orion.Network.Handlers;
+using Orion.PluginContracts.Network;
+using Orion.Plugins.Network;
 using Orion.Scheduling;
 using Orion.World.Coordinates;
 using Orion.Player;
@@ -160,6 +162,23 @@ public sealed class NetworkHandler
     {
         CreativeInventoryLog.TryLogClientPacket(_server, connection, packetId, packetBuffer);
 
+        PacketPipeline pipeline = _server.PacketPipeline;
+        int packetIdValue = (int)packetId;
+        if (pipeline.HasReceiveInterest(packetIdValue))
+        {
+            PacketReceiveContext receiveContext = new()
+            {
+                Connection = new PlayerConnectionAdapter(connection),
+                PacketId = packetIdValue,
+                Payload = packetBuffer.ToArray()
+            };
+
+            if (!pipeline.DispatchReceive(receiveContext))
+            {
+                return;
+            }
+        }
+
         try
         {
             switch (packetId)
@@ -249,12 +268,30 @@ public sealed class NetworkHandler
         CompressionMethod? compression = null,
         bool immediate = false)
     {
-        using BinaryStream packetBufferStream = BinaryStream.Rent(packetPayload.Length + 16);
-        using BinaryStream frameBufferStream = BinaryStream.Rent(packetPayload.Length + 32);
+        ReadOnlyMemory<byte> body = packetPayload.ToArray();
+        PacketPipeline pipeline = _server.PacketPipeline;
+        int packetIdValue = (int)packetId;
+        if (pipeline.HasSendInterest(packetIdValue))
+        {
+            PacketSendContext sendContext = new()
+            {
+                Connection = new PlayerConnectionAdapter(connection),
+                PacketId = packetIdValue,
+                Payload = body
+            };
+
+            if (!pipeline.DispatchSend(sendContext, out body))
+            {
+                return;
+            }
+        }
+
+        using BinaryStream packetBufferStream = BinaryStream.Rent(body.Length + 16);
+        using BinaryStream frameBufferStream = BinaryStream.Rent(body.Length + 32);
 
         BinaryWriter packetWriter = packetBufferStream;
         packetWriter.WriteVarInt((int)packetId);
-        packetWriter.WriteBytes(packetPayload);
+        packetWriter.WriteBytes(body.Span);
 
         ReadOnlySpan<byte> packetData = packetWriter.GetProcessedBytes();
 
@@ -270,22 +307,46 @@ public sealed class NetworkHandler
         using BinaryStream packetBufferStream = BinaryStream.Rent(MaxPacketSize);
         using BinaryStream frameBufferStream = BinaryStream.Rent(MaxPacketBatchSize);
         BinaryWriter frameWriter = frameBufferStream;
+        PacketPipeline pipeline = _server.PacketPipeline;
 
         foreach (DataPacket packet in packets)
         {
-            // if (packet.GetType().Name != "LevelChunkPacket")
-                // Info("Sending packet {0}", packet.GetType().Name);
-
             packetBufferStream.Offset = 0;
             BinaryWriter packetWriter = packetBufferStream;
             Protocol.Io.Packet.Serialize(packet, packetWriter);
 
             ReadOnlySpan<byte> packetData = packetWriter.GetProcessedBytes();
+            int packetIdValue = (int)Protocol.Io.PacketCodec.GetId(packet);
+
+            if (pipeline.HasSendInterest(packetIdValue))
+            {
+                // Full framed packet bytes (header + body) for hooks; replacement replaces entire packetData.
+                PacketSendContext sendContext = new()
+                {
+                    Connection = new PlayerConnectionAdapter(connection),
+                    PacketId = packetIdValue,
+                    Payload = packetData.ToArray()
+                };
+
+                if (!pipeline.DispatchSend(sendContext, out ReadOnlyMemory<byte> replaced))
+                {
+                    continue;
+                }
+
+                packetData = replaced.Span;
+            }
+
             frameWriter.WriteVarInt(packetData.Length);
             frameWriter.WriteBytes(packetData);
         }
 
-        SendFrame(connection, frameWriter.GetProcessedBytes(), compression, immediate);
+        ReadOnlySpan<byte> frame = frameWriter.GetProcessedBytes();
+        if (frame.Length == 0)
+        {
+            return;
+        }
+
+        SendFrame(connection, frame, compression, immediate);
     }
 
     private void SendFrame(NetworkConnection connection, ReadOnlySpan<byte> frame, CompressionMethod? compression, bool immediate = false)
