@@ -7,6 +7,7 @@ Welcome to the English documentation hub for OrionServer.
 - [Project Vision](project-vision.md)
 - [Architecture and Philosophy](architecture-philosophy.md)
 - [Chunk streaming (Bedrock)](chunk-streaming.md)
+- [Teleport (client ↔ server)](teleport.md)
 - [Project Status](project-status.md)
 - [PR Guidelines](contributing/pr-guidelines.md)
 - [Issue Guidelines](contributing/issue-guidelines.md)
