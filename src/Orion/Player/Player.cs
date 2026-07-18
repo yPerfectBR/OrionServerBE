@@ -467,12 +467,31 @@ public readonly string Username;
         bool changedDimension = previousDimension != targetDimension;
         bool changedDimensionType = previousDimension is not null && previousDimension.Type != targetDimension.Type;
 
-        Server? server = targetDimension.World?.Server as Server ?? previousDimension?.World?.Server as Server;
-        if (server is not null && !changedDimension && targetDimension.UsesAreaThreading()
-            && AreaBorderTransfer.TryAfterTeleport(server, this, position))
-        {
-            return;
-        }
+        int? sourceArea = previousDimension?.UsesAreaThreading() == true
+            ? previousDimension.ResolveAreaIndex(previousPosition.X, previousPosition.Z)
+            : null;
+        int? targetArea = targetDimension.UsesAreaThreading()
+            ? targetDimension.ResolveAreaIndex(position.X, position.Z)
+            : null;
+
+        Info(
+            LogCategory.Orion,
+            "[Teleport] begin player={0} from=({1:0.##},{2:0.##},{3:0.##}) to=({4:0.##},{5:0.##},{6:0.##}) " +
+            "dimChange={7} dimTypeChange={8} forceDim={9} area={10}->{11} transferState={12} tick={13}",
+            Username,
+            previousPosition.X,
+            previousPosition.Y,
+            previousPosition.Z,
+            position.X,
+            position.Y,
+            position.Z,
+            changedDimension,
+            changedDimensionType,
+            forceDimensionChange,
+            sourceArea?.ToString() ?? "-",
+            targetArea?.ToString() ?? "-",
+            Session?.TransferState.ToString() ?? "no-session",
+            targetDimension.World is Tickable t0 ? t0.TickValue : 0UL);
 
         Position = position;
         OnTeleport(new EntityTeleportOptions(previousPosition, position));
@@ -489,10 +508,12 @@ public readonly string Username;
             targetDimension.AddEntity(this);
         }
 
-        ulong tick = targetDimension.World is Tickable tickable ? tickable.TickValue : 0;
+        ulong worldTick = targetDimension.World is Tickable tickable ? tickable.TickValue : 0;
+        ulong inputTick = PlayerAuthInput.GetLastInputTick(RuntimeId);
 
         if (changedDimensionType || forceDimensionChange)
         {
+            Info(LogCategory.Orion, "[Teleport] player={0} send=ChangeDimension worldTick={1} inputTick={2}", Username, worldTick, inputTick);
             Send(new ChangeDimensionPacket
             {
                 Dimension = targetDimension.Type,
@@ -501,31 +522,61 @@ public readonly string Username;
                 HasLoadingScreen = false
             });
         }
-        else
+
+        // PlayerInputTick (not world tick) — Bedrock ignores teleports with the wrong tick under server-auth movement.
+        Info(LogCategory.Orion, "[Teleport] player={0} send=MovePlayer({1}) inputTick={2} worldTick={3}",
+            Username,
+            changedDimension ? "Reset" : "Teleport",
+            inputTick,
+            worldTick);
+        Send(new MovePlayerPacket
         {
-            Send(new MovePlayerPacket
-            {
-                RuntimeId = RuntimeId,
-                Position = position,
-                Pitch = Pitch,
-                Yaw = Yaw,
-                HeadYaw = HeadYaw,
-                Mode = MoveMode.Teleport,
-                OnGround = false,
-                RiddenRuntimeId = 0,
-                TeleportCause = TeleportCause.Command,
-                TeleportSourceEntityType = 0,
-                Tick = tick
-            });
-        }
+            RuntimeId = RuntimeId,
+            Position = position,
+            Pitch = Pitch,
+            Yaw = Yaw,
+            HeadYaw = HeadYaw,
+            Mode = changedDimension ? MoveMode.Reset : MoveMode.Teleport,
+            OnGround = false,
+            RiddenRuntimeId = 0,
+            TeleportCause = TeleportCause.Command,
+            TeleportSourceEntityType = 0,
+            Tick = inputTick
+        });
 
         if (changedDimension)
         {
-            targetDimension.Broadcast(CreateActorDataPacket(tick), new BroadcastOptions { Except = [this] });
+            targetDimension.Broadcast(CreateActorDataPacket(worldTick), new BroadcastOptions { Except = [this] });
         }
 
-        GetTrait<PlayerChunkRenderingTrait>()?.StartChunkLoad();
+        // OnTeleport already armed chunk streaming with a short hold so LevelChunks are not
+        // sent (and discarded by the client) before MovePlayer is applied.
         SendAttributes();
+
+        PlayerAuthInput.OnServerTeleport(RuntimeId, worldTick);
+        AreaBorderTransfer.ResetTransferCooldown(RuntimeId);
+
+        // Apply position + client packets first; only then move the entity between area shards.
+        Server? server = targetDimension.World?.Server as Server ?? previousDimension?.World?.Server as Server;
+        bool startedAreaTransfer = false;
+        if (server is not null && !changedDimension && targetDimension.UsesAreaThreading())
+        {
+            startedAreaTransfer = AreaBorderTransfer.TryAfterTeleport(server, this, previousPosition);
+        }
+
+        Info(
+            LogCategory.Orion,
+            "[Teleport] end player={0} pos=({1:0.##},{2:0.##},{3:0.##}) owningArea={4} " +
+            "areaTransfer={5} transferState={6} inputTick={7} chunkView={8}",
+            Username,
+            Position.X,
+            Position.Y,
+            Position.Z,
+            OwningAreaIndex?.ToString() ?? "-",
+            startedAreaTransfer,
+            Session?.TransferState.ToString() ?? "no-session",
+            inputTick,
+            GetTrait<PlayerChunkRenderingTrait>()?.FormatDebugHudLine() ?? "none");
     }
 
     /// <summary>
@@ -562,8 +613,38 @@ public readonly string Username;
     public void ResyncAfterRegionHandoff(bool crossWorker = false)
     {
         ulong tick = Dimension?.World is Tickable tickable ? tickable.TickValue : 0;
-        PlayerAuthInput.ResetMovementValidation(RuntimeId);
-        PlayerAuthInput.BeginMovementGrace(RuntimeId, tick);
+        ulong inputTick = PlayerAuthInput.GetLastInputTick(RuntimeId);
+        Info(
+            LogCategory.Orion,
+            "[Teleport] ResyncAfterRegionHandoff player={0} crossWorker={1} pos=({2:0.##},{3:0.##},{4:0.##}) " +
+            "owningArea={5} worldTick={6} inputTick={7} mode={8}",
+            Username,
+            crossWorker,
+            Position.X,
+            Position.Y,
+            Position.Z,
+            OwningAreaIndex?.ToString() ?? "-",
+            tick,
+            inputTick,
+            crossWorker ? "ForceReloadViewDistance" : "AfterRegionHandoff");
+
+        // Re-assert client position after cross-worker handoff (MovePlayer may have been lost in flight).
+        Send(new MovePlayerPacket
+        {
+            RuntimeId = RuntimeId,
+            Position = Position,
+            Pitch = Pitch,
+            Yaw = Yaw,
+            HeadYaw = HeadYaw,
+            Mode = MoveMode.Teleport,
+            OnGround = false,
+            RiddenRuntimeId = 0,
+            TeleportCause = TeleportCause.Command,
+            TeleportSourceEntityType = 0,
+            Tick = inputTick
+        });
+
+        PlayerAuthInput.OnServerTeleport(RuntimeId, tick);
         AreaBorderTransfer.ResetTransferCooldown(RuntimeId);
 
         PlayerChunkRenderingTrait? chunkRendering = GetTrait<PlayerChunkRenderingTrait>();
