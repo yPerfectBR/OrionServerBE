@@ -84,15 +84,15 @@
             0
           ],
           "chunkPregeneration": {
-                "start": [-400, -400],
-                "end": [400, 400],
+                "start": [-30, -30],
+                "end": [30, 30],
                 "memoryLock": true
             },
             "threadingAreas": [
                 {
                     "name": "default",
-                    "start": [-50, -50],
-                    "end": [50, 50]
+                    "start": [-3, -3],
+                    "end": [2, 2]
                 }
             ]
         }
@@ -133,9 +133,9 @@
   "Runtime": {
     "ThreadPool": {
       "MinWorkerThreads": 1,
-      "MaxWorkerThreads": 4,
+      "MaxWorkerThreads": 5,
       "MinIoCompletionThreads": 1,
-      "MaxIoCompletionThreads": 4
+      "MaxIoCompletionThreads": 5
     }
   }
 }
