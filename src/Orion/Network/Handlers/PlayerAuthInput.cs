@@ -340,16 +340,16 @@ public static class PlayerAuthInput
                     or EmptyStackRequestAction
                     or CraftResultsDeprecatedStackRequestAction);
 
-            Warn(
-                "PlayerAuthInput item stack request player={0} request={1} actions={2} mineBlock={3}",
+            CreativeInventoryLog.LogItemStackAction(
                 player.Username,
-                packet.ItemStackRequest.RequestId,
-                packet.ItemStackRequest.Actions.Count,
-                mineBlockRequest is not null);
+                "auth-input",
+                $"req={packet.ItemStackRequest.RequestId} actions={packet.ItemStackRequest.Actions.Count} mineOnly={onlyMineBlock}");
 
             ItemStackResponse response = onlyMineBlock
                 ? ProcessItemStackRequest(player, packet.ItemStackRequest)
                 : ItemStackRequest.Process(player, packet.ItemStackRequest);
+
+            CreativeInventoryLog.LogItemStackResponse(player.Username, 1, [response]);
 
             ItemStackResponsePacket stackResponse = new()
             {

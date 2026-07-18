@@ -11,7 +11,7 @@ using Log = Orion.Logger.Logger;
 
 internal static class CreativeInventoryLog
 {
-    private static readonly bool Enabled = false;
+    private static readonly bool Enabled = true;
 
     private static readonly HashSet<PacketId> TrackedClientPackets =
     [
@@ -120,7 +120,7 @@ internal static class CreativeInventoryLog
         }
 
         List<string> entries = [];
-        for (uint index = 0; index < 16; index++)
+        for (uint index = 1; index <= 16; index++)
         {
             Item.ItemStack? item = Item.ItemType.GetCreativeItem(index);
             if (item is null)
@@ -150,6 +150,8 @@ internal static class CreativeInventoryLog
             return;
         }
 
+        ReadOnlySpan<byte> payload = SkipPacketHeader(packetBuffer);
+
         if (!SessionLookup.TryGetPlayer(server, connection, out global::Orion.Player.Player? player))
         {
             Log.Info(
@@ -163,12 +165,12 @@ internal static class CreativeInventoryLog
 
         string detail = packetId switch
         {
-            PacketId.InventoryTransaction => DescribeInventoryTransaction(packetBuffer),
-            PacketId.ContainerClose => DescribeContainerClose(packetBuffer),
+            PacketId.InventoryTransaction => DescribeInventoryTransaction(payload),
+            PacketId.ContainerClose => DescribeContainerClose(payload),
             PacketId.ItemStackRequest => $"requests=see-handler bytes={packetBuffer.Length}",
-            PacketId.MobEquipment => DescribeMobEquipment(packetBuffer),
+            PacketId.MobEquipment => DescribeMobEquipment(payload),
             PacketId.SetLocalPlayerAsInitialized => "client initialized",
-            PacketId.PlayerAction => DescribePlayerAction(packetBuffer),
+            PacketId.PlayerAction => DescribePlayerAction(payload),
             PacketId.PlayerHotBar => $"bytes={packetBuffer.Length}",
             _ => $"bytes={packetBuffer.Length}"
         };
@@ -223,6 +225,42 @@ internal static class CreativeInventoryLog
             string.Join("; ", parts));
     }
 
+    public static void LogGive(
+        string player,
+        string item,
+        int amount,
+        int given,
+        int networkId,
+        int blockRuntimeId,
+        int stackNetworkId)
+    {
+        if (!Enabled)
+        {
+            return;
+        }
+
+        Log.Info(
+            LogCategory.Orion,
+            "[Inv] give player={0} item={1} amount={2} given={3} netId={4} blockRuntime={5} stackId={6}",
+            player,
+            item,
+            amount,
+            given,
+            networkId,
+            blockRuntimeId,
+            stackNetworkId);
+    }
+
+    public static void LogItemStackAction(string player, string phase, string detail)
+    {
+        if (!Enabled)
+        {
+            return;
+        }
+
+        Log.Info(LogCategory.Orion, "[Inv] isr {0} player={1} {2}", phase, player, detail);
+    }
+
     public static string DescribeCreativePayload(byte[] payload)
     {
         try
@@ -243,7 +281,7 @@ internal static class CreativeInventoryLog
             foreach (CreativeItem item in packet.Items)
             {
                 items.Add(
-                    $"idx={item.ItemIndex} grp={item.GroupIndex} inst=[{DescribeDescriptor(item.ItemInstance)}]");
+                    $"id={item.CreativeItemNetworkId} grp={item.GroupIndex} inst=[{DescribeDescriptor(item.ItemInstance)}]");
             }
 
             return $"groups={packet.Groups.Count} [{string.Join("; ", groups)}] items={packet.Items.Count} [{string.Join("; ", items)}]";
@@ -297,6 +335,21 @@ internal static class CreativeInventoryLog
         }
     }
 
+    private static ReadOnlySpan<byte> SkipPacketHeader(ReadOnlySpan<byte> packetBuffer)
+    {
+        try
+        {
+            int offset = 0;
+            BinaryReader reader = new(packetBuffer, ref offset);
+            _ = reader.ReadVarUInt();
+            return packetBuffer[offset..];
+        }
+        catch
+        {
+            return packetBuffer;
+        }
+    }
+
     private static string DescribeInventoryTransaction(ReadOnlySpan<byte> buffer)
     {
         try
@@ -341,7 +394,7 @@ internal static class CreativeInventoryLog
             MobEquipmentPacket packet = new();
             packet.Deserialize(reader);
 
-            return $"slot={packet.InventorySlot} hotbarSlot={packet.HotBarSlot} window={packet.WindowId} itemNet={packet.NewItem.NetworkId}";
+            return $"slot={packet.InventorySlot} hotbarSlot={packet.HotBarSlot} window={packet.WindowId} itemNet={packet.NewItem.NetworkId} count={packet.NewItem.Count} block={packet.NewItem.BlockRuntimeId}";
         }
         catch (Exception exception)
         {
