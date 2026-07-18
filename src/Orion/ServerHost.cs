@@ -67,7 +67,10 @@ public sealed class ServerHost : IDisposable
         string dbPath = Path.Combine(resolved.DirectoryPath, "db");
         Directory.CreateDirectory(resolved.DirectoryPath);
 
-        World.World world = new(resolved.Identifier, new LevelDbProvider(dbPath));
+        World.World world = new(resolved.Identifier, new LevelDbProvider(dbPath))
+        {
+            Gamerules = resolved.Settings.Gamerules
+        };
         ChunkPregenerator pregenerator = new();
 
         WorldLogger.Info(LogCategory.World, "Starting chunk pregeneration for world '{0}'", resolved.Identifier);
@@ -82,6 +85,7 @@ public sealed class ServerHost : IDisposable
                 dimensionConfig.ThreadingAreas);
 
             Dimension dimension = world.GetDimension(dimensionConfig.Identifier)!;
+            GameRulesFactory.Apply(dimension.Gamerules, resolved.Settings.Gamerules);
             pregenerator.PregenerateAll(dimension, dimensionConfig.ChunkPregeneration ?? [], dimensionConfig.Identifier);
 
             if (threadBudget.AreaThreadingEnabled)

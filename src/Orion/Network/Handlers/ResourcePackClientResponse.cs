@@ -12,6 +12,7 @@ using Orion.Player;
 using Orion.Scheduling;
 using Orion.Config;
 using Dimension = Orion.World.Dimension;
+using Orion.World;
 using Log = Orion.Logger.Logger;
 
 
@@ -97,6 +98,9 @@ public static class ResourcePackClientResponse
                     Entries = [player.CreatePlayerListEntry()]
                 }, player);
 
+                GamerulesConfig gamerules = player.Dimension?.World?.Gamerules
+                    ?? OrionInfo.WorldDefaultSettings.Gamerules;
+
                 StartGamePacket startGame = new()
                 {
                     EntityUniqueId = player.UniqueId,
@@ -118,7 +122,7 @@ public static class ResourcePackClientResponse
                     EditorWorldType = EditorWorldType.NotEditor,
                     CreatedInEditor = false,
                     ExportedFromEditor = false,
-                    DayCycleLockTime = 0,
+                    DayCycleLockTime = gamerules.DoDayLightCycle ? 0 : 6000,
                     EducationEditionOffer = 0,
                     EducationFeaturesEnabled = false,
                     EducationProductId = string.Empty,
@@ -131,7 +135,7 @@ public static class ResourcePackClientResponse
                     PlatformBroadcastMode = (int)XblBroadcastMode.Public,
                     CommandsEnabled = true,
                     TexturePackRequired = false,
-                    GameRules = [],
+                    GameRules = GameRulesFactory.CreateNetworkRules(gamerules),
                     Experiments = [],
                     ExperimentsPreviouslyToggled = false,
                     BonusChestEnabled = false,
