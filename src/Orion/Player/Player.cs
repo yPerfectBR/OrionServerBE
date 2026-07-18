@@ -556,15 +556,25 @@ public readonly string Username;
     }
 
     /// <summary>
-    /// Lightweight client sync after cross-region handoff within the same dimension (no chunk unload/reload).
+    /// Client sync after cross-region handoff within the same dimension.
+    /// Cross-worker handoffs force a full view reload; same-worker only refreshes the publisher.
     /// </summary>
-    public void ResyncAfterRegionHandoff()
+    public void ResyncAfterRegionHandoff(bool crossWorker = false)
     {
         ulong tick = Dimension?.World is Tickable tickable ? tickable.TickValue : 0;
         PlayerAuthInput.ResetMovementValidation(RuntimeId);
         PlayerAuthInput.BeginMovementGrace(RuntimeId, tick);
         AreaBorderTransfer.ResetTransferCooldown(RuntimeId);
-        GetTrait<PlayerChunkRenderingTrait>()?.AfterRegionHandoff();
+
+        PlayerChunkRenderingTrait? chunkRendering = GetTrait<PlayerChunkRenderingTrait>();
+        if (crossWorker)
+        {
+            chunkRendering?.ForceReloadViewDistance();
+        }
+        else
+        {
+            chunkRendering?.AfterRegionHandoff();
+        }
     }
 
     public void RegisterOpenContainer(int windowId, Container container)
