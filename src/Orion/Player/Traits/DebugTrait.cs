@@ -62,6 +62,12 @@ public sealed class DebugTrait : PlayerTrait, ISessionTickableTrait
             builder.AppendLine($"RAM {workingSetMb:0.0}MB chunks {chunksLoaded} players {server?.Sessions.Count ?? 0}");
             AppendWorkerStats(builder, server, _mode);
 
+            PlayerChunkRenderingTrait? chunkView = Player.GetTrait<PlayerChunkRenderingTrait>();
+            if (chunkView is not null)
+            {
+                builder.AppendLine(chunkView.FormatDebugHudLine());
+            }
+
             if (Player.Dimension?.World?.AttachedWorkerId is int worldWorkerId)
             {
                 builder.AppendLine($"sim ww{worldWorkerId}");
