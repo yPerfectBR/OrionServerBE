@@ -99,23 +99,9 @@ public readonly string Username;
 
         if (Session is not null)
         {
-            if (gamemode == Gamemode.Creative)
-            {
-                byte[] itemRegistryPayload = Orion.Protocol.Registry.CuratedItemCatalog.GetItemRegistryPayload();
-                byte[] creativeContentPayload = Orion.Protocol.Registry.CuratedItemCatalog.GetCreativeContentPayload();
-                SessionSendCoordinator.SendGamemodeChange(
-                    Session,
-                    Username,
-                    gamemode,
-                    abilitiesPacket,
-                    itemRegistryPayload,
-                    creativeContentPayload);
-            }
-            else
-            {
-                Session.Send(new SetPlayerGameTypePacket { GameType = gamemode });
-                Session.Send(abilitiesPacket);
-            }
+            // Basalt: only SetPlayerGameType + UpdateAbilities. Re-sending ItemRegistry /
+            // CreativeContent mid-session crashes Bedrock (ClientDisconnection / codeword Block).
+            SessionSendCoordinator.SendGamemodeChange(Session, Username, gamemode, abilitiesPacket);
         }
     }
 
