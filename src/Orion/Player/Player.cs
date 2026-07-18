@@ -262,8 +262,8 @@ public readonly string Username;
         };
 
         ulong currentTick = Dimension.World is Tickable tickable ? tickable.TickValue : 0;
-        drop.LockMergeUntil(currentTick + 50);
-        drop.LockPickupUntil(currentTick + 50);
+        drop.LockMergeUntil(currentTick + 40);
+        drop.LockPickupUntil(currentTick + 40);
         drop.Spawn(Dimension, new EntitySpawnOptions(InitialSpawn: false));
         return true;
     }
@@ -371,12 +371,6 @@ public readonly string Username;
         {
             EnsureContainerViewer(this, cursor.Container, cursor.Container.Identifier ?? 124);
             cursor.Container.Update();
-        }
-
-        PlayerCraftingOutputTrait? craftingOutput = GetTrait<PlayerCraftingOutputTrait>();
-        if (craftingOutput is not null)
-        {
-            craftingOutput.Container.Update();
         }
 
         SendAttributes();
@@ -676,75 +670,22 @@ public readonly string Username;
             return null;
         }
 
-        ContainerName containerName = (ContainerName)name.ContainerId;
-
-        switch (containerName)
-        {
-            case ContainerName.HotbarAndInventory:
-            case ContainerName.Hotbar:
-            case ContainerName.Inventory:
-                return inventory.Container;
-
-            case ContainerName.Cursor:
-                return GetTrait<PlayerCursorTrait>()?.Container;
-
-            case ContainerName.CreativeOutput:
-            case ContainerName.CraftingOutput:
-                return GetTrait<PlayerCraftingOutputTrait>()?.Container;
-
-            case ContainerName.Armor:
-            case ContainerName.Offhand:
-                return inventory.Container;
-
-            case ContainerName.Container:
-            case ContainerName.Barrel:
-                if (name.DynamicContainerId.HasValue &&
-                    TryGetOpenContainer((int)name.DynamicContainerId.Value, out Container? openedById))
-                {
-                    return openedById;
-                }
-
-                foreach ((int _, Container candidate) in openedContainers)
-                {
-                    if (candidate.Type != ContainerType.Inventory)
-                    {
-                        return candidate;
-                    }
-                }
-
-                break;
-
-            case ContainerName.AnvilInput:
-                if (Gamemode == Gamemode.Creative)
-                {
-                    return name.DynamicContainerId.HasValue
-                        ? GetTrait<PlayerCursorTrait>()?.Container
-                        : GetTrait<PlayerCraftingOutputTrait>()?.Container;
-                }
-
-                break;
-
-            case ContainerName.AnvilMaterial:
-                if (Gamemode == Gamemode.Creative && name.DynamicContainerId.HasValue)
-                {
-                    return inventory.Container;
-                }
-
-                break;
-        }
-
-        if (name.DynamicContainerId.HasValue &&
-            containerName is ContainerName.Container or ContainerName.Dynamic)
+        // Prefer ContainerId values used by ItemStackRequest (same mapping as Basalt).
+        if (name.ContainerId is (byte)ContainerId.Armor or 12
+            or (byte)ContainerId.Inventory or (byte)ContainerId.Hotbar
+            or (byte)ContainerId.FixedInventory or (byte)ContainerId.Offhand)
         {
             return inventory.Container;
         }
 
-        if (name.ContainerId is (byte)ContainerId.Armor or (byte)ContainerId.Inventory or (byte)ContainerId.Hotbar or (byte)ContainerId.FixedInventory or (byte)ContainerId.Offhand)
+        if (name.ContainerId is (byte)ContainerId.Cursor or (byte)ContainerId.CreatedOutput
+            or (byte)ContainerName.Cursor or (byte)ContainerName.CreativeOutput)
         {
-            return inventory.Container;
+            return GetTrait<PlayerCursorTrait>()?.Container;
         }
 
-        if (name.ContainerId == (byte)ContainerId.Barrel || name.ContainerId == (byte)ContainerId.InventoryUi)
+        if (name.ContainerId == (byte)ContainerId.Barrel || name.ContainerId == (byte)ContainerId.InventoryUi
+            || name.ContainerId == (byte)ContainerName.Barrel || name.ContainerId == (byte)ContainerName.Container)
         {
             if (name.DynamicContainerId.HasValue &&
                 TryGetOpenContainer((int)name.DynamicContainerId.Value!, out Container? containerById))
@@ -763,9 +704,19 @@ public readonly string Username;
             return inventory.Container;
         }
 
-        if (name.ContainerId == (byte)ContainerId.Cursor)
+        ContainerName containerName = (ContainerName)name.ContainerId;
+        switch (containerName)
         {
-            return GetTrait<PlayerCursorTrait>()?.Container;
+            case ContainerName.HotbarAndInventory:
+            case ContainerName.Hotbar:
+            case ContainerName.Inventory:
+            case ContainerName.Armor:
+            case ContainerName.Offhand:
+                return inventory.Container;
+
+            case ContainerName.Cursor:
+            case ContainerName.CreativeOutput:
+                return GetTrait<PlayerCursorTrait>()?.Container;
         }
 
         if (name.DynamicContainerId.HasValue &&
