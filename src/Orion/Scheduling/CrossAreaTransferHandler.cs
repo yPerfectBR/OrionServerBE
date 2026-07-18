@@ -28,11 +28,12 @@ internal static class CrossAreaTransferHandler
         {
             Log.Debug(
                 LogCategory.Orion,
-                "[Area:Transfer] prepare worker={0} entity={1} {2}->{3}",
+                "[Area:Transfer] prepare worker={0} entity={1} {2}->{3} | {4}",
                 sourceWorker.WorkerId,
-                AreaScheduler.GetEntityKey(entity),
+                AreaTransferLog.DescribeEntity(entity),
                 snapshot.SourceAreaIndex,
-                snapshot.TargetAreaIndex);
+                snapshot.TargetAreaIndex,
+                AreaTransferLog.FormatExecutionContext());
         }
 
         dimension.ShardManager.GetShard(snapshot.SourceAreaIndex).RemoveEntity((IAreaStoredEntity)entity);
@@ -75,13 +76,23 @@ internal static class CrossAreaTransferHandler
             {
                 Log.Debug(
                     LogCategory.Orion,
-                    "[Area:Transfer] complete worker={0} entity={1} area={2}",
+                    "[Area:Transfer] complete worker={0} entity={1} area={2} | {3}",
                     targetWorker.WorkerId,
-                    AreaScheduler.GetEntityKey(entity),
-                    snapshot.TargetAreaIndex);
+                    AreaTransferLog.DescribeEntity(entity),
+                    snapshot.TargetAreaIndex,
+                    AreaTransferLog.FormatExecutionContext());
             }
 
             dimension.AddEntity((IAreaStoredEntity)entity, snapshot.TargetAreaIndex);
+
+            AreaShard sourceShard = dimension.GetAreaShard(snapshot.SourceAreaIndex);
+            AreaShard targetShard = dimension.GetAreaShard(snapshot.TargetAreaIndex);
+            AreaTransferLog.Info(
+                session,
+                $"complete {AreaTransferLog.DescribeEntity(entity)} {dimension.Identifier} " +
+                $"'{sourceShard.Name}'({snapshot.SourceAreaIndex}) -> '{targetShard.Name}'({snapshot.TargetAreaIndex}) " +
+                $"aw{targetWorker.WorkerId} workerTid={targetWorker.WorkerThreadId} " +
+                $"crossWorker={snapshot.CrossWorker} tick={dimension.World?.TickValue ?? 0}");
 
             if (session is not null)
             {
@@ -105,7 +116,7 @@ internal static class CrossAreaTransferHandler
 
     static void AbortTransfer(Server server, AreaEntitySnapshot snapshot, string reason)
     {
-        Log.Error(LogCategory.Orion, "[Area:Transfer] {0}", reason);
+        AreaTransferLog.Error(snapshot.Session, reason);
         InFlightMobTransfers.TryRemove(snapshot.Entity, out _);
 
         if (snapshot.Session is not null)
