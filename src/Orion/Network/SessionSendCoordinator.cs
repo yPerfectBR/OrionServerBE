@@ -63,15 +63,13 @@ public static class SessionSendCoordinator
 
     /// <summary>
     /// Sends gamemode change packets in order on the session thread.
-    /// Creative catalog packets must arrive after SetPlayerGameType + UpdateAbilities.
+    /// Matches Basalt: SetPlayerGameType + UpdateAbilities only (no ItemRegistry / CreativeContent).
     /// </summary>
     public static void SendGamemodeChange(
         PlayerSession session,
         string username,
         Gamemode gamemode,
-        UpdateAbilitiesPacket abilitiesPacket,
-        byte[]? itemRegistryPayload,
-        byte[]? creativeContentPayload)
+        UpdateAbilitiesPacket abilitiesPacket)
     {
         void SendOrdered()
         {
@@ -79,17 +77,7 @@ public static class SessionSendCoordinator
             {
                 session.Network.SendPacket(session.Connection, new SetPlayerGameTypePacket { GameType = gamemode });
                 session.Network.SendPacket(session.Connection, abilitiesPacket);
-
-                if (itemRegistryPayload is null || creativeContentPayload is null)
-                {
-                    return;
-                }
-
-                session.Network.SendSerializedPacket(session.Connection, PacketId.ItemRegistry, itemRegistryPayload);
-                session.Network.SendSerializedPacket(session.Connection, PacketId.CreativeContent, creativeContentPayload);
-                CreativeInventoryLog.LogSetGamemodeSequence(username, gamemode, itemRegistryPayload.Length, creativeContentPayload.Length);
-                CreativeInventoryLog.LogItemRegistrySent("SetGamemode", username, itemRegistryPayload);
-                CreativeInventoryLog.LogCreativeContentSent("SetGamemode", username, creativeContentPayload);
+                CreativeInventoryLog.LogSetGamemodeSequence(username, gamemode);
             }
         }
 
