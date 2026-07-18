@@ -5,6 +5,7 @@ using Orion.Protocol.Packets;
 using Orion.Protocol.Types;
 using Orion.Entity.Traits.Types;
 using Orion.Item;
+using Orion.Scheduling;
 using Orion.World;
 using Player = Orion.Player.Player;
 
@@ -129,14 +130,15 @@ public sealed class ItemEntity : Entity
             other.Item.SetStackSize((ushort)(other.Item.StackSize - moved));
             merged = true;
 
-            if (other.Item.StackSize == 0)
-            {
-                other.Despawn(new EntityDespawnOptions());
-            }
-            else
-            {
-                other.Resend();
-            }
+                if (other.Item.StackSize == 0)
+                {
+                    other.Despawn(new EntityDespawnOptions());
+                    other.Dimension?.RemoveEntity(other);
+                }
+                else
+                {
+                    other.Resend();
+                }
         }
 
         if (merged)
@@ -184,15 +186,19 @@ public sealed class ItemEntity : Entity
 
             ushort after = Item.StackSize;
 
-            Dimension.Broadcast(new TakeItemActorPacket
-            {
-                ItemEntityRuntimeId = RuntimeId,
-                TakerEntityRuntimeId = player.RuntimeId
-            });
+            Dimension.Broadcast(
+                new TakeItemActorPacket
+                {
+                    ItemEntityRuntimeId = RuntimeId,
+                    TakerEntityRuntimeId = player.RuntimeId
+                },
+                new BroadcastOptions { Center = Position });
 
             if (after == 0)
             {
                 Despawn(new EntityDespawnOptions());
+                // Remove from the area shard immediately so visibility cannot respawn a ghost.
+                Dimension?.RemoveEntity(this);
                 return;
             }
 

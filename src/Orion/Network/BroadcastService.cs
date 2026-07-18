@@ -31,6 +31,12 @@ public static class BroadcastService
                 removeActor.EntityUniqueId,
                 resolved.Except);
         }
+        else if (packet is TakeItemActorPacket takeItem)
+        {
+            // TakeItemActor removes the item client-side; drop visibility tracking so we
+            // do not leave a stale entry that skips a later RemoveActor.
+            PlayerChunkRenderingTrait.InvalidateVisibleEntity(dimension, takeItem.ItemEntityRuntimeId, resolved.Except);
+        }
 
         List<PlayerSession> candidates = resolved.Center.HasValue
             ? GetSessionsInRadius(dimension, server, resolved.Center.Value, resolved.Radius)

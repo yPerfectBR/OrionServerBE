@@ -206,14 +206,14 @@ public class Entity : IAreaStoredEntity, IAreaEntity
                 Dimension.Broadcast(new RemoveActorPacket
                 {
                     EntityUniqueId = UniqueId
-                }, new BroadcastOptions { Except = [player] });
+                }, new BroadcastOptions { Center = Position, Except = [player] });
             }
             else
             {
                 Dimension.Broadcast(new RemoveActorPacket
                 {
                     EntityUniqueId = UniqueId
-                });
+                }, new BroadcastOptions { Center = Position });
             }
         }
 
