@@ -36,7 +36,7 @@ public sealed class UseItemInventoryTransactionData : IInventoryTransactionData
     /// <summary>
     /// Item held by the player.
     /// </summary>
-    public ItemInstance HeldItem = new();
+    public NetworkItemStackDescriptor HeldItem = new();
 
     /// <summary>
     /// Player position at action time.

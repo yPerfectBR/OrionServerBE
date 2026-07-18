@@ -33,12 +33,12 @@ public sealed class InventoryAction : DataType
     /// <summary>
     /// Item state before the action.
     /// </summary>
-    public ItemInstance OldItem = new();
+    public NetworkItemStackDescriptor OldItem = new();
 
     /// <summary>
     /// Item state after the action.
     /// </summary>
-    public ItemInstance NewItem = new();
+    public NetworkItemStackDescriptor NewItem = new();
 
     public void Read(BinaryReader reader)
     {
