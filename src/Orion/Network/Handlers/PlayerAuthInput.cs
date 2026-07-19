@@ -139,7 +139,7 @@ public static class PlayerAuthInput
 
     private static void StartUsingItem(global::Orion.Player.Player player)
     {
-        EntityInventoryTrait? inventory = player.GetTrait<EntityInventoryTrait>();
+        IPlayerInventoryAccess? inventory = ResolveInventory(player);
         ItemStack? heldItem = inventory?.GetHeldItem();
         if (inventory is null
             || heldItem is null
@@ -168,7 +168,7 @@ public static class PlayerAuthInput
             return;
         }
 
-        EntityInventoryTrait? inventory = player.GetTrait<EntityInventoryTrait>();
+        IPlayerInventoryAccess? inventory = ResolveInventory(player);
         ItemStack? heldItem = inventory?.Container.GetItem(pending.Slot);
         if (inventory is null || heldItem is null || heldItem.NetworkStackId != pending.StackNetworkId)
         {
@@ -209,7 +209,7 @@ public static class PlayerAuthInput
                 continue;
             }
 
-            EntityInventoryTrait? inventory = player.GetTrait<EntityInventoryTrait>();
+            IPlayerInventoryAccess? inventory = ResolveInventory(player);
             ItemStack? item = inventory?.Container.GetItem(mineBlock.HotbarSlot);
 
             containers.Add(new StackResponseContainerInfo
@@ -592,7 +592,7 @@ public static class PlayerAuthInput
 
         if (IsAirBlock(block) && player.Gamemode == Gamemode.Creative)
         {
-            EntityInventoryTrait? creativeInventory = player.GetTrait<EntityInventoryTrait>();
+            IPlayerInventoryAccess? creativeInventory = ResolveInventory(player);
             ItemStack? creativeHeldItem = creativeInventory?.GetHeldItem();
             int effectRuntime = creativeHeldItem is not null ? ItemBlockRuntimeIds.Resolve(creativeHeldItem.Type) : 0;
 
@@ -639,7 +639,7 @@ public static class PlayerAuthInput
                     Layer = UpdateBlockLayerType.Normal
                 });
 
-                EntityInventoryTrait? cancelInventory = player.GetTrait<EntityInventoryTrait>();
+                IPlayerInventoryAccess? cancelInventory = ResolveInventory(player);
                 if (cancelInventory is not null)
                 {
                     ItemStack? rollbackItem = cancelInventory.GetHeldItem();
@@ -696,7 +696,7 @@ public static class PlayerAuthInput
             Layer = UpdateBlockLayerType.Normal
         });
 
-        EntityInventoryTrait? inventory = player.GetTrait<EntityInventoryTrait>();
+        IPlayerInventoryAccess? inventory = ResolveInventory(player);
         ItemStack? heldItem = inventory?.GetHeldItem();
 
         if (inventory is not null && heldItem is not null)
@@ -771,6 +771,18 @@ public static class PlayerAuthInput
         float deltaZ = blockCenter.Z - player.Position.Z;
         float distanceSquared = deltaX * deltaX + deltaY * deltaY + deltaZ * deltaZ;
         return distanceSquared <= MaxBlockReachDistance * MaxBlockReachDistance;
+    }
+
+    private static IPlayerInventoryAccess? ResolveInventory(global::Orion.Player.Player player)
+    {
+        if (PluginHost.Services.TryGet(out IPlayerInventoryService? service)
+            && service is not null
+            && service.TryGetAccess(player, out IPlayerInventoryAccess? access))
+        {
+            return access;
+        }
+
+        return null;
     }
 }
 

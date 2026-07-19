@@ -2,8 +2,10 @@ namespace Orion.Network.Handlers;
 
 using Orion;
 using Orion.Entity.Traits;
+using Orion.Gameplay;
 using Orion.Player;
 using Orion.Player.Traits;
+using Orion.Plugins;
 using Orion.Protocol.Packets;
 using Orion.RakNet;
 using Orion.Scheduling;
@@ -47,10 +49,9 @@ public static class SetLocalPlayerAsInitialized
 
         player.SetSpawned(true);
 
-        EntityInventoryTrait? inventory = player.GetTrait<EntityInventoryTrait>();
-        if (inventory is not null)
+        if (PluginHost.Services.TryGet(out IPlayerInventoryService? inventory) && inventory is not null)
         {
-            inventory.Container.Update();
+            _ = inventory.TrySyncToClient(player);
         }
 
         string joinMessage = $"§e{player.Username} joined the server.";
