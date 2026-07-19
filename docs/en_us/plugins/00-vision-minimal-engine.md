@@ -52,6 +52,9 @@ Phase 0 is conceptual. The only “API” is the boundary checklist:
 | [`config/server.json`](../../../config/server.json) | `Plugins` section |
 | [`plugins/MinimalInventoryItems/`](../../../plugins/MinimalInventoryItems/) | Sample opt-in plugin |
 | [`plugins/VanillaAttributes/`](../../../plugins/VanillaAttributes/) | Vanilla health/hunger + attribute API (opt-in; refs Orion) |
+| [`plugins/VanillaInventory/`](../../../plugins/VanillaInventory/) | Player inventory + ISR (opt-in) |
+| [`plugins/VanillaContainers/`](../../../plugins/VanillaContainers/) | Chest/barrel (`depend` VanillaInventory) |
+| [`plugins/VanillaBuilding/`](../../../plugins/VanillaBuilding/) | Block place / use-on-block (`softdepend` VanillaInventory) |
 
 ## 6. Acceptance tests (definition of done for the vision)
 

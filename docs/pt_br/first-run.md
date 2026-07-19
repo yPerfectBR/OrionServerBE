@@ -41,7 +41,26 @@ O core **não** inclui vida nem fome de gameplay. Para comportamento vanilla:
 dotnet build plugins/VanillaAttributes/VanillaAttributes.csproj
 ```
 
-Com `Plugins.Enabled: true`, o plugin registra traits + serviços (`provides: orion:attributes`, `orion:health`, `orion:hunger`). Outros plugins consomem via `IVanillaAttributesApi` / `IEntityHealthService` / `IPlayerHungerService`. Sem ele, não há HP/fome/comida.
+Com `Plugins.Enabled: true`, o plugin registra traits + serviços (`provides: orion:attributes`, `orion:health`, `orion:hunger`). Outros plugins consomem via `IVanillaAttributesApi` / `IEntityHealthService` / `IPlayerHungerService`. Sem ele, não há HP/fome/comida. Preferível carregar junto com `VanillaInventory` (softdepend).
+
+## Inventário, containers e construção
+
+O core **não** inclui inventário do jogador, baú/barril nem place de bloco. Build:
+
+```bash
+dotnet build plugins/VanillaInventory/VanillaInventory.csproj
+dotnet build plugins/VanillaContainers/VanillaContainers.csproj
+dotnet build plugins/VanillaBuilding/VanillaBuilding.csproj
+```
+
+Dica de carga: Inventory → Building (softdepend). Survival precisa dos dois; creative place funciona só com Building (held do pacote).
+
+- `VanillaInventory` — inventário/cursor/ISR (`provides: orion:inventory`); evento cancelável `PlayerOpenInventorySignal`
+- `VanillaContainers` — baú/barril com **`depend: ["VanillaInventory"]`**; evento `PlayerOpenContainerSignal`
+- `VanillaBuilding` — place / use-on-block (`provides: orion:building`, softdepend Inventory); `IPlayerBlockUseHandler` / `IVanillaBuildingApi`
+- API inventário: `IVanillaInventoryApi` / `IPlayerInventoryService`
+
+Crack/break de mineração permanece no core e não exige esses plugins.
 
 ## Fillers próprios
 
