@@ -148,6 +148,20 @@ public sealed class AreaWorker
         }
 
         TickAttachedEntities(world);
+        SaveAttachedDirtyChunks();
+    }
+
+    void SaveAttachedDirtyChunks()
+    {
+        if (_tickValue % 20 != 0 || _attachedAreas.Count == 0)
+        {
+            return;
+        }
+
+        foreach ((AttachedAreaKey key, AreaShard shard) in _attachedAreas)
+        {
+            key.Dimension.SaveDirtyChunks(shard);
+        }
     }
 
     void TickAttachedEntities(WorldInstance? world)
@@ -171,8 +185,8 @@ public sealed class AreaWorker
                 ThreadGuard.CurrentAreaIndex = key.AreaIndex;
 #endif
                 // Snapshot: entity.Tick may despawn/merge and mutate the shard set.
-                List<IAreaStoredEntity> entities = [.. shard.Entities];
-                for (int i = 0; i < entities.Count; i++)
+                IAreaStoredEntity[] entities = shard.SnapshotEntities();
+                for (int i = 0; i < entities.Length; i++)
                 {
                     if (entities[i] is not GameEntity entity)
                     {

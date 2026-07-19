@@ -126,8 +126,20 @@ public sealed class Dimension : IDisposable
 
     public void SaveDirtyChunks()
     {
-        foreach (ChunkColumn chunk in _shardManager.AllChunks)
+        for (int i = 0; i < _shardManager.ShardCount; i++)
         {
+            SaveDirtyChunks(_shardManager.GetShard(i));
+        }
+    }
+
+    /// <summary>Persists dirty columns owned by a single shard (call from the owning area worker).</summary>
+    public void SaveDirtyChunks(AreaShard shard)
+    {
+        ArgumentNullException.ThrowIfNull(shard);
+        ChunkColumn[] chunks = shard.SnapshotChunks();
+        for (int i = 0; i < chunks.Length; i++)
+        {
+            ChunkColumn chunk = chunks[i];
             if (!chunk.Dirty)
             {
                 continue;
@@ -166,10 +178,10 @@ public sealed class Dimension : IDisposable
 
     public void Tick(ulong currentTick, uint deltaTick)
     {
-        if (currentTick % 20 == 0 && ChunkCount > 0)
-        {
-            SaveDirtyChunks();
-        }
+        // Dirty chunk persistence is owned by each AreaWorker for its attached shards
+        // (see AreaWorker.SaveAttachedDirtyChunks) to avoid cross-thread Dictionary races.
+        _ = currentTick;
+        _ = deltaTick;
     }
 
     public void Dispose()
