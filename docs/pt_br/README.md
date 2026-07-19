@@ -8,6 +8,7 @@ Bem-vindo ao índice da documentação em português do OrionServer.
 - [Filosofia e Arquitetura](architecture-philosophy.md)
 - [Streaming de chunks (Bedrock)](chunk-streaming.md)
 - [Teleport (cliente ↔ servidor)](teleport.md)
+- [Area threading (simulação multithread)](area-threading.md)
 - [Drop de itens (cliente ↔ servidor)](item-drop.md)
 - [First run (menu criativo / plugins)](first-run.md)
 - [Inventário criativo (mínimo por aba)](creative-inventory.md)

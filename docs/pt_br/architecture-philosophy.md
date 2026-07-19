@@ -16,7 +16,16 @@ Todo o restante (mobs, comandos completos vanilla, mecânicas completas) é opci
 
 ## Direção de Multithreading
 
-Um diferencial do OrionServer é suportar execução de cargas do mundo em workers dedicados, com distribuição definida pelo projeto, para melhorar throughput em CPUs modernas.
+Um diferencial do OrionServer é executar cargas do mundo em workers dedicados, com distribuição definida pelo projeto, para melhorar throughput em CPUs modernas.
+
+Modelo atual (area threading):
+
+- o mundo é particionado em **threading areas** (`AreaShard`);
+- cada área anexada é simulada em um **AreaWorker**;
+- jogadores/entidades migram de worker ao cruzar bordas **sem** teleport forçado no cliente;
+- streaming de chunks do jogador permanece no **SessionWorker**.
+
+Documentação do fluxo: [area-threading.md](area-threading.md).
 
 Objetivos amplos:
 
