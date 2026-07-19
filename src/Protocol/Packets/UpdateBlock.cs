@@ -9,7 +9,7 @@ namespace Orion.Protocol.Packets;
 /// <summary>
 /// @Direction Clientbound
 /// Sent by the server to update a block client side.
-/// </summary>s
+/// </summary>
 [Packet(PacketId.UpdateBlock)]
 public sealed record UpdateBlockPacket : DataPacket
 {
@@ -19,7 +19,8 @@ public sealed record UpdateBlockPacket : DataPacket
     public BlockPos Position;
 
     /// <summary>
-    /// Runtime network block state id.
+    /// Runtime network block state id (wire: unsigned VarInt / uint32).
+    /// Stored as int for hash compatibility; serialize with unchecked uint cast.
     /// </summary>
     public int NetworkBlockId;
 
@@ -38,7 +39,7 @@ public sealed record UpdateBlockPacket : DataPacket
         BlockPos position = Position;
         position.Read(reader);
         Position = position;
-        NetworkBlockId = reader.ReadZigZag();
+        NetworkBlockId = unchecked((int)reader.ReadVarUInt());
         Flags = (UpdateBlockFlagsType)reader.ReadVarUInt();
         Layer = (UpdateBlockLayerType)reader.ReadVarUInt();
     }
@@ -46,7 +47,8 @@ public sealed record UpdateBlockPacket : DataPacket
     public override void Serialize(BinaryWriter writer)
     {
         Position.Write(writer);
-        writer.WriteZigZag(NetworkBlockId);
+        // Bedrock: Block Runtime ID is unsigned compressed uint32 (not ZigZag).
+        writer.WriteVarUInt(unchecked((uint)NetworkBlockId));
         writer.WriteVarUInt((uint)Flags);
         writer.WriteVarUInt((uint)Layer);
     }
