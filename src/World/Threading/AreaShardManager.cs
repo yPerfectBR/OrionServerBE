@@ -1,6 +1,5 @@
 using Orion.Config;
 using ChunkColumn = Orion.World.Chunk.Chunk;
-using System.Linq;
 
 namespace Orion.World.Threading;
 
@@ -69,9 +68,10 @@ public sealed class AreaShardManager
         {
             for (int i = 0; i < _shards.Length; i++)
             {
-                foreach (ChunkColumn chunk in _shards[i].Chunks.ToArray())
+                ChunkColumn[] snapshot = _shards[i].SnapshotChunks();
+                for (int c = 0; c < snapshot.Length; c++)
                 {
-                    yield return chunk;
+                    yield return snapshot[c];
                 }
             }
         }
