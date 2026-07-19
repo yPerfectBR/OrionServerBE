@@ -11,7 +11,8 @@ using Log = Orion.Logger.Logger;
 
 internal static class CreativeInventoryLog
 {
-    private static readonly bool Enabled = true;
+    // Diagnostics for creative catalog / ISR — leave off unless debugging inventory.
+    private static readonly bool Enabled = false;
 
     // Basalt full vanilla palette is ~1.6k creative entries / hundreds of KB.
     private const int BasaltTypicalRegistryBytesHint = 400_000;

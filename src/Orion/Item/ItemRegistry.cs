@@ -179,12 +179,6 @@ public static class ItemRegistry
         }
 
         _creativeItems = creative;
-        Log.Info(
-            LogCategory.Orion,
-            "[CreativeInv] ItemRegistry loaded creativeCount={0} source={1} registered={2}",
-            creative.Count,
-            CuratedItemCatalog.Source,
-            CuratedItemCatalog.GetRegisteredIdentifiers().Count);
     }
 
     static int ResolveMaxStack(CuratedItem curated)
