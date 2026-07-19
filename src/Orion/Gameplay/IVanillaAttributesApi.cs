@@ -9,4 +9,9 @@ public interface IVanillaAttributesApi
 {
     IEntityHealthService Health { get; }
     IPlayerHungerService Hunger { get; }
+
+    /// <summary>
+    /// Reveal health/hunger HUD after the core default-hides vitals on join.
+    /// </summary>
+    void EnableHud(global::Orion.Player.Player player);
 }
