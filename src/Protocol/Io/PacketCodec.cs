@@ -57,7 +57,7 @@ public static class PacketCodec
 
         if (!Pool.TryGetValue(id, out Func<DataPacket>? create))
         {
-            throw new NotImplementedException($"Deserialization for packet ID {(byte)id} ({id}) is not implemented.");
+            throw new NotImplementedException($"Deserialization for packet ID {(int)id} ({id}) is not implemented.");
         }
 
         DataPacket packet = create();
