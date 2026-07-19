@@ -10,13 +10,6 @@ namespace Orion.Scheduling;
 
 public static class AreaBorderTransfer
 {
-    /// <summary>
-    /// TEMP: keep spectators from RemoveActor/AddPlayer during prepare→complete gap,
-    /// and broadcast the border-crossing MoveActorDelta before the transfer early-return.
-    /// Set to <c>false</c> to restore legacy spectator despawn/respawn behavior.
-    /// </summary>
-    public const bool PreserveSpectatorVisibilityAcrossAreaTransfer = true;
-
     private const ulong TransferCooldownTicks = 10;
 
     private static readonly ConcurrentDictionary<ulong, ulong> LastTransferTickByRuntimeId = new();
@@ -75,30 +68,17 @@ public static class AreaBorderTransfer
     {
         if (!server.Properties.AreaThreadingEnabled || !server.AreaScheduler.IsActive)
         {
-            Log.Info(
-                LogCategory.Orion,
-                "[Teleport:Area] TryAfterTeleport skipped (area threading inactive) player={0}",
-                DescribeEntity(player));
             return false;
         }
 
         if (player.Dimension is not Dimension dimension || !dimension.UsesAreaThreading())
         {
-            Log.Info(
-                LogCategory.Orion,
-                "[Teleport:Area] TryAfterTeleport skipped (dimension has no areas) player={0}",
-                DescribeEntity(player));
             return false;
         }
 
         PlayerSession? session = player is IPlayerWithSession playerWithSession ? playerWithSession.Session : null;
         if (session is not null && session.TransferState != TransferState.Idle)
         {
-            Log.Warn(
-                LogCategory.Orion,
-                "[Teleport:Area] TryAfterTeleport aborted (already transferring) player={0} state={1}",
-                DescribeEntity(player),
-                session.TransferState);
             return true;
         }
 
@@ -107,30 +87,8 @@ public static class AreaBorderTransfer
         int targetAreaIndex = dimension.ResolveAreaIndex(player.Position.X, player.Position.Z);
         if (sourceAreaIndex == targetAreaIndex)
         {
-            Log.Info(
-                LogCategory.Orion,
-                "[Teleport:Area] TryAfterTeleport same-area player={0} area={1} pos=({2:0.##},{3:0.##},{4:0.##})",
-                DescribeEntity(player),
-                sourceAreaIndex,
-                player.Position.X,
-                player.Position.Y,
-                player.Position.Z);
             return false;
         }
-
-        Log.Info(
-            LogCategory.Orion,
-            "[Teleport:Area] TryAfterTeleport begin player={0} area={1}->{2} " +
-            "from=({3:0.##},{4:0.##},{5:0.##}) to=({6:0.##},{7:0.##},{8:0.##})",
-            DescribeEntity(player),
-            sourceAreaIndex,
-            targetAreaIndex,
-            previousPosition.X,
-            previousPosition.Y,
-            previousPosition.Z,
-            player.Position.X,
-            player.Position.Y,
-            player.Position.Z);
 
         LastTransferTickByRuntimeId.TryRemove(player.RuntimeId, out _);
         BeginTransfer(server, dimension, player, session, sourceAreaIndex, targetAreaIndex, player.Position);
@@ -161,34 +119,14 @@ public static class AreaBorderTransfer
         {
             Log.Warn(
                 LogCategory.Orion,
-                "[Teleport:Area] BeginTransfer skipped worker missing player={0} area={1}->{2} sourceAw={3} targetAw={4}",
+                "[Area:Transfer] BeginTransfer skipped: worker missing for {0} area={1}->{2}",
                 DescribeEntity(entity),
                 sourceAreaIndex,
-                targetAreaIndex,
-                sourceWorkerId?.ToString() ?? "none",
-                targetWorkerId?.ToString() ?? "none");
+                targetAreaIndex);
             return;
         }
 
         bool crossWorker = sourceWorkerId.Value != targetWorkerId.Value;
-        AreaWorker sourceWorker = areaScheduler.Pool.GetWorker(sourceWorkerId.Value);
-        AreaWorker targetWorker = areaScheduler.Pool.GetWorker(targetWorkerId.Value);
-        Thread current = Thread.CurrentThread;
-        Log.Info(
-            LogCategory.Orion,
-            "[Teleport:Area] BeginTransfer enqueue {0} area={1}->{2} aw{3}->aw{4} crossWorker={5} " +
-            "callerTid={6} callerName={7} onSourceWorker={8} sourceWorkerTid={9} targetWorkerTid={10}",
-            DescribeEntity(entity),
-            sourceAreaIndex,
-            targetAreaIndex,
-            sourceWorkerId.Value,
-            targetWorkerId.Value,
-            crossWorker,
-            current.ManagedThreadId,
-            current.Name ?? "-",
-            sourceWorker.IsCurrentThread(),
-            sourceWorker.WorkerThreadId,
-            targetWorker.WorkerThreadId);
 
         if (server.Properties.AreaSchedulerDebug)
         {
