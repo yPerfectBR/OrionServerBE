@@ -41,7 +41,26 @@ Core does **not** include gameplay health or hunger. For vanilla behavior:
 dotnet build plugins/VanillaAttributes/VanillaAttributes.csproj
 ```
 
-With `Plugins.Enabled: true`, the plugin registers traits + services (`provides: orion:attributes`, `orion:health`, `orion:hunger`). Other plugins consume via `IVanillaAttributesApi` / `IEntityHealthService` / `IPlayerHungerService`. Without it, there is no HP/hunger/food use.
+With `Plugins.Enabled: true`, the plugin registers traits + services (`provides: orion:attributes`, `orion:health`, `orion:hunger`). Other plugins consume via `IVanillaAttributesApi` / `IEntityHealthService` / `IPlayerHungerService`. Without it, there is no HP/hunger/food use. Prefer loading alongside `VanillaInventory` (softdepend).
+
+## Inventory, containers, and building
+
+Core does **not** include player inventory, chest/barrel, or block place. Build:
+
+```bash
+dotnet build plugins/VanillaInventory/VanillaInventory.csproj
+dotnet build plugins/VanillaContainers/VanillaContainers.csproj
+dotnet build plugins/VanillaBuilding/VanillaBuilding.csproj
+```
+
+Load order tip: Inventory → Building (softdepend). Survival place needs both; creative place works with Building alone (held from packet).
+
+- `VanillaInventory` — inventory/cursor/ISR (`provides: orion:inventory`); cancellable `PlayerOpenInventorySignal`
+- `VanillaContainers` — chest/barrel with **`depend: ["VanillaInventory"]`**; `PlayerOpenContainerSignal`
+- `VanillaBuilding` — place / use-on-block (`provides: orion:building`, softdepend Inventory); `IPlayerBlockUseHandler` / `IVanillaBuildingApi`
+- API inventory: `IVanillaInventoryApi` / `IPlayerInventoryService`
+
+Mining crack/break stays in core and does not require these plugins.
 
 ## Custom fillers
 
