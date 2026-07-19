@@ -242,7 +242,6 @@ public sealed class PlayerChunkRenderingTrait : PlayerTrait, ISessionTickableTra
 
     /// <summary>
     /// Updates publisher after region handoff without clearing loaded client chunks.
-    /// Used for same-worker and TEMP soft cross-worker handoffs.
     /// </summary>
     public void AfterRegionHandoff()
     {
@@ -250,27 +249,12 @@ public sealed class PlayerChunkRenderingTrait : PlayerTrait, ISessionTickableTra
         {
             if (!_started || Player.Dimension is null)
             {
-                Log.Warn(
-                    LogCategory.Orion,
-                    "[Teleport:Chunks] AfterRegionHandoff skipped player={0} started={1} dim={2}",
-                    Player.Username,
-                    _started,
-                    Player.Dimension is not null);
                 return;
             }
 
             Dimension dimension = Player.Dimension;
 
             UpdateTrackedChunkPosition();
-            Log.Info(
-                LogCategory.Orion,
-                "[Teleport:Chunks] AfterRegionHandoff player={0} chunk=({1},{2}) loaded={3} pubWas=({4},{5})",
-                Player.Username,
-                _currentChunkX,
-                _currentChunkZ,
-                _loadedChunks.Count,
-                _publisherChunkX,
-                _publisherChunkZ);
             SendPublisherUpdate();
 
             _lastPresenceArea = null;
@@ -908,9 +892,8 @@ public sealed class PlayerChunkRenderingTrait : PlayerTrait, ISessionTickableTra
                 continue;
             }
 
-            // TEMP: entity is between shards during cross-worker handoff — do not despawn for peers.
-            if (AreaBorderTransfer.PreserveSpectatorVisibilityAcrossAreaTransfer
-                && CrossAreaTransferHandler.IsTransferInFlight(runtimeId))
+            // Entity is between shards during cross-worker handoff — keep peer visibility.
+            if (CrossAreaTransferHandler.IsTransferInFlight(runtimeId))
             {
                 continue;
             }
