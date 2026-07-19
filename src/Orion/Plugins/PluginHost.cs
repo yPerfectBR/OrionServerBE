@@ -109,6 +109,16 @@ public static class PluginHost
         }
     }
 
+    /// <summary>Live server after <see cref="EnableAll"/>; used by packet-owning plugins.</summary>
+    public static bool TryGetServer(out Server? server)
+    {
+        lock (Sync)
+        {
+            server = _server;
+            return server is not null;
+        }
+    }
+
     /// <summary>Conflict diagnostics and loaded manifests (created on first ensure).</summary>
     public static IPluginDiagnostics Diagnostics
     {
