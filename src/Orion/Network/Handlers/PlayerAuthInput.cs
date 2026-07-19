@@ -485,12 +485,14 @@ public static class PlayerAuthInput
 
         player.OnMove(new EntityMoveOptions(previousPosition, player.Position, fromRotation, toRotation));
 
-        if (AreaBorderTransfer.TryAfterMove(server, player, previousPosition))
-        {
-            return;
-        }
+        bool borderTransfer = AreaBorderTransfer.TryAfterMove(server, player, previousPosition);
 
-        if (player.Dimension is not null)
+        // TEMP: on border cross, still broadcast MoveActorDelta so spectators do not lag one step
+        // behind and then jump when the actor is re-added. Gated by PreserveSpectatorVisibilityAcrossAreaTransfer.
+        bool shouldBroadcastMove = !borderTransfer
+            || AreaBorderTransfer.PreserveSpectatorVisibilityAcrossAreaTransfer;
+
+        if (shouldBroadcastMove && player.Dimension is not null)
         {
             bool positionChanged = previousPosition.X != player.Position.X
                 || previousPosition.Y != player.Position.Y
@@ -525,6 +527,11 @@ public static class PlayerAuthInput
                         Radius = broadcastRadius
                     });
             }
+        }
+
+        if (borderTransfer)
+        {
+            return;
         }
     }
 

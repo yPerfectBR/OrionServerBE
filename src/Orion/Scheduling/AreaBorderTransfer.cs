@@ -9,7 +9,15 @@ using Orion.World.Threading;
 namespace Orion.Scheduling;
 
 public static class AreaBorderTransfer
-{    private const ulong TransferCooldownTicks = 10;
+{
+    /// <summary>
+    /// TEMP: keep spectators from RemoveActor/AddPlayer during prepare→complete gap,
+    /// and broadcast the border-crossing MoveActorDelta before the transfer early-return.
+    /// Set to <c>false</c> to restore legacy spectator despawn/respawn behavior.
+    /// </summary>
+    public const bool PreserveSpectatorVisibilityAcrossAreaTransfer = true;
+
+    private const ulong TransferCooldownTicks = 10;
 
     private static readonly ConcurrentDictionary<ulong, ulong> LastTransferTickByRuntimeId = new();
 
@@ -210,6 +218,7 @@ public static class AreaBorderTransfer
             CrossAreaTransferHandler.InFlightMobTransfers[entity] = 1;
         }
 
+        CrossAreaTransferHandler.MarkTransferInFlight(entity.RuntimeId);
         areaScheduler.BeginAreaTransfer(session, snapshot);
     }
 
