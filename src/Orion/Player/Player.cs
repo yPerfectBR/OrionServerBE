@@ -592,27 +592,49 @@ public readonly string Username;
 
     /// <summary>
     /// Client sync after cross-region handoff within the same dimension.
-    /// Cross-worker handoffs force a full view reload; same-worker only refreshes the publisher.
+    /// TEMP: both same-worker and cross-worker only refresh publisher/presence — no MovePlayer
+    /// teleport and no ForceReloadViewDistance (thread switch is ownership-only on the server).
     /// </summary>
     public void ResyncAfterRegionHandoff(bool crossWorker = false)
     {
         ulong tick = Dimension?.World is Tickable tickable ? tickable.TickValue : 0;
         ulong inputTick = PlayerAuthInput.GetLastInputTick(RuntimeId);
+        Thread thread = Thread.CurrentThread;
+        int? owningArea = OwningAreaIndex;
+        int? attachedWorker = null;
+        if (Dimension is not null && owningArea.HasValue)
+        {
+            attachedWorker = Dimension.GetAreaShard(owningArea.Value).AttachedWorkerId;
+        }
+
         Info(
             LogCategory.Orion,
             "[Teleport] ResyncAfterRegionHandoff player={0} crossWorker={1} pos=({2:0.##},{3:0.##},{4:0.##}) " +
-            "owningArea={5} worldTick={6} inputTick={7} mode={8}",
+            "owningArea={5} simAw={6} worldTick={7} inputTick={8} mode={9} " +
+            "callerTid={10} callerName={11}",
             Username,
             crossWorker,
             Position.X,
             Position.Y,
             Position.Z,
-            OwningAreaIndex?.ToString() ?? "-",
+            owningArea?.ToString() ?? "-",
+            attachedWorker?.ToString() ?? "-",
             tick,
             inputTick,
-            crossWorker ? "ForceReloadViewDistance" : "AfterRegionHandoff");
+            SoftCrossWorkerRegionHandoff ? "AfterRegionHandoff(soft)" : crossWorker ? "MovePlayer+ForceReloadViewDistance" : "AfterRegionHandoff",
+            thread.ManagedThreadId,
+            thread.Name ?? "-");
 
-        // Re-assert client position after cross-worker handoff (MovePlayer may have been lost in flight).
+        PlayerChunkRenderingTrait? chunkRendering = GetTrait<PlayerChunkRenderingTrait>();
+
+        // TEMP: treat cross-worker like same-worker — only retarget streaming metadata.
+        if (SoftCrossWorkerRegionHandoff || !crossWorker)
+        {
+            chunkRendering?.AfterRegionHandoff();
+            return;
+        }
+
+        // Legacy hard path (disabled while SoftCrossWorkerRegionHandoff is true).
         Send(new MovePlayerPacket
         {
             RuntimeId = RuntimeId,
@@ -630,17 +652,14 @@ public readonly string Username;
 
         PlayerAuthInput.OnServerTeleport(RuntimeId, tick);
         AreaBorderTransfer.ResetTransferCooldown(RuntimeId);
-
-        PlayerChunkRenderingTrait? chunkRendering = GetTrait<PlayerChunkRenderingTrait>();
-        if (crossWorker)
-        {
-            chunkRendering?.ForceReloadViewDistance();
-        }
-        else
-        {
-            chunkRendering?.AfterRegionHandoff();
-        }
+        chunkRendering?.ForceReloadViewDistance();
     }
+
+    /// <summary>
+    /// TEMP experiment: cross-worker handoff without client teleport / full chunk reload.
+    /// Set to <c>false</c> to restore MovePlayer(Teleport) + ForceReloadViewDistance.
+    /// </summary>
+    const bool SoftCrossWorkerRegionHandoff = true;
 
     public void RegisterOpenContainer(int windowId, Container container)
     {
