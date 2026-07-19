@@ -241,8 +241,8 @@ public sealed class PlayerChunkRenderingTrait : PlayerTrait, ISessionTickableTra
     }
 
     /// <summary>
-    /// Updates publisher after same-worker region handoff without clearing loaded client chunks.
-    /// Cross-worker handoffs should call <see cref="ForceReloadViewDistance"/> instead.
+    /// Updates publisher after region handoff without clearing loaded client chunks.
+    /// Used for same-worker and TEMP soft cross-worker handoffs.
     /// </summary>
     public void AfterRegionHandoff()
     {
@@ -389,10 +389,13 @@ public sealed class PlayerChunkRenderingTrait : PlayerTrait, ISessionTickableTra
         {
             ChunkCoord fromChunk = ChunkCoord.FromBlock(details.From.X, details.From.Z);
             ChunkCoord toChunk = ChunkCoord.FromBlock(details.To.X, details.To.Z);
+            bool destinationRendered = _started && _loadedChunks.Contains(toChunk.Hash);
+            bool needsFullReload = details.ForceFullChunkReload || !destinationRendered;
+
             Log.Info(
                 LogCategory.Orion,
                 "[Teleport:Chunks] OnTeleport player={0} fromChunk=({1},{2}) toChunk=({3},{4}) " +
-                "loadedBefore={5} started={6} vd={7}",
+                "loadedBefore={5} started={6} vd={7} fullReload={8} destRendered={9} force={10}",
                 Player.Username,
                 fromChunk.X,
                 fromChunk.Z,
@@ -400,7 +403,16 @@ public sealed class PlayerChunkRenderingTrait : PlayerTrait, ISessionTickableTra
                 toChunk.Z,
                 _loadedChunks.Count,
                 _started,
-                ViewDistance);
+                ViewDistance,
+                needsFullReload,
+                destinationRendered,
+                details.ForceFullChunkReload);
+
+            if (!needsFullReload)
+            {
+                ApplySoftTeleportChunkUpdate(toChunk);
+                return;
+            }
 
             HideAllVisibleEntities();
 
@@ -432,6 +444,31 @@ public sealed class PlayerChunkRenderingTrait : PlayerTrait, ISessionTickableTra
             _started = true;
             // Hold LevelChunks until AuthInput is accepted at the destination (max ~20 session ticks).
             ArmTeleportChunkHold(minTicks: 4);
+        }
+    }
+
+    /// <summary>
+    /// Same-area teleport into an already-rendered column: keep client chunks, only retarget streaming.
+    /// </summary>
+    void ApplySoftTeleportChunkUpdate(ChunkCoord toChunk)
+    {
+        if (Player.Dimension is null)
+        {
+            return;
+        }
+
+        bool chunkChanged = UpdateChunkPosition(toChunk.X, toChunk.Z);
+        if (chunkChanged)
+        {
+            UpdateSpatialPlayerIndex(toChunk);
+            SyncRegionPresence();
+            UnloadChunks(Player.Dimension, clearClient: true);
+            UpdateSimulationChunks(Player.Dimension);
+        }
+
+        if (toChunk.X != _publisherChunkX || toChunk.Z != _publisherChunkZ)
+        {
+            SendPublisherUpdate();
         }
     }
 
@@ -885,7 +922,6 @@ public sealed class PlayerChunkRenderingTrait : PlayerTrait, ISessionTickableTra
             {
                 continue;
             }
-
             Player.Send(new RemoveActorPacket
             {
                 EntityUniqueId = uniqueId

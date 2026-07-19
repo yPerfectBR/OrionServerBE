@@ -474,7 +474,12 @@ public readonly string Username;
             targetDimension.World is Tickable t0 ? t0.TickValue : 0UL);
 
         Position = position;
-        OnTeleport(new EntityTeleportOptions(previousPosition, position));
+
+        // TEMP (with SoftCrossWorkerRegionHandoff): do not force a full client chunk reload just
+        // because the destination lies in another threading area — keep columns if already rendered.
+        bool forceFullChunkReload = changedDimension || forceDimensionChange;
+
+        OnTeleport(new EntityTeleportOptions(previousPosition, position, forceFullChunkReload));
 
         if (changedDimension)
         {
@@ -529,8 +534,7 @@ public readonly string Username;
             targetDimension.Broadcast(CreateActorDataPacket(worldTick), new BroadcastOptions { Except = [this] });
         }
 
-        // OnTeleport already armed chunk streaming with a short hold so LevelChunks are not
-        // sent (and discarded by the client) before MovePlayer is applied.
+        // Soft teleports keep already-rendered chunks; full reload arms a short hold before LevelChunks.
         SendAttributes();
 
         PlayerAuthInput.OnServerTeleport(RuntimeId, worldTick);
