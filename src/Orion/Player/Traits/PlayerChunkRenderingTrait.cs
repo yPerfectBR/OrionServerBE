@@ -907,6 +907,14 @@ public sealed class PlayerChunkRenderingTrait : PlayerTrait, ISessionTickableTra
             {
                 continue;
             }
+
+            // TEMP: entity is between shards during cross-worker handoff — do not despawn for peers.
+            if (AreaBorderTransfer.PreserveSpectatorVisibilityAcrossAreaTransfer
+                && CrossAreaTransferHandler.IsTransferInFlight(runtimeId))
+            {
+                continue;
+            }
+
             Player.Send(new RemoveActorPacket
             {
                 EntityUniqueId = uniqueId

@@ -11,6 +11,21 @@ namespace Orion.Scheduling;
 internal static class CrossAreaTransferHandler
 {
     internal static readonly ConcurrentDictionary<object, byte> InFlightMobTransfers = new();
+
+    /// <summary>
+    /// RuntimeIds mid prepare→complete so spectators can keep the actor visible.
+    /// </summary>
+    internal static readonly ConcurrentDictionary<ulong, byte> InFlightTransferRuntimeIds = new();
+
+    internal static bool IsTransferInFlight(ulong runtimeId) =>
+        InFlightTransferRuntimeIds.ContainsKey(runtimeId);
+
+    internal static void MarkTransferInFlight(ulong runtimeId) =>
+        InFlightTransferRuntimeIds[runtimeId] = 1;
+
+    internal static void ClearTransferInFlight(ulong runtimeId) =>
+        InFlightTransferRuntimeIds.TryRemove(runtimeId, out _);
+
     public static void HandlePrepareTransfer(Server server, AreaWorker sourceWorker, PrepareAreaTransferMessage message)
     {
         AreaEntitySnapshot snapshot = message.Snapshot;
@@ -91,6 +106,7 @@ internal static class CrossAreaTransferHandler
                 snapshot.CrossWorker);
 
             dimension.AddEntity((IAreaStoredEntity)entity, snapshot.TargetAreaIndex);
+            ClearTransferInFlight(GetRuntimeId(entity));
             targetWorker.LogSimulationSnapshot("transfer-complete");
             if (session is not null)
             {
@@ -144,6 +160,7 @@ internal static class CrossAreaTransferHandler
     {
         Log.Error(LogCategory.Orion, "[Area:Transfer] abort: {0}", reason);
         InFlightMobTransfers.TryRemove(snapshot.Entity, out _);
+        ClearTransferInFlight(GetRuntimeId(snapshot.Entity));
 
         if (snapshot.Session is not null)
         {
@@ -156,6 +173,10 @@ internal static class CrossAreaTransferHandler
 
     static Dimension? GetEntityDimension(object entity) =>
         entity is IAreaEntity areaEntity ? areaEntity.Dimension : null;
+
+    static ulong GetRuntimeId(object entity) =>
+        entity is IAreaEntity areaEntity ? areaEntity.RuntimeId : 0UL;
+
     static string DescribeEntity(object entity) =>
         entity is Orion.Player.Player player
             ? $"player={player.Username}"

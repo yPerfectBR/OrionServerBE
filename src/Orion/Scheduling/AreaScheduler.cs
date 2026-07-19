@@ -166,6 +166,11 @@ public sealed class AreaScheduler : IAreaScheduler
         if (!sourceWorkerId.HasValue || !targetWorkerId.HasValue)
         {
             CrossAreaTransferHandler.InFlightMobTransfers.TryRemove(GetEntityKey(snapshot.Entity), out _);
+            if (snapshot.Entity is IAreaEntity areaEntity)
+            {
+                CrossAreaTransferHandler.ClearTransferInFlight(areaEntity.RuntimeId);
+            }
+
             return;
         }
 
