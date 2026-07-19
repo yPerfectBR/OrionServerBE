@@ -222,6 +222,23 @@ public readonly string Username;
         Session?.Send(packets);
     }
 
+    /// <summary>
+    /// Show or hide HUD elements for this client (Bedrock SetHud /hud).
+    /// </summary>
+    public void SetHud(HudVisibility visibility, params HudElement[] elements)
+    {
+        if (elements.Length == 0 || Session is null)
+        {
+            return;
+        }
+
+        Send(new SetHudPacket
+        {
+            Elements = [.. elements],
+            Visibility = visibility
+        });
+    }
+
     public bool DropItem(Item.ItemStack item)
     {
         if (Dimension is null || item.StackSize == 0 || item.Type == Item.ItemType.Air)
