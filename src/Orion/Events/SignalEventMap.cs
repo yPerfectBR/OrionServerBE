@@ -15,6 +15,8 @@ public static class SignalEventMap
         [typeof(PlayerLeaveSignal)] = ServerEvent.PlayerLeave,
         [typeof(PlayerPlaceBlockSignal)] = ServerEvent.PlayerPlaceBlock,
         [typeof(PlayerBreakBlockSignal)] = ServerEvent.PlayerBreakBlock,
+        [typeof(PlayerOpenInventorySignal)] = ServerEvent.PlayerOpenInventory,
+        [typeof(PlayerOpenContainerSignal)] = ServerEvent.PlayerOpenContainer,
     };
 
     public static ServerEvent For<TSignal>() where TSignal : ISignal => For(typeof(TSignal));

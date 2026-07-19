@@ -12,4 +12,6 @@ public enum ServerEvent : int
     PlayerLeave = 7,
     PlayerPlaceBlock = 8,
     PlayerBreakBlock = 9,
+    PlayerOpenInventory = 10,
+    PlayerOpenContainer = 11,
 }
