@@ -4,10 +4,11 @@ using Orion;
 using Orion.Scheduling;
 using Orion.Block.Traits.Types;
 using Orion.Entity.Traits;
-using Orion.Entity.Traits.Attribute;
 using Orion.Events;
+using Orion.Gameplay;
 using Orion.Item;
 using Orion.Item.Traits.Types;
+using Orion.Plugins;
 
 using Orion.Protocol.Enums;
 using Orion.Protocol.Packets;
@@ -625,13 +626,12 @@ public static class InventoryTransaction
                         transaction.ClickedPosition));
                 }
 
-                if (!ReferenceEquals(target, player))
+                if (!ReferenceEquals(target, player)
+                    && target.IsAlive
+                    && PluginHost.Services.TryGet(out IEntityHealthService? health)
+                    && health is not null)
                 {
-                    EntityHealthTrait? health = target.GetTrait<EntityHealthTrait>();
-                    if (health is not null && target.IsAlive)
-                    {
-                        health.ApplyDamage(1f, player, ActorDamageCause.EntityAttack);
-                    }
+                    _ = health.TryApplyDamage(target, 1f, player, ActorDamageCause.EntityAttack);
                 }
                 break;
         }
