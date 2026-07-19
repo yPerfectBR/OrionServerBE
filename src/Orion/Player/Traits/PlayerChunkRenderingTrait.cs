@@ -556,22 +556,7 @@ public sealed class PlayerChunkRenderingTrait : PlayerTrait, ISessionTickableTra
             SendChunkChestVisualUpdates(dimension, x, z);
         }
 
-        if (sentChunks.Count > 0)
-        {
-            int expected = ((ViewDistance * 2) + 1) * ((ViewDistance * 2) + 1);
-            Log.Info(
-                LogCategory.Orion,
-                "[Teleport:Chunks] SendChunks player={0} n={1} loaded={2}/{3} ready={4} req={5} first=({6},{7}) transfer={8}",
-                Player.Username,
-                sentChunks.Count,
-                _loadedChunks.Count,
-                expected,
-                _readyChunks.Count,
-                _requestedChunks.Count,
-                sentChunks[0].X,
-                sentChunks[0].Z,
-                Player.Session?.TransferState.ToString() ?? "no-session");
-        }
+        // Routine SendChunks spam omitted — keep StartChunkLoad / ForceReload / OnTeleport / hold logs.
     }
 
     private void RequestChunks(Dimension dimension)
