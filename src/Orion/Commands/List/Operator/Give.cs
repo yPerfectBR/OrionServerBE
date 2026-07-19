@@ -2,9 +2,10 @@ namespace Orion.Commands.List.Operator;
 
 using Orion.Commands;
 using Orion;
-using Orion.Entity.Traits;
+using Orion.Gameplay;
 using Orion.Item;
 using Orion.Network.Handlers;
+using Orion.Plugins;
 using Player = global::Orion.Player.Player;
 
 public class GiveCommand : Command
@@ -118,8 +119,12 @@ public class GiveCommand : Command
 
     static int GiveItem(Player player, ItemType type, int amount)
     {
-        EntityInventoryTrait? inventory = player.GetTrait<EntityInventoryTrait>();
-        if (inventory is null)
+        if (!PluginHost.Services.TryGet(out IPlayerInventoryService? inventory) || inventory is null)
+        {
+            return 0;
+        }
+
+        if (!inventory.TryGetAccess(player, out IPlayerInventoryAccess? access) || access is null)
         {
             return 0;
         }
@@ -130,7 +135,7 @@ public class GiveCommand : Command
         {
             int count = Math.Min(type.MaxStackSize, remaining);
             ItemStack stack = new(type, (ushort)count);
-            if (!inventory.Container.AddItem(stack))
+            if (!access.Container.AddItem(stack))
             {
                 break;
             }
@@ -141,13 +146,13 @@ public class GiveCommand : Command
 
         if (given > 0)
         {
-            inventory.Container.Update();
-            inventory.SyncToPlayer(player);
-            inventory.SyncHeldItemToClient(player);
-            ItemStack? first = inventory.Container.GetItem(0);
-            for (int i = 0; i < inventory.Container.GetSize(); i++)
+            access.Container.Update();
+            access.SyncToPlayer(player);
+            access.SyncHeldItemToClient(player);
+            ItemStack? first = access.Container.GetItem(0);
+            for (int i = 0; i < access.Container.GetSize(); i++)
             {
-                ItemStack? slot = inventory.Container.GetItem(i);
+                ItemStack? slot = access.Container.GetItem(i);
                 if (slot is not null && slot.Type == type)
                 {
                     first = slot;

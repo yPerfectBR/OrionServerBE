@@ -1,13 +1,14 @@
 namespace Orion.Network.Handlers;
 
 using Orion;
-using Orion.Entity.Traits;
+using Orion.Events;
+using Orion.Gameplay;
 using Orion.Item.Traits.Types;
+using Orion.Plugins;
 using Orion.Protocol.Enums;
 using Orion.Protocol.Packets;
 using Orion.Protocol.Types;
 using Orion.RakNet;
-
 
 public static class Interact
 {
@@ -25,25 +26,29 @@ public static class Interact
 
         if (packet.ActionType == InteractActionType.OpenInventory)
         {
-            EntityInventoryTrait? playerInventory = player.GetTrait<EntityInventoryTrait>();
-            if (playerInventory is null)
+            PlayerOpenInventorySignal signal = new(player);
+            server.Emit(signal);
+            if (!signal.Emit())
             {
                 return;
             }
 
-            playerInventory.Container.Show(player);
+            if (PluginHost.Services.TryGet(out IPlayerInventoryService? inventoryService) && inventoryService is not null)
+            {
+                _ = inventoryService.TryOpenInventory(player);
+            }
+
             return;
         }
 
         if (packet.ActionType == InteractActionType.MouseOverEntity)
         {
-            EntityInventoryTrait? inventory = player.GetTrait<EntityInventoryTrait>();
-            if (inventory is null)
+            if (!PluginHost.Services.TryGet(out IPlayerInventoryService? inventoryService) || inventoryService is null)
             {
                 return;
             }
 
-            var heldItem = inventory.GetHeldItem();
+            var heldItem = inventoryService.GetHeldItem(player);
             if (heldItem is null || player.Dimension is null)
             {
                 return;
@@ -63,13 +68,3 @@ public static class Interact
         }
     }
 }
-
-
-
-
-
-
-
-
-
-

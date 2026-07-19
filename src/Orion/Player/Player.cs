@@ -16,6 +16,8 @@ using Orion.World;
 
 using Basalt.Binary;
 using Orion.Entity.Traits;
+using Orion.Gameplay;
+using Orion.Plugins;
 using Orion.Entity.Traits.Types;
 using Orion.Player.Traits;
 
@@ -256,59 +258,12 @@ public readonly string Username;
 
     public ushort CollectItem(Item.ItemStack item)
     {
-        var inventory = GetTrait<EntityInventoryTrait>();
-        if (inventory is null || item.StackSize == 0)
+        if (!PluginHost.Services.TryGet(out IPlayerInventoryService? inventory) || inventory is null)
         {
             return 0;
         }
 
-        var container = inventory.Container;
-        ushort remaining = item.StackSize;
-        ushort moved = 0;
-
-        for (int i = 0; i < container.GetSize() && remaining > 0; i++)
-        {
-            Item.ItemStack? existing = container.GetItem(i);
-            if (existing is null || !existing.CanStackWith(item) || existing.StackSize >= existing.Type.MaxStackSize)
-            {
-                continue;
-            }
-
-            int space = existing.Type.MaxStackSize - existing.StackSize;
-            int transfer = Math.Min(space, remaining);
-            if (transfer <= 0)
-            {
-                continue;
-            }
-
-            existing.IncrementStack((ushort)transfer);
-            container.UpdateSlot(i);
-            remaining = (ushort)(remaining - transfer);
-            moved = (ushort)(moved + transfer);
-        }
-
-        for (int i = 0; i < container.GetSize() && remaining > 0; i++)
-        {
-            if (container.GetItem(i) is not null)
-            {
-                continue;
-            }
-
-            ushort transfer = (ushort)Math.Min(remaining, item.Type.MaxStackSize);
-            Item.ItemStack stack = item.Clone(transfer);
-            container.SetItem(i, stack);
-            remaining = (ushort)(remaining - transfer);
-            moved = (ushort)(moved + transfer);
-        }
-
-        if (moved == 0)
-        {
-            return 0;
-        }
-
-        item.SetStackSize(remaining);
-        inventory.SyncToPlayer(this);
-        return moved;
+        return inventory.TryCollect(this, item, out ushort moved) ? moved : (ushort)0;
     }
 
     public void Disconnect(string reason = "")
@@ -344,19 +299,9 @@ public readonly string Username;
 
         openedContainers.Clear();
 
-        EntityInventoryTrait? inventory = GetTrait<EntityInventoryTrait>();
-        if (inventory is not null)
+        if (PluginHost.Services.TryGet(out IPlayerInventoryService? inventory) && inventory is not null)
         {
-            EnsureContainerViewer(this, inventory.Container, inventory.Container.Identifier ?? 0);
-            inventory.SyncToPlayer(this);
-            inventory.SyncHeldItemToClient(this);
-        }
-
-        PlayerCursorTrait? cursor = GetTrait<PlayerCursorTrait>();
-        if (cursor is not null)
-        {
-            EnsureContainerViewer(this, cursor.Container, cursor.Container.Identifier ?? 124);
-            cursor.Container.Update();
+            _ = inventory.TrySyncToClient(this);
         }
 
         SendAttributes();
@@ -404,15 +349,10 @@ public readonly string Username;
             return;
         }
 
-        EntityInventoryTrait? inventory = GetTrait<EntityInventoryTrait>();
-        if (inventory is null)
+        if (PluginHost.Services.TryGet(out IPlayerInventoryService? inventory) && inventory is not null)
         {
-            return;
+            _ = inventory.TrySyncToClient(this);
         }
-
-        EnsureContainerViewer(this, inventory.Container, inventory.Container.Identifier ?? 0);
-        inventory.SyncToPlayer(this);
-        inventory.SyncHeldItemToClient(this);
     }
 
     static void EnsureContainerViewer(Player player, Containers.Container container, int windowId)
@@ -610,65 +550,9 @@ public readonly string Username;
 
     public Container? GetContainer(FullContainerName name)
     {
-        EntityInventoryTrait? inventory = GetTrait<EntityInventoryTrait>();
-        if (inventory is null)
+        if (PluginHost.Services.TryGet(out IPlayerInventoryService? inventory) && inventory is not null)
         {
-            return null;
-        }
-
-        // Prefer ContainerId values used by ItemStackRequest (same mapping as Basalt).
-        if (name.ContainerId is (byte)ContainerId.Armor or 12
-            or (byte)ContainerId.Inventory or (byte)ContainerId.Hotbar
-            or (byte)ContainerId.FixedInventory or (byte)ContainerId.Offhand)
-        {
-            return inventory.Container;
-        }
-
-        if (name.ContainerId is (byte)ContainerId.Cursor or (byte)ContainerId.CreatedOutput
-            or (byte)ContainerName.Cursor or (byte)ContainerName.CreativeOutput)
-        {
-            return GetTrait<PlayerCursorTrait>()?.Container;
-        }
-
-        if (name.ContainerId == (byte)ContainerId.Barrel || name.ContainerId == (byte)ContainerId.InventoryUi
-            || name.ContainerId == (byte)ContainerName.Barrel || name.ContainerId == (byte)ContainerName.Container)
-        {
-            if (name.DynamicContainerId.HasValue &&
-                TryGetOpenContainer((int)name.DynamicContainerId.Value!, out Container? containerById))
-            {
-                return containerById;
-            }
-
-            foreach ((int _, Container candidate) in openedContainers)
-            {
-                if (candidate.Type != ContainerType.Inventory)
-                {
-                    return candidate;
-                }
-            }
-
-            return inventory.Container;
-        }
-
-        ContainerName containerName = (ContainerName)name.ContainerId;
-        switch (containerName)
-        {
-            case ContainerName.HotbarAndInventory:
-            case ContainerName.Hotbar:
-            case ContainerName.Inventory:
-            case ContainerName.Armor:
-            case ContainerName.Offhand:
-                return inventory.Container;
-
-            case ContainerName.Cursor:
-            case ContainerName.CreativeOutput:
-                return GetTrait<PlayerCursorTrait>()?.Container;
-        }
-
-        if (name.DynamicContainerId.HasValue &&
-            TryGetOpenContainer((int)name.DynamicContainerId.Value!, out Container? container))
-        {
-            return container;
+            return inventory.ResolveContainer(this, name);
         }
 
         return null;
@@ -742,8 +626,9 @@ public readonly string Username;
     public override void SpawnTo(Player player, ulong tick)
     {
         ItemInstance heldItem = new();
-        EntityInventoryTrait? inventory = GetTrait<EntityInventoryTrait>();
-        Item.ItemStack? held = inventory?.GetHeldItem();
+        Item.ItemStack? held = PluginHost.Services.TryGet(out IPlayerInventoryService? invSvc) && invSvc is not null
+            ? invSvc.GetHeldItem(this)
+            : null;
         if (held is not null)
         {
             heldItem.Stack = held.ToNetworkStack();

@@ -1,36 +1,26 @@
 namespace Orion.Network.Handlers;
 
 using Orion;
-using Orion.Entity.Traits;
+using Orion.Gameplay;
+using Orion.Plugins;
 using Orion.Protocol.Packets;
 using Orion.RakNet;
 
-
+/// <summary>Fallback when VanillaInventory is not loaded / not owning the packet.</summary>
 public static class ContainerClose
 {
     public static void Handle(Server server, NetworkConnection connection, ReadOnlySpan<byte> packetBuffer)
     {
-
         ContainerClosePacket packet = new();
         int offset = 0;
         BinaryReader reader = new(packetBuffer, ref offset);
         packet = (ContainerClosePacket)Protocol.Io.Packet.Deserialize(reader);
 
-        if (SessionLookup.TryGetPlayer(server, connection, out global::Orion.Player.Player? player))
+        if (SessionLookup.TryGetPlayer(server, connection, out global::Orion.Player.Player? player)
+            && PluginHost.Services.TryGet(out IPlayerInventoryService? inventory)
+            && inventory is not null)
         {
-            ArgumentNullException.ThrowIfNull(player);
-
-            EntityInventoryTrait? inventory = player.GetTrait<EntityInventoryTrait>();
-
-            if (inventory is not null && packet.WindowId == (byte)(inventory.Container.Identifier ?? 0))
-            {
-                inventory.Container.RemoveViewer(player, false);
-            }
-            else if (player.TryGetOpenContainer(packet.WindowId, out Orion.Containers.Container? openContainer) && openContainer is not null)
-            {
-                openContainer.RemoveViewer(player, false);
-            }
-
+            _ = inventory.TryCloseInventory(player, packet.WindowId);
             player.FlushClientWorldStateSyncIfPending(force: true);
         }
 
