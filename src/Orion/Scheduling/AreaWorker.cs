@@ -149,62 +149,6 @@ public sealed class AreaWorker
 
         TickAttachedEntities(world);
         SaveAttachedDirtyChunks();
-        MaybeLogSimulationHeartbeat();
-    }
-
-    void MaybeLogSimulationHeartbeat()
-    {
-        // ~5s at 20 TPS — quiet periodic ownership proof.
-        if (_tickValue % 100 != 0 || _attachedAreas.Count == 0)
-        {
-            return;
-        }
-
-        LogSimulationSnapshot("heartbeat");
-    }
-
-    /// <summary>
-    /// Logs which entities/players this worker is currently simulating.
-    /// Used for the periodic heartbeat and immediately on important ownership changes.
-    /// </summary>
-    internal void LogSimulationSnapshot(string reason)
-    {
-        int entityCount = 0;
-        List<string> playerSummaries = [];
-        foreach ((AttachedAreaKey key, AreaShard shard) in _attachedAreas)
-        {
-            IAreaStoredEntity[] entities = shard.SnapshotEntities();
-            entityCount += entities.Length;
-            for (int i = 0; i < entities.Length; i++)
-            {
-                if (entities[i] is Orion.Player.Player player)
-                {
-                    playerSummaries.Add(
-                        $"{player.Username}@area{key.AreaIndex}(own={player.OwningAreaIndex?.ToString() ?? "-"})");
-                }
-            }
-        }
-
-        if (entityCount == 0 && reason == "heartbeat")
-        {
-            return;
-        }
-
-        Thread thread = Thread.CurrentThread;
-        Log.Info(
-            LogCategory.Orion,
-            "[Area:Sim] reason={0} aw{1} managedTid={2} workerTid={3} threadName={4} onWorker={5} tick={6} " +
-            "areas={7} entities={8} players=[{9}]",
-            reason,
-            WorkerId,
-            thread.ManagedThreadId,
-            WorkerThreadId,
-            thread.Name ?? "-",
-            IsCurrentThread(),
-            _tickValue,
-            _attachedAreas.Count,
-            entityCount,
-            playerSummaries.Count == 0 ? "-" : string.Join(", ", playerSummaries));
     }
 
     void SaveAttachedDirtyChunks()
