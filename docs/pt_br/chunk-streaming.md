@@ -83,10 +83,9 @@ Sem isso o cliente pode interpretar o payload errado e falhar ao renderizar terr
 
 ## Handoff entre áreas
 
-- Mesmo worker: `AfterRegionHandoff()` — refresca publisher e presença, sem unload forçado.
-- Cross-worker: `ForceReloadViewDistance()` — unload forçado, limpa `_loadedChunks` e arma o hold de teleport antes de reenviar a view (via `Player.ResyncAfterRegionHandoff(crossWorker: true)`).
+Same-worker e cross-worker usam o mesmo caminho de cliente: `ResyncAfterRegionHandoff` → `AfterRegionHandoff()` (publisher / presença), **sem** unload forçado só por trocar de thread.
 
-Após `/tp`, o streaming também espera o hold de teleporte (`_awaitingTeleportChunkSync`) para não marcar chunks do destino como `loaded` antes do cliente aplicar o `MovePlayer`. Detalhes em [teleport.md](teleport.md).
+Detalhes de ownership e peers: [area-threading.md](area-threading.md). Após `/tp` com full reload, o streaming ainda espera o hold (`_awaitingTeleportChunkSync`). Ver [teleport.md](teleport.md).
 
 ## Debug
 

@@ -83,10 +83,9 @@ Without this, the client can misread the payload and fail to render terrain even
 
 ## Area handoff
 
-- Same worker: `AfterRegionHandoff()` — refresh publisher and presence, no forced unload.
-- Cross-worker: `ForceReloadViewDistance()` — force-unload, clear `_loadedChunks`, and arm the teleport hold before resending the view (via `Player.ResyncAfterRegionHandoff(crossWorker: true)`).
+Same-worker and cross-worker share the same client path: `ResyncAfterRegionHandoff` → `AfterRegionHandoff()` (publisher / presence), **without** a forced unload just for a thread switch.
 
-After `/tp`, streaming also waits on the teleport hold (`_awaitingTeleportChunkSync`) so destination chunks are not marked `loaded` before the client applies `MovePlayer`. See [teleport.md](teleport.md).
+Ownership and peer details: [area-threading.md](area-threading.md). After `/tp` with a full reload, streaming still waits on the hold (`_awaitingTeleportChunkSync`). See [teleport.md](teleport.md).
 
 ## Debug
 
