@@ -189,7 +189,7 @@ public sealed class InventoryGameplayServices : IVanillaInventoryApi, IPlayerInv
             return;
         }
 
-        //player.SetHud(HudVisibility.Reset, HudElement.HotBar);
+        player.SetHud(HudVisibility.Reset, HudElement.HotBar);
     }
 
     public Container? ResolveContainer(Player player, FullContainerName name)
