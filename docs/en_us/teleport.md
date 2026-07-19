@@ -34,8 +34,12 @@ sequenceDiagram
         Area->>Area: Transferring
         Sess-->>Trait: pause chunk ticks
         Area->>P: ResyncAfterRegionHandoff(crossWorker?)
-        P->>C: MovePlayer again
-        P->>Trait: ForceReloadViewDistance (if cross-worker)
+        alt cross-worker
+            P->>C: MovePlayer(Teleport)
+            P->>Trait: ForceReloadViewDistance
+        else same-worker
+            P->>Trait: AfterRegionHandoff
+        end
     end
     loop rejected AuthInput (still at origin)
         C->>Auth: old position
@@ -71,10 +75,22 @@ sequenceDiagram
 4. **While `Transferring`**
    - `SessionWorker` **skips** session-tick traits (chunks) so streaming does not run mid-handoff.
 
-5. **`ResyncAfterRegionHandoff`**
-   - Resends `MovePlayer` (the first one may race the handoff).
-   - Cross-worker: `ForceReloadViewDistance()` (forget `loaded` and resend the view).
-   - Same-worker: `AfterRegionHandoff()` (publisher / presence only).
+5. **`ResyncAfterRegionHandoff`** (TEMP soft)
+   - Same-worker **and** cross-worker: `AfterRegionHandoff()` only — no `MovePlayer` teleport and no `ForceReloadViewDistance`.
+   - Flag: `Player.SoftCrossWorkerRegionHandoff` (`true` = soft). Legacy hard path remains in code but disabled.
+
+5b. **Spectator visibility** (TEMP)
+   - During the prepare→complete gap the player is absent from `GetEntities()`; without a guard, peers sent `RemoveActor` then `AddPlayer` (flicker).
+   - Flag: `AreaBorderTransfer.PreserveSpectatorVisibilityAcrossAreaTransfer` (`true`):
+     - do not despawn for peers while the runtimeId is in-flight;
+     - still broadcast `MoveActorDelta` on the border step (before the transfer early-return).
+   - To revert: set the flag to `false`.
+
+Chunk streaming on `Teleport` is also conditional:
+
+- **Full reload** (unload all + hold): dimension change, or destination chunk not already in `_loadedChunks`.
+- **Soft** (keep columns): destination already rendered (e.g. Y-only `/tp`, or area change with view still valid).
+- TEMP: changing threading area alone does **not** force a reload.
 
 6. **Hold release**
    - Preferred: first **accepted** `PlayerAuthInput` (client near server) → `NotifyClientAtTeleportDestination`.
