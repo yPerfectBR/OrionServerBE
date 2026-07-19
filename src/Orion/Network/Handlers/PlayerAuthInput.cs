@@ -10,10 +10,12 @@ using Orion.Block.Traits.Types;
 using Orion.Entity.Traits;
 using Orion.Entity.Traits.Types;
 using Orion.Events;
+using Orion.Gameplay;
 using Orion.Item;
 using Orion.Item.Traits;
 using Orion.Item.Traits.Types;
 using Orion.Player.Traits;
+using Orion.Plugins;
 
 using Orion.Protocol.Enums;
 using Orion.Protocol.Packets;
@@ -25,7 +27,6 @@ public static class PlayerAuthInput
 {
     private const float MaxHorizontalMovePerTick = 2.0f;
     private const float MaxBlockReachDistance = 6.5f;
-    private const ulong DefaultFoodUseTicks = 32UL;
     private const ulong MovementGraceTicks = 5UL;
 
     private static readonly ConcurrentDictionary<ulong, ulong> LastInputTickByRuntimeId = new();
@@ -140,16 +141,11 @@ public static class PlayerAuthInput
     {
         EntityInventoryTrait? inventory = player.GetTrait<EntityInventoryTrait>();
         ItemStack? heldItem = inventory?.GetHeldItem();
-        ItemStackFoodTrait? food = heldItem?.GetTrait<ItemStackFoodTrait>();
-        if (inventory is null || heldItem is null || food is null)
-        {
-            PendingItemUses.TryRemove(player.RuntimeId, out _);
-            player.Flags.SetActorFlag(ActorFlag.UsingItem, false);
-            return;
-        }
-
-        PlayerHungerTrait? hunger = player.GetTrait<PlayerHungerTrait>();
-        if (hunger is null || (!food.CanAlwaysEat && hunger.CurrentValue >= hunger.MaximumValue))
+        if (inventory is null
+            || heldItem is null
+            || !PluginHost.Services.TryGet(out IPlayerItemUseHandler? handler)
+            || handler is null
+            || !handler.TryBeginUse(player, heldItem, out ulong durationTicks))
         {
             PendingItemUses.TryRemove(player.RuntimeId, out _);
             player.Flags.SetActorFlag(ActorFlag.UsingItem, false);
@@ -157,11 +153,10 @@ public static class PlayerAuthInput
         }
 
         ulong currentTick = GetCurrentTick(player);
-        ulong useTicks = GetUseDurationTicks(heldItem);
         PendingItemUses[player.RuntimeId] = new PendingItemUse(
             inventory.SelectedSlot,
             heldItem.NetworkStackId,
-            currentTick + Math.Max(1UL, useTicks));
+            currentTick + Math.Max(1UL, durationTicks));
 
         player.Flags.SetActorFlag(ActorFlag.UsingItem, true);
     }
@@ -190,48 +185,17 @@ public static class PlayerAuthInput
         PendingItemUses.TryRemove(player.RuntimeId, out _);
         player.Flags.SetActorFlag(ActorFlag.UsingItem, false);
 
-        ItemStackFoodTrait? food = heldItem.GetTrait<ItemStackFoodTrait>();
-        PlayerHungerTrait? hunger = player.GetTrait<PlayerHungerTrait>();
-        if (food is null || hunger is null || !hunger.Eat(food.Nutrition, food.SaturationModifier, food.CanAlwaysEat))
+        if (!PluginHost.Services.TryGet(out IPlayerItemUseHandler? handler) || handler is null)
         {
             return;
         }
 
-        heldItem.DecrementStack();
-        if (heldItem.StackSize == 0)
-        {
-            inventory.Container.ClearSlot(pending.Slot);
-        }
-        else
-        {
-            inventory.Container.UpdateSlot(pending.Slot);
-        }
-
-        if (!string.IsNullOrWhiteSpace(food.UsingConvertsTo) && ItemType.Get(food.UsingConvertsTo) is ItemType convertedType)
-        {
-            ItemStack converted = new(convertedType);
-            if (!inventory.Container.AddItem(converted))
-            {
-                _ = player.DropItem(converted);
-            }
-        }
-
-        player.SendAttributes();
+        _ = handler.TryCompleteUse(player, heldItem, pending.Slot);
     }
 
     private static ulong GetCurrentTick(global::Orion.Player.Player player)
     {
         return player.Dimension?.World is Orion.World.Tickable tickable ? tickable.TickValue : 0UL;
-    }
-
-    private static ulong GetUseDurationTicks(ItemStack item)
-    {
-        if (item.Type.TryGetComponentProperties("minecraft:use_duration", out Orion.Protocol.Nbt.CompoundTag tag))
-        {
-            return (ulong)Math.Max(1, tag.Get<Orion.Protocol.Nbt.IntTag>("value")?.Value ?? (int)DefaultFoodUseTicks);
-        }
-
-        return DefaultFoodUseTicks;
     }
 
     private static ItemStackResponse ProcessItemStackRequest(global::Orion.Player.Player player, Protocol.Types.ItemStackRequest request)

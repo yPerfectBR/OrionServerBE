@@ -193,7 +193,9 @@ public static class PluginHost
                 typeof(PacketReceiveContext),
                 typeof(PacketSendContext),
                 typeof(IPlayerConnection),
-                typeof(IOrionServer)
+                typeof(IOrionServer),
+                // Gameplay plugins (e.g. VanillaAttributes) may reference Orion types; share the host assembly.
+                typeof(Server)
             ];
 
             foreach (PluginManifest manifest in ordered)

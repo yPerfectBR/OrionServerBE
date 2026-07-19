@@ -1,7 +1,8 @@
 namespace Orion.Entity.Traits;
 
-using Orion.Entity.Traits.Attribute;
 using Orion.Entity.Traits.Types;
+using Orion.Gameplay;
+using Orion.Plugins;
 using Orion.Protocol.Enums;
 using Orion.Protocol.Types;
 using Orion.Traits;
@@ -69,11 +70,16 @@ public sealed class EntityAirSupplyTrait : EntityTrait
             return;
         }
 
-        Entity.GetTrait<EntityHealthTrait>()?.ApplyDamage(
+        if (!PluginHost.Services.TryGet(out IEntityHealthService? health) || health is null)
+        {
+            return;
+        }
+
+        _ = health.TryApplyDamage(
+            Entity,
             0.5f,
             null,
-            Entity.IsSwimming ? ActorDamageCause.Drowning : ActorDamageCause.Suffocation
-        );
+            Entity.IsSwimming ? ActorDamageCause.Drowning : ActorDamageCause.Suffocation);
     }
 
     public int GetAirSupplyTicks()
