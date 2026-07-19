@@ -34,8 +34,12 @@ sequenceDiagram
         Area->>Area: Transferring
         Sess-->>Trait: pausa ticks de chunk
         Area->>P: ResyncAfterRegionHandoff(crossWorker?)
-        P->>C: MovePlayer de novo
-        P->>Trait: ForceReloadViewDistance (se cross-worker)
+        alt cross-worker
+            P->>C: MovePlayer(Teleport)
+            P->>Trait: ForceReloadViewDistance
+        else same-worker
+            P->>Trait: AfterRegionHandoff
+        end
     end
     loop AuthInput rejeitado (ainda na origem)
         C->>Auth: posição antiga
@@ -71,10 +75,22 @@ sequenceDiagram
 4. **Enquanto `Transferring`**
    - `SessionWorker` **não** roda traits de tick de sessão (chunks), para não misturar stream no meio do handoff.
 
-5. **`ResyncAfterRegionHandoff`**
-   - Reenvia `MovePlayer` (o primeiro pode ter “perdido” a corrida com o handoff).
-   - Cross-worker: `ForceReloadViewDistance()` (esquece `loaded` e reenvia a view).
-   - Same-worker: `AfterRegionHandoff()` (só publisher / presença).
+5. **`ResyncAfterRegionHandoff`** (TEMP soft)
+   - Same-worker **e** cross-worker: só `AfterRegionHandoff()` — sem `MovePlayer` teleport e sem `ForceReloadViewDistance`.
+   - Flag: `Player.SoftCrossWorkerRegionHandoff` (`true` = soft). Path legado (teleport + reload) permanece no código desligado.
+
+5b. **Visibilidade para espectadores** (TEMP)
+   - No gap prepare→complete o jogador some de `GetEntities()`; sem proteção, peers mandavam `RemoveActor` e depois `AddPlayer` (flicker).
+   - Flag: `AreaBorderTransfer.PreserveSpectatorVisibilityAcrossAreaTransfer` (`true`):
+     - não remove actor de peers enquanto o runtimeId está in-flight;
+     - ainda manda `MoveActorDelta` no passo da borda (antes do early-return do transfer).
+   - Para reverter: flag `false`.
+
+O stream de chunks no `Teleport` também é condicional:
+
+- **Reload completo** (unload all + hold): mudou dimensão, ou o chunk de destino ainda não está em `_loadedChunks`.
+- **Soft** (mantém colunas): destino já renderizado (ex.: `/tp` que só muda Y, ou muda de area com view ainda válida).
+- TEMP: mudar de threading area **não** força reload por si só.
 
 6. **Liberação do hold**
    - Preferencial: primeiro `PlayerAuthInput` **aceito** (posição do cliente perto do servidor) → `NotifyClientAtTeleportDestination`.
