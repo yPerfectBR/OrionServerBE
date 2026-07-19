@@ -9,8 +9,7 @@ using Orion.World.Threading;
 namespace Orion.Scheduling;
 
 public static class AreaBorderTransfer
-{
-    private const ulong TransferCooldownTicks = 10;
+{    private const ulong TransferCooldownTicks = 10;
 
     private static readonly ConcurrentDictionary<ulong, ulong> LastTransferTickByRuntimeId = new();
 
@@ -164,15 +163,24 @@ public static class AreaBorderTransfer
         }
 
         bool crossWorker = sourceWorkerId.Value != targetWorkerId.Value;
+        AreaWorker sourceWorker = areaScheduler.Pool.GetWorker(sourceWorkerId.Value);
+        AreaWorker targetWorker = areaScheduler.Pool.GetWorker(targetWorkerId.Value);
+        Thread current = Thread.CurrentThread;
         Log.Info(
             LogCategory.Orion,
-            "[Teleport:Area] BeginTransfer enqueue player={0} area={1}->{2} aw{3}->aw{4} crossWorker={5}",
+            "[Teleport:Area] BeginTransfer enqueue {0} area={1}->{2} aw{3}->aw{4} crossWorker={5} " +
+            "callerTid={6} callerName={7} onSourceWorker={8} sourceWorkerTid={9} targetWorkerTid={10}",
             DescribeEntity(entity),
             sourceAreaIndex,
             targetAreaIndex,
             sourceWorkerId.Value,
             targetWorkerId.Value,
-            crossWorker);
+            crossWorker,
+            current.ManagedThreadId,
+            current.Name ?? "-",
+            sourceWorker.IsCurrentThread(),
+            sourceWorker.WorkerThreadId,
+            targetWorker.WorkerThreadId);
 
         if (server.Properties.AreaSchedulerDebug)
         {

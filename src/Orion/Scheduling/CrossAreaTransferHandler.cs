@@ -11,7 +11,6 @@ namespace Orion.Scheduling;
 internal static class CrossAreaTransferHandler
 {
     internal static readonly ConcurrentDictionary<object, byte> InFlightMobTransfers = new();
-
     public static void HandlePrepareTransfer(Server server, AreaWorker sourceWorker, PrepareAreaTransferMessage message)
     {
         AreaEntitySnapshot snapshot = message.Snapshot;
@@ -24,18 +23,23 @@ internal static class CrossAreaTransferHandler
             return;
         }
 
-            if (server.Properties.AreaSchedulerDebug)
-            {
-                Log.Debug(
-                    LogCategory.Orion,
-                    "[Area:Transfer] prepare worker={0} entity={1} {2}->{3}",
-                    sourceWorker.WorkerId,
-                    DescribeEntity(entity),
-                    snapshot.SourceAreaIndex,
-                    snapshot.TargetAreaIndex);
-            }
+        Thread prepareThread = Thread.CurrentThread;
+        Log.Info(
+            LogCategory.Orion,
+            "[Area:Transfer] prepare {0} area={1}->{2} onAw={3} managedTid={4} workerTid={5} " +
+            "threadName={6} onWorker={7} crossWorker={8}",
+            DescribeEntity(entity),
+            snapshot.SourceAreaIndex,
+            snapshot.TargetAreaIndex,
+            sourceWorker.WorkerId,
+            prepareThread.ManagedThreadId,
+            sourceWorker.WorkerThreadId,
+            prepareThread.Name ?? "-",
+            sourceWorker.IsCurrentThread(),
+            snapshot.CrossWorker);
 
         dimension.ShardManager.GetShard(snapshot.SourceAreaIndex).RemoveEntity((IAreaStoredEntity)entity);
+        sourceWorker.LogSimulationSnapshot("transfer-prepare");
 
         if (server.AreaScheduler is not AreaScheduler areaScheduler)
         {
@@ -71,19 +75,23 @@ internal static class CrossAreaTransferHandler
 
         try
         {
-            if (server.Properties.AreaSchedulerDebug)
-            {
-                Log.Debug(
-                    LogCategory.Orion,
-                    "[Area:Transfer] complete worker={0} entity={1} {2}->{3} crossWorker={4}",
-                    targetWorker.WorkerId,
-                    DescribeEntity(entity),
-                    snapshot.SourceAreaIndex,
-                    snapshot.TargetAreaIndex,
-                    snapshot.CrossWorker);
-            }
+            Thread completeThread = Thread.CurrentThread;
+            Log.Info(
+                LogCategory.Orion,
+                "[Area:Transfer] complete {0} area={1}->{2} onAw={3} managedTid={4} workerTid={5} " +
+                "threadName={6} onWorker={7} crossWorker={8}",
+                DescribeEntity(entity),
+                snapshot.SourceAreaIndex,
+                snapshot.TargetAreaIndex,
+                targetWorker.WorkerId,
+                completeThread.ManagedThreadId,
+                targetWorker.WorkerThreadId,
+                completeThread.Name ?? "-",
+                targetWorker.IsCurrentThread(),
+                snapshot.CrossWorker);
 
             dimension.AddEntity((IAreaStoredEntity)entity, snapshot.TargetAreaIndex);
+            targetWorker.LogSimulationSnapshot("transfer-complete");
             if (session is not null)
             {
                 session.ActiveEntity = entity as Orion.Player.Player;
@@ -95,17 +103,18 @@ internal static class CrossAreaTransferHandler
                     bool crossWorker = snapshot.CrossWorker;
                     Log.Info(
                         LogCategory.Orion,
-                        "[Teleport:Area] complete player={0} area={1}->{2} crossWorker={3} " +
-                        "pos=({4:0.##},{5:0.##},{6:0.##}) owningArea={7} aw{8}",
+                        "[Teleport:Area] ownership player={0} area={1}->{2} owningArea={3} " +
+                        "simAw={4} simTid={5} onWorker={6} pos=({7:0.##},{8:0.##},{9:0.##})",
                         transferredPlayer.Username,
                         snapshot.SourceAreaIndex,
                         snapshot.TargetAreaIndex,
-                        crossWorker,
+                        transferredPlayer.OwningAreaIndex?.ToString() ?? "-",
+                        targetWorker.WorkerId,
+                        completeThread.ManagedThreadId,
+                        targetWorker.IsCurrentThread(),
                         transferredPlayer.Position.X,
                         transferredPlayer.Position.Y,
-                        transferredPlayer.Position.Z,
-                        transferredPlayer.OwningAreaIndex?.ToString() ?? "-",
-                        targetWorker.WorkerId);
+                        transferredPlayer.Position.Z);
 
                     if (server.ConnectionCoordinator is ConnectionCoordinator coordinator && coordinator.IsActive)
                     {
@@ -147,7 +156,6 @@ internal static class CrossAreaTransferHandler
 
     static Dimension? GetEntityDimension(object entity) =>
         entity is IAreaEntity areaEntity ? areaEntity.Dimension : null;
-
     static string DescribeEntity(object entity) =>
         entity is Orion.Player.Player player
             ? $"player={player.Username}"
