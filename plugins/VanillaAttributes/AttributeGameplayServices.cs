@@ -24,6 +24,27 @@ public sealed class AttributeGameplayServices :
     public IEntityHealthService Health => this;
     public IPlayerHungerService Hunger => this;
 
+    public void EnableHud(Player player)
+    {
+        List<HudElement> elements = [];
+        if (player.GetTrait<EntityHealthTrait>() is not null)
+        {
+            elements.Add(HudElement.Health);
+        }
+
+        if (player.GetTrait<PlayerHungerTrait>() is not null)
+        {
+            elements.Add(HudElement.Hunger);
+        }
+
+        if (elements.Count == 0)
+        {
+            return;
+        }
+
+        player.SetHud(HudVisibility.Reset, elements.ToArray());
+    }
+
     public bool TryApplyDamage(
         Entity entity,
         float amount,
