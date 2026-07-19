@@ -55,6 +55,7 @@ Phase 0 is conceptual. The only “API” is the boundary checklist:
 | [`plugins/VanillaInventory/`](../../../plugins/VanillaInventory/) | Player inventory + ISR (opt-in) |
 | [`plugins/VanillaContainers/`](../../../plugins/VanillaContainers/) | Chest/barrel (`depend` VanillaInventory) |
 | [`plugins/VanillaBuilding/`](../../../plugins/VanillaBuilding/) | Block place / use-on-block (`softdepend` VanillaInventory) |
+| [`plugins/VanillaMining/`](../../../plugins/VanillaMining/) | Block crack / destroy (`softdepend` VanillaInventory) |
 
 ## 6. Acceptance tests (definition of done for the vision)
 
