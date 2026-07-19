@@ -487,12 +487,8 @@ public static class PlayerAuthInput
 
         bool borderTransfer = AreaBorderTransfer.TryAfterMove(server, player, previousPosition);
 
-        // TEMP: on border cross, still broadcast MoveActorDelta so spectators do not lag one step
-        // behind and then jump when the actor is re-added. Gated by PreserveSpectatorVisibilityAcrossAreaTransfer.
-        bool shouldBroadcastMove = !borderTransfer
-            || AreaBorderTransfer.PreserveSpectatorVisibilityAcrossAreaTransfer;
-
-        if (shouldBroadcastMove && player.Dimension is not null)
+        // Always broadcast the border step so peers do not lag one tick behind during handoff.
+        if (player.Dimension is not null)
         {
             bool positionChanged = previousPosition.X != player.Position.X
                 || previousPosition.Y != player.Position.Y
