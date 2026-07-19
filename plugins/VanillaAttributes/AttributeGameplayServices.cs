@@ -3,6 +3,7 @@ using Orion.Gameplay;
 using Orion.Item;
 using Orion.Item.Traits;
 using Orion.Player;
+using Orion.Plugins;
 using Orion.Protocol.Enums;
 using Orion.Protocol.Nbt;
 using Entity = Orion.Entity.Entity;
@@ -152,13 +153,19 @@ public sealed class AttributeGameplayServices :
 
     public bool TryCompleteUse(Player player, ItemStack heldItem, int slot)
     {
-        EntityInventoryTrait? inventory = player.GetTrait<EntityInventoryTrait>();
         ItemStackFoodTrait? food = heldItem.GetTrait<ItemStackFoodTrait>();
         PlayerHungerTrait? hunger = player.GetTrait<PlayerHungerTrait>();
-        if (inventory is null
-            || food is null
+        if (food is null
             || hunger is null
             || !hunger.Eat(food.Nutrition, food.SaturationModifier, food.CanAlwaysEat))
+        {
+            return false;
+        }
+
+        if (!PluginHost.Services.TryGet(out IPlayerInventoryService? inventory)
+            || inventory is null
+            || !inventory.TryGetAccess(player, out IPlayerInventoryAccess? access)
+            || access is null)
         {
             return false;
         }
@@ -166,17 +173,17 @@ public sealed class AttributeGameplayServices :
         heldItem.DecrementStack();
         if (heldItem.StackSize == 0)
         {
-            inventory.Container.ClearSlot(slot);
+            access.Container.ClearSlot(slot);
         }
         else
         {
-            inventory.Container.UpdateSlot(slot);
+            access.Container.UpdateSlot(slot);
         }
 
         if (!string.IsNullOrWhiteSpace(food.UsingConvertsTo) && ItemType.Get(food.UsingConvertsTo) is ItemType convertedType)
         {
             ItemStack converted = new(convertedType);
-            if (!inventory.Container.AddItem(converted))
+            if (!access.Container.AddItem(converted))
             {
                 _ = player.DropItem(converted);
             }
