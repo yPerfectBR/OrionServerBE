@@ -8,11 +8,29 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\Config\Config.csproj" />
     <ProjectReference Include="..\Binary\Binary.csproj" />
+    <ProjectReference Include="..\Compression\Compression.csproj" />
   </ItemGroup>
 
   <ItemGroup>
     <PackageReference Include="conmaster.compression.spanzlib" Version="1.1.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <AssemblyAttribute Include="System.Runtime.CompilerServices.InternalsVisibleTo">
+      <_Parameter1>Orion.Protocol.Tests</_Parameter1>
+    </AssemblyAttribute>
+    <AssemblyAttribute Include="System.Runtime.CompilerServices.InternalsVisibleTo">
+      <_Parameter1>Orion.Game.Tests</_Parameter1>
+    </AssemblyAttribute>
+  </ItemGroup>
+
+  <ItemGroup>
+    <Content Include="Data\**\*.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <Link>Data\%(RecursiveDir)%(Filename)%(Extension)</Link>
+    </Content>
   </ItemGroup>
 
 </Project>

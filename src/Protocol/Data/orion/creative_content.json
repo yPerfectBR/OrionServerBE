@@ -1,0 +1,17 @@
+[
+  {
+    "type": "minecraft:grass_block",
+    "instance": "BAEAAJfd9pwECgAAAAAAAAAAAAA=",
+    "groupIndex": 0
+  },
+  {
+    "type": "minecraft:dirt",
+    "instance": "BgEAAPPBiNsPCgAAAAAAAAAAAAA=",
+    "groupIndex": 0
+  },
+  {
+    "type": "minecraft:bedrock",
+    "instance": "DgEAAImMnKUBCgAAAAAAAAAAAAA=",
+    "groupIndex": 0
+  }
+]

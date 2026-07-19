@@ -7,4 +7,8 @@
     <RootNamespace>Orion.$(MSBuildProjectName.Replace(" ", "_"))</RootNamespace>
   </PropertyGroup>
 
+  <ItemGroup>
+    <ProjectReference Include="..\Config\Config.csproj" />
+  </ItemGroup>
+
 </Project>

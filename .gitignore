@@ -1,5 +1,13 @@
 .vs
-*/bin/**/*
-*/obj/**/*
-*/artifacts/**/*
+[Bb]in/
+[Oo]bj/
+[Aa]rtifacts/
 *.lscache
+.idea/
+worlds/
+config/
+plugins/**/*.dll
+plugins/**/*.pdb
+plugins/**/*.deps.json
+plugins/**/*.xml
+plugins/**/*.runtimeconfig.json

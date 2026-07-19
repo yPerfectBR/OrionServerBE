@@ -1,20 +1,55 @@
 {
   "Logging": {
     "LogLevel": {
-      "System": true,
-      "OrionCore": true,
-      "OrionEngine": true,
-      "OrionServer": true,
-      "OrionNet": true,
-      "OrionReplication": true,
-      "OrionWorld": true
+      "System": {
+        "Debug": true,
+        "Info": true,
+        "Warn": true,
+        "Error": true,
+        "Chat": true
+      },
+      "World": {
+        "Debug": true,
+        "Info": true,
+        "Warn": true,
+        "Error": true,
+        "Chat": true
+      },
+      "Orion": {
+        "Debug": true,
+        "Info": true,
+        "Warn": true,
+        "Error": true,
+        "Chat": true
+      },
+      "RakNet": {
+        "Debug": true,
+        "Info": true,
+        "Warn": true,
+        "Error": true,
+        "Chat": true
+      },
+      "Protocol": {
+        "Debug": true,
+        "Info": true,
+        "Warn": true,
+        "Error": true,
+        "Chat": true
+      },
+      "Binary": {
+        "Debug": true,
+        "Info": true,
+        "Warn": true,
+        "Error": true,
+        "Chat": true
+      }
     }
   },
   "Server": {
     "Edition": "MCPE",
     "Name": "OrionServer",
     "Motd": "OrionServer",
-    "Elysium": {
+    "Orion": {
       "Permissions": "./config/permissions.json",
       "Resources": {
         "Path": "./resource_packs",
@@ -48,19 +83,30 @@
             -57,
             0
           ],
-          "chunkPregeneration": []
+          "chunkPregeneration": {
+                "start": [-30, -30],
+                "end": [30, 30],
+                "memoryLock": true
+            },
+            "threadingAreas": [
+                {
+                    "name": "default",
+                    "start": [-3, -3],
+                    "end": [2, 2]
+                }
+            ]
         }
       ],
       "gamerules": {
         "showCoordinates": true,
         "showDaysPlayed": false,
-        "doDayLightCycle": true,
+        "doDayLightCycle": false,
         "doImmediateRespawn": false,
-        "doTileDrops": true,
+        "doTileDrops": false,
         "keepInventory": false,
-        "fallDamage": true,
-        "fireDamage": true,
-        "drowningDamage": true,
+        "fallDamage": false,
+        "fireDamage": false,
+        "drowningDamage": false,
         "randomTickSpeed": 1,
         "locatorBar": false
       }
@@ -75,25 +121,26 @@
       "Address": "0.0.0.0",
       "PortIPV4": 19132,
       "PortIPV6": 19133,
-      "Protocol": 975,
-      "Version": "1.26.20",
-      "Message": "Elysium",
+      "Protocol": 1001,
+      "Version": "1.26.30",
+      "Message": "Orion",
       "MaxConnections": 40,
       "MtuMaxSize": 1492,
       "MtuMinSize": 400,
       "ValidatePort": true
     }
   },
-  "Storage": {
-    "Provider": "Redis",
-    "ImportWorldOnStartup": true,
-    "ImportSourceWorldPath": "./worlds/default",
-    "Redis": {
-      "Endpoint": "127.0.0.1:6379",
-      "Database": 0,
-      "KeyPrefix": "orion",
-      "AofRequired": true,
-      "PoolSize": 16
+  "Runtime": {
+    "ThreadPool": {
+      "MinWorkerThreads": 1,
+      "MaxWorkerThreads": 5,
+      "MinIoCompletionThreads": 1,
+      "MaxIoCompletionThreads": 5
     }
+  },
+  "Plugins": {
+    "Enabled": true,
+    "Directory": "plugins",
+    "ConflictMode": "warn"
   }
 }

@@ -1,0 +1,8 @@
+[
+  {
+    "category": 2,
+    "name": "",
+    "icon": "minecraft:air",
+    "_comment": "Layout is built in CuratedItemCatalog.BuildScaffoldedCreativePacket (4 anonymous category groups). This file is kept for documentation only."
+  }
+]

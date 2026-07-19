@@ -1,0 +1,75 @@
+using Orion.Protocol.Enums;
+using BinaryReader = Basalt.Binary.BinaryReader;
+using BinaryWriter = Basalt.Binary.BinaryWriter;
+using Orion.Protocol.Packets;
+
+namespace Orion.Protocol.Packets;
+
+[Packet(PacketId.NetworkChunkPublisherUpdate)]
+public sealed record NetworkChunkPublisherUpdatePacket : DataPacket
+{
+    /// <summary>
+    /// Publisher center X in world coordinates.
+    /// </summary>
+    public int CoordinateX;
+
+    /// <summary>
+    /// Publisher center Y in world coordinates.
+    /// </summary>
+    public int CoordinateY;
+
+    /// <summary>
+    /// Publisher center Z in world coordinates.
+    /// </summary>
+    public int CoordinateZ;
+
+    /// <summary>
+    /// Publisher radius in blocks.
+    /// </summary>
+    public uint Radius;
+
+    /// <summary>
+    /// Already-known chunk coordinates
+    /// </summary>
+    public List<(int X, int Z)> SavedChunks = [];
+
+    public override void Deserialize(BinaryReader reader)
+    {
+        // Protocol >= 937: NetworkBlockPosition was replaced by BlockPos (ZigZag X/Y/Z).
+        CoordinateX = reader.ReadZigZag();
+        CoordinateY = reader.ReadZigZag();
+        CoordinateZ = reader.ReadZigZag();
+        Radius = reader.ReadVarUInt();
+
+        int savedChunkCount = reader.ReadInt32(true);
+        if (savedChunkCount < 0)
+        {
+            savedChunkCount = 0;
+        }
+
+        SavedChunks = new List<(int X, int Z)>(savedChunkCount);
+        for (int i = 0; i < savedChunkCount; i++)
+        {
+            int x = reader.ReadZigZag();
+            int z = reader.ReadZigZag();
+            SavedChunks.Add((x, z));
+        }
+    }
+
+    public override void Serialize(BinaryWriter writer)
+    {
+        // Protocol >= 937: NetworkBlockPosition was replaced by BlockPos (ZigZag X/Y/Z).
+        writer.WriteZigZag(CoordinateX);
+        writer.WriteZigZag(CoordinateY);
+        writer.WriteZigZag(CoordinateZ);
+        writer.WriteVarUInt(Radius);
+
+        writer.WriteInt32(SavedChunks.Count, true);
+        for (int i = 0; i < SavedChunks.Count; i++)
+        {
+            (int x, int z) = SavedChunks[i];
+            writer.WriteZigZag(x);
+            writer.WriteZigZag(z);
+        }
+    }
+}
