@@ -80,25 +80,26 @@ public static class BlockRegistry
         PendingPluginBlocks.Clear();
     }
 
-    static void RegisterFromBedrockStates()
-    {
-        RegisterBlock("minecraft:air", BedrockBlockStates.Air, air: true, solid: false);
-        RegisterBlock("minecraft:structure_void", BedrockBlockStates.StructureVoid, solid: false);
-        RegisterBlock("minecraft:bedrock", BedrockBlockStates.Bedrock);
-        RegisterBlock("minecraft:dirt", BedrockBlockStates.Dirt);
-        RegisterBlock("minecraft:grass_block", BedrockBlockStates.GrassBlock);
-        RegisterBlock("minecraft:barrier", BedrockBlockStates.Barrier, solid: false);
-    }
-
-    static void RegisterBlock(string identifier, int hash, bool air = false, bool solid = true)
+    static void RegisterBlock(string identifier, int hash, bool air = false, bool solid = true, float hardness = 0f)
     {
         BlockType type = BlockType.Get(identifier) ?? new BlockType(identifier);
         type.Air = air;
         type.Solid = solid;
+        type.Hardness = hardness;
         BlockState state = [];
         BlockPermutation permutation = new(hash, state, type);
         BlockPermutation.Permutations[hash] = permutation;
         type.RegisterPermutation(permutation);
+    }
+
+    static void RegisterFromBedrockStates()
+    {
+        RegisterBlock("minecraft:air", BedrockBlockStates.Air, air: true, solid: false, hardness: 0f);
+        RegisterBlock("minecraft:structure_void", BedrockBlockStates.StructureVoid, solid: false, hardness: 0f);
+        RegisterBlock("minecraft:bedrock", BedrockBlockStates.Bedrock, hardness: -1f);
+        RegisterBlock("minecraft:dirt", BedrockBlockStates.Dirt, hardness: 0.5f);
+        RegisterBlock("minecraft:grass_block", BedrockBlockStates.GrassBlock, hardness: 0.6f);
+        RegisterBlock("minecraft:barrier", BedrockBlockStates.Barrier, solid: false, hardness: -1f);
     }
 
     private readonly record struct PendingBlockRegistration(
