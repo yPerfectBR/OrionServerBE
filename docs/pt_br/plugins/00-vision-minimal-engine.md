@@ -55,6 +55,7 @@ A fase 0 é conceitual. A “API” é o checklist de fronteira:
 | [`plugins/VanillaInventory/`](../../../plugins/VanillaInventory/) | Inventário do jogador + ISR (opt-in) |
 | [`plugins/VanillaContainers/`](../../../plugins/VanillaContainers/) | Baú/barril (`depend` VanillaInventory) |
 | [`plugins/VanillaBuilding/`](../../../plugins/VanillaBuilding/) | Place de bloco / use-on-block (`softdepend` VanillaInventory) |
+| [`plugins/VanillaMining/`](../../../plugins/VanillaMining/) | Crack / destroy de bloco (`softdepend` VanillaInventory) |
 
 ## 6. Testes de aceitação (definição de pronto da visão)
 
