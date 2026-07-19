@@ -27,6 +27,11 @@ public interface IPlayerInventoryService
 
     bool TrySyncToClient(global::Orion.Player.Player player);
 
+    /// <summary>
+    /// Reveal hotbar HUD after the core default-hides it on join.
+    /// </summary>
+    void EnableHud(global::Orion.Player.Player player);
+
     Container? ResolveContainer(global::Orion.Player.Player player, FullContainerName name);
 
     /// <summary>Process a client ItemStackRequest; returns false if inventory plugin is inactive.</summary>
