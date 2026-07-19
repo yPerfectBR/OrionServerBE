@@ -182,6 +182,16 @@ public sealed class InventoryGameplayServices : IVanillaInventoryApi, IPlayerInv
         return true;
     }
 
+    public void EnableHud(Player player)
+    {
+        if (player.GetTrait<EntityInventoryTrait>() is null)
+        {
+            return;
+        }
+
+        //player.SetHud(HudVisibility.Reset, HudElement.HotBar);
+    }
+
     public Container? ResolveContainer(Player player, FullContainerName name)
     {
         EntityInventoryTrait? inventory = player.GetTrait<EntityInventoryTrait>();
