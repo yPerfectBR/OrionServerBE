@@ -51,6 +51,7 @@ Phase 0 is conceptual. The only “API” is the boundary checklist:
 | [`src/Orion/Plugins/`](../../../src/Orion/Plugins/) | Current stub host |
 | [`config/server.json`](../../../config/server.json) | `Plugins` section |
 | [`plugins/MinimalInventoryItems/`](../../../plugins/MinimalInventoryItems/) | Sample opt-in plugin |
+| [`plugins/VanillaAttributes/`](../../../plugins/VanillaAttributes/) | Vanilla health/hunger + attribute API (opt-in; refs Orion) |
 
 ## 6. Acceptance tests (definition of done for the vision)
 

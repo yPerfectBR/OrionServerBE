@@ -33,6 +33,16 @@ dotnet build plugins/MinimalInventoryItems/MinimalInventoryItems.csproj
 
 **Note:** plugin-capable host is **managed** (.NET), not Native AOT.
 
+## Health / hunger (attributes plugin)
+
+Core does **not** include gameplay health or hunger. For vanilla behavior:
+
+```bash
+dotnet build plugins/VanillaAttributes/VanillaAttributes.csproj
+```
+
+With `Plugins.Enabled: true`, the plugin registers traits + services (`provides: orion:attributes`, `orion:health`, `orion:hunger`). Other plugins consume via `IVanillaAttributesApi` / `IEntityHealthService` / `IPlayerHungerService`. Without it, there is no HP/hunger/food use.
+
 ## Custom fillers
 
 In `IOrionPlugin.Load(IPluginLoadContext)`, call `context.Registries.CreativeTabs.AddEntry(pluginId, category, identifier)` **before** catalog init (server boot already orders this). Do not put Nature (category 2) entries there — edit `orion/items.json`.
