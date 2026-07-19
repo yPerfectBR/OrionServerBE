@@ -1,0 +1,12 @@
+{
+  "id": "VanillaInventory",
+  "version": "1.0.0",
+  "api": "0.1.0",
+  "description": "Vanilla player inventory, cursor, ItemStackRequest, and public inventory services.",
+  "authors": ["Orion"],
+  "main": "VanillaInventory.VanillaInventoryPlugin",
+  "depend": [],
+  "softdepend": [],
+  "loadbefore": ["VanillaAttributes"],
+  "provides": ["orion:inventory"]
+}
