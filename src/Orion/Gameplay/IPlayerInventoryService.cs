@@ -32,7 +32,7 @@ public interface IPlayerInventoryService
     /// </summary>
     void EnableHud(global::Orion.Player.Player player);
 
-    Container? ResolveContainer(global::Orion.Player.Player player, FullContainerName name);
+    IContainer? ResolveContainer(global::Orion.Player.Player player, FullContainerName name);
 
     /// <summary>Process a client ItemStackRequest; returns false if inventory plugin is inactive.</summary>
     bool TryProcessItemStackRequest(
