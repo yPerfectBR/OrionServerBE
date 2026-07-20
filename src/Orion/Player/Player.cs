@@ -42,7 +42,7 @@ public readonly string Username;
     public BlockPos? LastActionBlockPosition { get; set; }
     public BlockPos? LastActionResultPosition { get; set; }
     public int LastActionFace { get; set; }
-    public Dictionary<int, Container> openedContainers = [];
+    public Dictionary<int, IContainer> openedContainers = [];
 
     /// <summary>Null for NPCs and fake players.</summary>
     public PlayerSession? Session { get; internal set; }
@@ -372,17 +372,6 @@ public readonly string Username;
         }
     }
 
-    static void EnsureContainerViewer(Player player, Containers.Container container, int windowId)
-    {
-        if (container.occupants.ContainsKey(player))
-        {
-            return;
-        }
-
-        container.occupants[player] = windowId;
-        player.RegisterOpenContainer(windowId, container);
-    }
-
     public void SetSpawned(bool spawned)
     {
         Spawned = true;
@@ -555,17 +544,17 @@ public readonly string Username;
         GetTrait<PlayerChunkRenderingTrait>()?.AfterRegionHandoff();
     }
 
-    public void RegisterOpenContainer(int windowId, Container container)
+    public void RegisterOpenContainer(int windowId, IContainer container)
     {
         openedContainers[windowId] = container;
     }
 
-    public bool TryGetOpenContainer(int windowId, out Container? container)
+    public bool TryGetOpenContainer(int windowId, out IContainer? container)
     {
         return openedContainers.TryGetValue(windowId, out container);
     }
 
-    public Container? GetContainer(FullContainerName name)
+    public IContainer? GetContainer(FullContainerName name)
     {
         if (PluginHost.Services.TryGet(out IPlayerInventoryService? inventory) && inventory is not null)
         {
