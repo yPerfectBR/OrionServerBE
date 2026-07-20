@@ -2,7 +2,7 @@ name: CI
 
 on:
   push:
-    branches: [development, main]
+    branches: [development]
   pull_request:
     branches: [development, main]
 
@@ -22,12 +22,14 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: OrionBedrock/orion-containers
+          ref: ${{ github.event.pull_request.base.ref || github.ref_name }}
           path: Plugins-Orion/orion:containers
 
       - name: Checkout orion-inventory
         uses: actions/checkout@v4
         with:
           repository: OrionBedrock/orion-inventory
+          ref: ${{ github.event.pull_request.base.ref || github.ref_name }}
           path: Plugins-Orion/orion:inventory
 
       - name: Setup .NET
@@ -49,4 +51,4 @@ jobs:
         run: dotnet build OrionServerBE.slnx -c Release --no-restore
 
       - name: Test
-        run: dotnet test tests/Orion.Game.Tests/Orion.Game.Tests.csproj -c Release --no-build --verbosity normal
+        run: dotnet test OrionServerBE.slnx -c Release --no-build --verbosity normal
