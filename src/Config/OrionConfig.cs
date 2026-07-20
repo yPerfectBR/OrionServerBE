@@ -46,6 +46,9 @@ public sealed class LogLevelConfig
     [JsonPropertyName("Binary")]
     public CategoryLogLevel Binary { get; init; } = new();
 
+    [JsonPropertyName("Plugins")]
+    public CategoryLogLevel Plugins { get; init; } = new();
+
     public bool IsEnabled(string category, LogLevel level) =>
         IsEnabled(ParseCategory(category), level);
 
@@ -71,6 +74,7 @@ public sealed class LogLevelConfig
         LogCategory.RakNet => RakNet,
         LogCategory.Protocol => Protocol,
         LogCategory.Binary => Binary,
+        LogCategory.Plugins => Plugins,
         _ => System
     };
 
@@ -105,7 +109,8 @@ public enum LogCategory
     Orion,
     RakNet,
     Protocol,
-    Binary
+    Binary,
+    Plugins
 }
 
 public enum LogLevel
