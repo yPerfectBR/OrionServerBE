@@ -22,7 +22,7 @@ Execute **in order**. Do not skip ahead to Vanilla dogfood before Api surfaces e
 | Step | Spec doc | Work | Exit criteria |
 |------|----------|------|---------------|
 | S0 | [19](19-manifest-v2.md), [20](20-plugin-developer-guide.md), [21](21-plugin-repo-layout.md) | Manifest v2 parser, `LogCategory.Plugins`, `orion:*` layout | Boot validates v2; plugins load from `orion.*.dll` |
-| S1 | [10](10-sdk-packages-versioning.md) | Create `src/Orion.Api` + `src/Orion.Gameplay.Api` projects (empty/skeleton); pack metadata; wire Orion.csproj ProjectReferences; expand SharedAssemblies; implement `api` validation | `dotnet pack` three packages; boot rejects bad `api` |
+| S1 | [10](10-sdk-packages-versioning.md) | Create `src/Orion.Api` + `src/Orion.Gameplay.Api` projects (empty/skeleton); pack metadata; wire Orion.csproj ProjectReferences; expand SharedAssemblies | `dotnet pack` three packages |
 | S2 | [11](11-sdk-orion-api-surface.md) | Add facade interfaces; implement on Player/Entity/Block/Item/Dimension adapters; replace PluginContracts stubs; `IContainer` in Orion.Api.Containers | Game.Tests compile; `IPlayer` usable from a scratch plugin project referencing Api |
 | S3 | [12](12-sdk-registries-traits.md) | Rich Block/ItemRegistration; trait registries on IContentRegistries; BlockTraitBase/ItemTraitBase in Api | Custom block+trait sample registers in Load |
 | S4 | [13](13-sdk-events-signals.md) | Move signals to Orion.Api.Events; add new signals + emit sites | Cancel place/eat tests |
@@ -37,7 +37,6 @@ Execute **in order**. Do not skip ahead to Vanilla dogfood before Api surfaces e
 
 - [ ] `Orion.PluginContracts`, `Orion.Api`, `Orion.Gameplay.Api` pack with the same Version train  
 - [ ] McMaster shares those three assemblies (plus allowlisted Vanilla\*.Api if any)  
-- [ ] `plugin.json` `api` enforced  
 - [ ] No `ProjectReference` to `Orion.csproj` under `plugins/`  
 - [ ] No `InternalsVisibleTo` Vanilla\* on Orion  
 - [ ] MinimalInventoryItems still contracts-only  

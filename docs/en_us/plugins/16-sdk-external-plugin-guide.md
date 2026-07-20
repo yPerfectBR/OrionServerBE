@@ -21,7 +21,6 @@ Provide the **final** end-to-end authoring guide: project template, `plugin.json
 {
   "id": "MyPlugin",
   "version": "1.0.0",
-  "api": "0.1.0",
   "description": "Example deep plugin",
   "authors": ["You"],
   "main": "MyPlugin.MyPluginMain",
@@ -190,7 +189,6 @@ Use Protocol PackageReference only if constructing packets with no Orion.Api hel
 
 ## 9. Checklist for authors
 
-- [ ] `api` matches installed server SDK train  
 - [ ] Folder name == `id` == assembly name  
 - [ ] No `Orion.Api.dll` copied next to plugin (ExcludeAssets=runtime)  
 - [ ] Soft features use `TryGet`, not hard `depend`, unless required  

@@ -71,7 +71,7 @@ flowchart TB
 | Interfaces de gameplay em `Orion.dll` | Movidas para `Orion.Gameplay.Api` |
 | Registry de bloco/item = allowlist/hash | Registros ricos + trait registries em `Orion.Api` |
 | Plugins deep montam packets Protocol à mão | Preferir helpers `Orion.Api`; Protocol é escape documentado |
-| `api` no `plugin.json` sem enforcement | Boot valida major.minor do SDK do host |
+| (removido) campo `api` no `plugin.json` | Sem versionamento de API de host |
 | Doc “não referenciar Orion” vs realidade Vanilla | Alinhado: ninguém referencia o monólito em compile-time |
 
 ## 5. Regras duras (finais)
@@ -80,7 +80,7 @@ flowchart TB
 2. **Sem `ProjectReference` a `src/Orion/Orion.csproj`** em qualquer plugin.
 3. **Sem `InternalsVisibleTo` para assemblies de plugin** (exceto projetos de teste do core).
 4. **Shared types** no ALC = exatamente os assemblies SDK em [10](10-sdk-packages-versioning.md).
-5. **`plugin.json` `api`** deve satisfazer a versão do SDK do host (ver [10](10-sdk-packages-versioning.md)).
+5. **Sem campo `api` no `plugin.json`** — não há gate de versão de API de host.
 6. **Capacidades de domínio** via `provides` + `TryGet` (soft) ou `depend` (hard).
 7. **Packet hooks** permanecem escape hatch ([15](15-sdk-protocol-escape.md)).
 
@@ -138,7 +138,7 @@ Superfície completa: [11](11-sdk-orion-api-surface.md), [14](14-sdk-gameplay-se
 | Novo `src/Orion.Api/Orion.Api.csproj` | Facades, sinais, DTOs ricos |
 | Novo `src/Orion.Gameplay.Api/Orion.Gameplay.Api.csproj` | Move de `src/Orion/Gameplay/` |
 | `src/PluginContracts/` | Lifecycle; registries evoluem em [12](12-sdk-registries-traits.md) |
-| `src/Orion/Plugins/PluginHost.cs` | SharedAssemblies; validar `api` |
+| `src/Orion/Plugins/PluginHost.cs` | SharedAssemblies |
 | `plugins/Vanilla*/` | PackageReference NuGets |
 | `templates/OrionPlugin/` | template `dotnet new` |
 | CI | Pack + publish NuGet |
@@ -148,7 +148,6 @@ Superfície completa: [11](11-sdk-orion-api-surface.md), [14](14-sdk-gameplay-se
 - Projeto de terceiro restaura só NuGets e compila.
 - Plugin carrega no McMaster com `typeof(IPlayer).Assembly` compartilhado com o host.
 - VanillaInventory compila sem `ProjectReference` Orion e registra `IPlayerInventoryService`.
-- Boot rejeita `api` major.minor mais novo que o host.
 - Docs 09–18 só viram `implemented` quando o DoD de [18](18-sdk-ai-implementation-checklist.md) for cumprido.
 
 ## 11. Migration notes
@@ -159,7 +158,7 @@ Superfície completa: [11](11-sdk-orion-api-surface.md), [14](14-sdk-gameplay-se
 
 ## 12. Status
 
-`spec` — **auditoria jul/2026:** parcialmente adiantado (manifest v2 [19] implementado; APIs neutras `I*Api`; IVT removido; plugins externalizados em `Plugins-Orion/`). **Pendente:** projetos `Orion.Api` / `Orion.Gameplay.Api`, validação `api` no boot, NuGet pack, plugins sem `ProjectReference` a `Orion.csproj`.
+`spec` — **auditoria jul/2026:** parcialmente adiantado (manifest v2 [19] implementado; APIs neutras `I*Api`; IVT removido; plugins externalizados em `Plugins-Orion/`). **Pendente:** projetos `Orion.Api` / `Orion.Gameplay.Api`, NuGet pack, plugins sem `ProjectReference` a `Orion.csproj`.
 
 ## Ordem de leitura
 

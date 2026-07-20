@@ -139,7 +139,6 @@ public sealed class ServicesMessengerTests
         {
             Id = id,
             Version = new Version(1, 0, 0),
-            ApiVersion = new Version(0, 1, 0),
             Main = id,
             SoftDepend = softDepend ?? [],
             Provides = id == "provider" ? ["test:economy"] : []

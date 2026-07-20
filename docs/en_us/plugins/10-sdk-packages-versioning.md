@@ -6,7 +6,7 @@
 
 ## 1. Goal
 
-Specify the **final** project layout, NuGet identities, semver rules, `plugin.json` `api` validation, and the complete McMaster `SharedAssemblies` allowlist so compile-time and runtime type identity match for deep plugins.
+Specify the **final** project layout, NuGet identities, SDK package semver, and the complete McMaster `SharedAssemblies` allowlist so compile-time and runtime type identity match for deep plugins. There is **no** `api` field in `plugin.json` and no host API version gate.
 
 ## 2. Non-goals
 
@@ -91,26 +91,9 @@ When a plugin **must** use Protocol escape hatch ([15](15-sdk-protocol-escape.md
 <!-- runtime assets allowed — private copy in plugin folder is OK; not in SharedAssemblies -->
 ```
 
-## 5. `plugin.json` `api` validation (final)
+## 5. `plugin.json` and host versioning
 
-Existing field ([02](02-lifecycle-manifest.md)):
-
-```json
-"api": "0.1.0"
-```
-
-**Final rule:**
-
-| Condition | Result |
-|-----------|--------|
-| Plugin `api` major > host SDK major | **Fatal** — refuse load |
-| Plugin `api` major == host, minor > host minor | **Fatal** — refuse load |
-| Plugin `api` major == host, minor ≤ host minor | Load (host is backward compatible within major) |
-| Plugin `api` major < host major | **Fatal** unless host documents a compatibility window (default: fatal) |
-
-Host SDK version = `Orion.Api` assembly informational version (same train as PluginContracts).
-
-Implement in `PluginManifest` load path / `PluginHost.LoadConfigured` before McMaster load.
+The manifest does **not** declare a host API version. SDK compatibility is implied by the NuGet train referenced at compile-time; boot does **not** validate an `api` field.
 
 ## 6. McMaster SharedAssemblies (complete final list)
 
@@ -180,8 +163,6 @@ dotnet nuget add source ./artifacts/nuget -n OrionLocal
 - `dotnet pack` produces three nupkgs with identical Version.
 - External plugin with ExcludeAssets=runtime restores and compiles; published plugin folder contains **no** `Orion.Api.dll`.
 - Host load shares `IPlayer` type identity: `ReferenceEquals(typeof(IPlayer).Assembly, pluginLoadedType.Assembly)` for facade types.
-- Plugin with `"api": "9.0.0"` against host `0.1.0` fails boot with clear error.
-- Plugin with `"api": "0.1.0"` against host `0.2.0` (same major) loads.
 
 ## 10. Migration notes
 

@@ -15,7 +15,7 @@ Guia **final** ponta a ponta: template, `plugin.json`, layout de publish e walkt
 
 ## 3. Template (final)
 
-`plugin.json` com `api` alinhado ao train do servidor; csproj com PackageReference a `Orion.PluginContracts`, `Orion.Api`, `Orion.Gameplay.Api` usando `ExcludeAssets=runtime` + `PrivateAssets=all`; target que copia a DLL ao lado do `plugin.json`.
+`plugin.json` com id/version/main; csproj com PackageReference a `Orion.PluginContracts`, `Orion.Api`, `Orion.Gameplay.Api` usando `ExcludeAssets=runtime` + `PrivateAssets=all`; target que copia a DLL ao lado do `plugin.json`.
 
 Layout:
 
@@ -35,7 +35,7 @@ plugins/MyPlugin/
 
 ## 5. Checklist do autor
 
-- `api` compatível; pasta == id == assembly; sem copiar Orion.Api.dll; soft via `TryGet`; testar contra build publicado do servidor.
+- pasta == id == assembly; sem copiar Orion.Api.dll; soft via `TryGet`; testar contra build publicado do servidor.
 
 ## 6. File touch list
 

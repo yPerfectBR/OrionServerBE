@@ -132,7 +132,6 @@ public sealed class EventBusTests
                 {
                     Id = "test.events",
                     Version = new Version(1, 0, 0),
-                    ApiVersion = new Version(0, 1, 0),
                     Main = "CapturingPlugin"
                 });
 

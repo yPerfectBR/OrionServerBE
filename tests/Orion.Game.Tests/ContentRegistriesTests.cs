@@ -86,7 +86,6 @@ public sealed class ContentRegistriesTests
             {
                 Id = "cmd.ping",
                 Version = new Version(1, 0, 0),
-                ApiVersion = new Version(0, 1, 0),
                 Main = "PingCommandPlugin"
             });
 

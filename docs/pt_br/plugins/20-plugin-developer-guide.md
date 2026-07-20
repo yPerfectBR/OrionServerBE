@@ -39,7 +39,6 @@ plugins/orion:meu-plugin/
 - **`depend`**: dura — alvo obrigatório; carrega antes; `versions: [min, max]` inclusivo.
 - **`softdepend`**: opcional — `load: "after"` (padrão) ou `"before"`; ignorada se o alvo não existir.
 - **`provides`**: capabilities — **não** são ids de plugin.
-- **`api`**: versão mínima do host ([10](10-sdk-packages-versioning.md)).
 
 ## 5. Serviços e substituição
 
@@ -84,7 +83,6 @@ Descoberta, ordem de carga, McMaster, conflitos e validação de manifest usam *
 | `VERSION_OUT_OF_RANGE` | Versão fora do intervalo | Ajustar versão ou range |
 | `VERSION_CONSTRAINT_CONFLICT` | Ranges disjuntos no mesmo alvo | Alinhar dependências |
 | `ORDER_CYCLE` | Ciclo no grafo | Corrigir `softdepend.load` |
-| `API_MISMATCH` | `api` incompatível | Atualizar plugin ou host |
 | Assembly não encontrado | DLL ≠ `id` com `:` → `.` | `AssemblyName` no csproj |
 | Falha McMaster | Contratos desalinhados | Mesma versão PluginContracts |
 

@@ -11,7 +11,7 @@ Definir um lifecycle determinístico e um manifest **`plugin.json`** para ordena
 
 - Install remoto / marketplace.
 - Hot-reload sem reiniciar o processo.
-- Ranges SemVer complexos além de checagem simples de `api` major na v1.
+- Versionamento de API de host no `plugin.json` (removido; ver [19](19-manifest-v2.md)).
 
 ## 3. Esboço de API pública
 
@@ -21,7 +21,6 @@ Definir um lifecycle determinístico e um manifest **`plugin.json`** para ordena
 {
   "id": "MinimalInventoryItems",
   "version": "1.0.0",
-  "api": "0.1.0",
   "description": "Preenche abas criativas não-Nature",
   "authors": ["Orion"],
   "main": "MinimalInventoryItems.MinimalInventoryItemsPlugin",
@@ -36,7 +35,6 @@ Definir um lifecycle determinístico e um manifest **`plugin.json`** para ordena
 |-------|-------------|-------------|
 | `id` | sim | Id único; casa com a pasta |
 | `version` | sim | SemVer do plugin |
-| `api` | sim | Versão mínima da PluginContracts API |
 | `main` | sim | Tipo FQCN de `IOrionPlugin` |
 | `depend` | não | Hard deps — ausente ⇒ erro de boot |
 | `softdepend` | não | Se existir, carrega antes (só reorder) |
@@ -68,7 +66,7 @@ public enum PluginState
 ## 4. Sequência de boot / runtime
 
 1. Descobrir `plugins/*/plugin.json`.
-2. Validar ids únicos e `api`.
+2. Validar ids únicos.
 3. Grafo: `depend` / `softdepend` satisfeito / `loadbefore`.
 4. Ciclos ⇒ erro fatal claro.
 5. Ordem: McMaster → `main` → `Load`.

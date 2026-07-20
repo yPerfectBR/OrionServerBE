@@ -21,7 +21,6 @@ public sealed partial class PluginManifest : IPluginManifest
 
     public required string Id { get; init; }
     public required Version Version { get; init; }
-    public required Version ApiVersion { get; init; }
     public required string Main { get; init; }
     public IReadOnlyList<PluginDependency> Depend { get; init; } = [];
     public IReadOnlyList<PluginSoftDependency> SoftDepend { get; init; } = [];
@@ -55,13 +54,6 @@ public sealed partial class PluginManifest : IPluginManifest
                 $"{pluginJsonPath}: invalid version '{dto.Version}'");
         }
 
-        if (!Version.TryParse(dto.Api, out Version? apiVersion))
-        {
-            throw new PluginManifestException(
-                "MANIFEST_REGEX",
-                $"{pluginJsonPath}: invalid api '{dto.Api}'");
-        }
-
         IReadOnlyList<PluginDependency> depend = ParseDependencies(dto.Depend, pluginJsonPath, required: true);
         IReadOnlyList<PluginSoftDependency> softDepend = ParseSoftDependencies(dto.SoftDepend, pluginJsonPath);
 
@@ -69,7 +61,6 @@ public sealed partial class PluginManifest : IPluginManifest
         {
             Id = dto.Id,
             Version = version,
-            ApiVersion = apiVersion,
             Main = dto.Main,
             Depend = depend,
             SoftDepend = softDepend,
@@ -249,9 +240,6 @@ public sealed partial class PluginManifest : IPluginManifest
 
         [JsonPropertyName("version")]
         public string Version { get; set; } = "0.0.0";
-
-        [JsonPropertyName("api")]
-        public string Api { get; set; } = "0.1.0";
 
         [JsonPropertyName("main")]
         public string Main { get; set; } = "";

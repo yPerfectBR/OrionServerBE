@@ -112,7 +112,6 @@ public sealed class PluginConflictsTests
             {
                 Id = "demo",
                 Version = new Version(1, 0, 0),
-                ApiVersion = new Version(0, 1, 0),
                 Main = "demo",
                 SoftDepend =
                 [
