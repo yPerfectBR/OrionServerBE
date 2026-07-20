@@ -163,6 +163,36 @@ public sealed class PluginLoadOrderTests
     }
 
     [Fact]
+    public void ParseFile_HyphenatedProductId_Succeeds()
+    {
+        string root = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString("N"));
+        string directory = Path.Combine(root, "orion:block-containers");
+        Directory.CreateDirectory(directory);
+        string manifestPath = Path.Combine(directory, "plugin.json");
+        try
+        {
+            File.WriteAllText(manifestPath,
+                """
+                {
+                  "id": "orion:block-containers",
+                  "version": "1.0.0",
+                  "api": "0.1.0",
+                  "main": "X.Y",
+                  "depend": []
+                }
+                """);
+            File.WriteAllText(Path.Combine(directory, "orion.block-containers.dll"), string.Empty);
+
+            PluginManifest manifest = PluginManifest.ParseFile(manifestPath);
+            Assert.Equal("orion:block-containers", manifest.Id);
+        }
+        finally
+        {
+            Directory.Delete(root, recursive: true);
+        }
+    }
+
+    [Fact]
     public void LoadConfigured_WhenDisabled_LoadsNothing()
     {
         PluginHost.ResetForTests();

@@ -12,7 +12,8 @@ public sealed partial class PluginManifest : IPluginManifest
         PropertyNameCaseInsensitive = true
     };
 
-    [GeneratedRegex(@"^[a-z_]{1,18}:[a-z_]{1,18}$", RegexOptions.CultureInvariant)]
+    // Hyphens allowed so ids like orion:block-containers / orion:creative-fillers validate.
+    [GeneratedRegex(@"^[a-z0-9_]{1,18}:[a-z0-9_-]{1,18}$", RegexOptions.CultureInvariant)]
     private static partial Regex PluginIdRegex();
 
     [GeneratedRegex(@"^[a-z0-9:-]{1,25}$", RegexOptions.CultureInvariant)]
@@ -84,7 +85,7 @@ public sealed partial class PluginManifest : IPluginManifest
         {
             throw new PluginManifestException(
                 "MANIFEST_REGEX",
-                $"{source}: invalid plugin id '{id}' (expected prefix:product, [a-z_], segments ≤18)");
+                $"{source}: invalid plugin id '{id}' (expected prefix:product, [a-z0-9_-], segments ≤18)");
         }
     }
 
