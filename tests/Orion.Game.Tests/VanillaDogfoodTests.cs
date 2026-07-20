@@ -53,7 +53,7 @@ public sealed class VanillaDogfoodTests
         string? pluginsRoot = FindPluginsRoot();
         Assert.False(string.IsNullOrEmpty(pluginsRoot), "Plugins-Orion root not found");
         Assert.True(File.Exists(Path.Combine(pluginsRoot, "nuget.config")),
-            "Plugins-Orion/nuget.config missing (local SDK feed)");
+            "Plugins-Orion/nuget.config missing (nuget.org feed)");
     }
 
     static string? FindPluginsRoot()
