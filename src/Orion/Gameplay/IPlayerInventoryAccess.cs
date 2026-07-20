@@ -8,7 +8,7 @@ namespace Orion.Gameplay;
 /// </summary>
 public interface IPlayerInventoryAccess
 {
-    Container Container { get; }
+    IContainer Container { get; }
 
     int SelectedSlot { get; }
 
