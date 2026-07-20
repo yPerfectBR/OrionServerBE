@@ -152,21 +152,21 @@ public static class PluginHost
 
             if (!config.Plugins.Enabled)
             {
-                Log.Info(LogCategory.System, "Plugins disabled (Plugins.Enabled=false). Skipping plugin load.");
+                Log.Info(LogCategory.Plugins, "Plugins disabled (Plugins.Enabled=false). Skipping plugin load.");
                 return;
             }
 
             string directory = ResolvePluginsDirectory(config.Plugins.Directory);
             if (!Directory.Exists(directory))
             {
-                Log.Warn(LogCategory.System, "Plugins enabled but directory not found: {0}", directory);
+                Log.Warn(LogCategory.Plugins, "Plugins enabled but directory not found: {0}", directory);
                 return;
             }
 
             List<PluginManifest> discovered = DiscoverManifests(directory);
             if (discovered.Count == 0)
             {
-                Log.Info(LogCategory.System, "No plugins found under {0} (need plugins/*/plugin.json)", directory);
+                Log.Info(LogCategory.Plugins, "No plugins found under {0} (need plugins/*/plugin.json)", directory);
                 return;
             }
 
@@ -203,9 +203,7 @@ public static class PluginHost
                 typeof(PacketReceiveContext),
                 typeof(PacketSendContext),
                 typeof(IPlayerConnection),
-                typeof(IOrionServer),
-                // Gameplay plugins (e.g. VanillaAttributes) may reference Orion types; share the host assembly.
-                typeof(Server)
+                typeof(IOrionServer)
             ];
 
             foreach (PluginManifest manifest in ordered)
@@ -336,7 +334,7 @@ public static class PluginHost
                 catch (Exception exception)
                 {
                     Log.Error(
-                        LogCategory.System,
+                        LogCategory.Plugins,
                         "Plugin '{0}' OnDisable failed: {1}",
                         entry.Manifest.Id,
                         exception.Message);
@@ -495,7 +493,7 @@ public static class PluginHost
                 tracking,
                 registries.ForPlugin(entry.Manifest.Id),
                 packets));
-            Log.Info(LogCategory.System, "Enabled plugin '{0}' v{1}", entry.Manifest.Id, entry.Manifest.Version);
+            Log.Info(LogCategory.Plugins, "Enabled plugin '{0}' v{1}", entry.Manifest.Id, entry.Manifest.Version);
         }
 
         _enabled = true;
@@ -535,7 +533,7 @@ public static class PluginHost
         if (!string.Equals(plugin.Id, manifest.Id, StringComparison.Ordinal))
         {
             Log.Warn(
-                LogCategory.System,
+                LogCategory.Plugins,
                 "Plugin id mismatch: manifest '{0}' vs IOrionPlugin.Id '{1}' — using manifest id.",
                 manifest.Id,
                 plugin.Id);
@@ -545,7 +543,7 @@ public static class PluginHost
         plugin.Load(new PluginLoadContext(manifest, registries.ForPlugin(manifest.Id)));
         Loaded.Add(new LoadedPlugin(manifest, plugin, loader));
         Log.Info(
-            LogCategory.System,
+            LogCategory.Plugins,
             "Loaded plugin '{0}' v{1} via McMaster from {2}",
             manifest.Id,
             manifest.Version,
