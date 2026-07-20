@@ -27,10 +27,10 @@ public sealed class ContentRegistriesTests
     [Fact]
     public void CreativeTabs_ViaFacade_MatchesDirectCatalogRegistration()
     {
-        IContentRegistries registries = PluginHost.Registries.ForPlugin("MinimalInventoryItems");
-        registries.CreativeTabs.AddEntry("MinimalInventoryItems", 1, "minecraft:cobblestone");
-        registries.CreativeTabs.AddEntry("MinimalInventoryItems", 3, "minecraft:wooden_sword");
-        registries.CreativeTabs.AddEntry("MinimalInventoryItems", 4, "minecraft:stick");
+        IContentRegistries registries = PluginHost.Registries.ForPlugin("orion:creative-fillers");
+        registries.CreativeTabs.AddEntry("orion:creative-fillers", 1, "minecraft:cobblestone");
+        registries.CreativeTabs.AddEntry("orion:creative-fillers", 3, "minecraft:wooden_sword");
+        registries.CreativeTabs.AddEntry("orion:creative-fillers", 4, "minecraft:stick");
 
         byte[] payload = CuratedItemCatalog.GetCreativeContentPayload();
         int offset = 0;
@@ -39,7 +39,7 @@ public sealed class ContentRegistriesTests
         packet.Deserialize(reader);
 
         Assert.Equal(6, packet.Items.Count);
-        Assert.Contains("MinimalInventoryItems", CuratedItemCatalog.GetLoadedCreativePlugins());
+        Assert.Contains("orion:creative-fillers", CuratedItemCatalog.GetLoadedCreativePlugins());
         Assert.False(CuratedItemCatalog.NonNatureCreativeTabsEmpty);
     }
 
