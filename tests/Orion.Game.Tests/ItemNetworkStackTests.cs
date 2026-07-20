@@ -38,8 +38,8 @@ public sealed class ItemNetworkStackTests
     {
         ItemRegistry.EnsureLoaded();
 
-        ItemStack? grass = ItemType.GetCreativeItem(0);
-        ItemStack? dirt = ItemType.GetCreativeItem(1);
+        ItemStack? grass = ItemType.GetCreativeItem(1);
+        ItemStack? dirt = ItemType.GetCreativeItem(2);
 
         Assert.NotNull(grass);
         Assert.NotNull(dirt);
