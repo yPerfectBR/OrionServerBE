@@ -61,7 +61,7 @@ public class PluginsCommand : Command
 
         if (manifest.SoftDepend.Count > 0)
         {
-            line += $" §8(softdepend: {string.Join(", ", manifest.SoftDepend)})";
+            line += $" §8(softdepend: {string.Join(", ", manifest.SoftDepend.Select(d => d.Id))})";
         }
 
         return line;
