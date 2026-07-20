@@ -82,7 +82,7 @@
         {
           "identifier": "overworld",
           "type": 0,
-          "generator": "superflat",
+          "generator": "void",
           "viewDistance": 20,
           "simulationDistance": 10,
           "spawnPosition": [
