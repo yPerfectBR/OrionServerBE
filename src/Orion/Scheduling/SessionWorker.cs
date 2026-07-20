@@ -114,7 +114,9 @@ public sealed class SessionWorker
                 continue;
             }
 
-            foreach (Entity.Traits.EntityTrait trait in player.GetTraits())
+            // Iterate EntityTraitBase: plugin traits (e.g. EntityInventoryTrait) subclass
+            // Orion.Api.EntityTraitBase, not Orion.Entity.Traits.EntityTrait.
+            foreach (Orion.Api.Traits.EntityTraitBase trait in player.GetTraits())
             {
                 if (trait is ISessionTickableTrait sessionTickable)
                 {
