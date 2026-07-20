@@ -44,4 +44,4 @@ Helpers em `Orion.Api.Network`; Protocol packable; adapter `DataPacket` → `IOu
 
 ## 8. Status
 
-`spec`
+`spec` — **auditoria jul/2026:** `IPacketPipeline` e hooks de packet **implementados** (fase 06); `IOutboundPacket` / helpers em `Orion.Api.Network` **ausentes**; plugins ainda podem referenciar `Protocol` via `Orion.csproj`.

@@ -57,4 +57,4 @@ Criar `src/Orion.Gameplay.Api/**`; remover interfaces de `src/Orion/Gameplay/`; 
 
 ## 9. Status
 
-`spec`
+`spec` — **auditoria jul/2026:** `IInventoryApi`, `IBuildingApi`, `IMiningApi`, `IAttributesApi` **existem** em `Orion.dll` (renomeados de `IVanilla*`); **não** em assembly `Orion.Gameplay.Api`; serviços registrados por plugins `orion:*` via `Services.Register`.

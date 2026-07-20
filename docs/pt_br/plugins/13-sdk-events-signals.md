@@ -77,4 +77,4 @@ context.Events.Subscribe<PlayerPlaceBlockSignal>(s =>
 
 ## 10. Status
 
-`spec`
+`spec` — **auditoria jul/2026:** sinais ainda em `Orion.Events` / PluginContracts; catálogo expandido (`BlockPlaceSignal`, etc.) **não migrado** para `Orion.Api.Events`.

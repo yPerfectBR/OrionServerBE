@@ -47,4 +47,4 @@ plugins/MyPlugin/
 
 ## 8. Status
 
-`spec`
+`spec` — **auditoria jul/2026:** sem template `dotnet new`; restore só-NuGet **impossível** (pacotes não publicados); guia [20](20-plugin-developer-guide.md) cobre layout/migração atual.
