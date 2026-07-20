@@ -73,7 +73,15 @@ public sealed class ServicesMessengerTests
             Manifest("provider"));
         PluginHost.RegisterLoadedForTests(
             consumer,
-            Manifest("consumer", softDepend: ["provider"]));
+            Manifest("consumer", softDepend:
+            [
+                new PluginSoftDependency
+                {
+                    Id = "provider",
+                    MinVersion = new Version(1, 0, 0),
+                    MaxVersion = new Version(99, 0, 0)
+                }
+            ]));
 
         Server server = new();
         PluginHost.EnableAll(server);
@@ -126,7 +134,7 @@ public sealed class ServicesMessengerTests
             messenger.Publish("no-colon", ReadOnlyMemory<byte>.Empty));
     }
 
-    static PluginManifest Manifest(string id, string[]? softDepend = null) =>
+    static PluginManifest Manifest(string id, PluginSoftDependency[]? softDepend = null) =>
         new()
         {
             Id = id,
