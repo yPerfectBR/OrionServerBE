@@ -48,7 +48,7 @@ Define **`plugin.json` v2**: namespaced plugin ids (`prefix:product`), object-sh
 
 - Format: `prefix:product` where prefix matches `[a-z0-9_]{1,18}` and product matches `[a-z0-9_-]{1,18}` (hyphens allowed in product, e.g. `orion:block-containers`).
 - Folder name under `plugins/` **must equal** `id`.
-- Folder regex: `^[a-z0-9:-]{1,25}$`.
+- Folder regex: `^[a-z0-9:_-]{1,25}$`.
 
 ### 3.2 `depend` (hard)
 

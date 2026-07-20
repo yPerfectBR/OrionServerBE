@@ -5,6 +5,6 @@
 *.lscache
 .idea/
 worlds/
-config/
-plugins/
-resource_packs/
+/config/
+/plugins/
+/resource_packs/
