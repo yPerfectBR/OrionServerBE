@@ -42,6 +42,13 @@
         "Warn": true,
         "Error": true,
         "Chat": true
+      },
+      "Plugins": {
+        "Debug": true,
+        "Info": true,
+        "Warn": true,
+        "Error": true,
+        "Chat": false
       }
     }
   },
