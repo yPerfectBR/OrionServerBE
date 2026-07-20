@@ -35,6 +35,13 @@ jobs:
         with:
           dotnet-version: "10.0.x"
 
+      # /config is gitignored locally; seed from first-run templates for CI build.
+      - name: Seed config for build
+        run: |
+          mkdir -p config
+          cp assets/first-run/server.json config/server.json
+          cp assets/first-run/permissions.json config/permissions.json
+
       - name: Restore
         run: dotnet restore OrionServerBE.slnx
 
