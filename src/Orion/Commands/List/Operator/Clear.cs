@@ -2,6 +2,7 @@ namespace Orion.Commands.List.Operator;
 
 using Orion.Commands;
 using Orion;
+using Orion.Containers;
 using Orion.Entity;
 using Orion.Gameplay;
 using Orion.Plugins;
@@ -57,7 +58,13 @@ public class ClearCommand : Command
             return CommandResult.Empty(true);
         }
 
-        var size = access.Container.Storage?.Sum(item => item?.StackSize ?? 0) ?? 0;
+        int size = 0;
+        IContainer container = access.Container;
+        for (int i = 0; i < container.GetSize(); i++)
+        {
+            size += container.GetItem(i)?.StackSize ?? 0;
+        }
+
         _ = inventory.TryClear(player);
 
         player.SendMessage("§7Your inventory has been cleared.");
