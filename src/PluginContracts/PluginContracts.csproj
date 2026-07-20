@@ -7,6 +7,18 @@
     <RootNamespace>Orion.PluginContracts</RootNamespace>
     <AssemblyName>Orion.PluginContracts</AssemblyName>
     <Version>0.1.0</Version>
+    <PackageId>Orion.PluginContracts</PackageId>
+    <Authors>OrionBedrock</Authors>
+    <Company>OrionBedrock</Company>
+    <Description>Lifecycle, registries, services, messaging, and packet pipeline contracts for Orion Bedrock plugins.</Description>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <PackageProjectUrl>https://github.com/OrionBedrock/OrionServerBE</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/OrionBedrock/OrionServerBE</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
+    <PackageTags>orion;minecraft;bedrock;plugins</PackageTags>
+    <IsPackable>true</IsPackable>
+    <GenerateDocumentationFile>false</GenerateDocumentationFile>
+    <PublishRepositoryUrl>true</PublishRepositoryUrl>
   </PropertyGroup>
 
   <ItemGroup>
