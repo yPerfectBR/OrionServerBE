@@ -1,0 +1,165 @@
+{
+  "Logging": {
+    "LogLevel": {
+      "System": {
+        "Debug": true,
+        "Info": true,
+        "Warn": true,
+        "Error": true,
+        "Chat": true
+      },
+      "World": {
+        "Debug": true,
+        "Info": true,
+        "Warn": true,
+        "Error": true,
+        "Chat": true
+      },
+      "Orion": {
+        "Debug": true,
+        "Info": true,
+        "Warn": true,
+        "Error": true,
+        "Chat": true
+      },
+      "RakNet": {
+        "Debug": true,
+        "Info": true,
+        "Warn": true,
+        "Error": true,
+        "Chat": true
+      },
+      "Protocol": {
+        "Debug": true,
+        "Info": true,
+        "Warn": true,
+        "Error": true,
+        "Chat": true
+      },
+      "Binary": {
+        "Debug": true,
+        "Info": true,
+        "Warn": true,
+        "Error": true,
+        "Chat": true
+      },
+      "Plugins": {
+        "Debug": true,
+        "Info": true,
+        "Warn": true,
+        "Error": true,
+        "Chat": false
+      }
+    }
+  },
+  "Server": {
+    "Edition": "MCPE",
+    "Name": "OrionServer",
+    "Motd": "OrionServer",
+    "Orion": {
+      "Permissions": "./config/permissions.json",
+      "Resources": {
+        "Path": "./resource_packs",
+        "MustAccept": true,
+        "ChunkDownloadTimeout": 1,
+        "ChunkMaxSize": 262144
+      },
+      "SpawnWorldIdentifier": "default",
+      "MovementValidation": true,
+      "MovementHorizontalThreshold": 0.4,
+      "MovementVerticalThreshold": 0.6,
+      "ShutdownMessage": "Server is shutting down...",
+      "TicksPerSecond": 20,
+      "OfflineMode": true
+    },
+    "WorldDefaultSettings": {
+      "identifier": "default",
+      "seed": 2570659193,
+      "gamemode": "survival",
+      "difficulty": "normal",
+      "saveInterval": 5,
+      "dimensions": [
+        {
+          "identifier": "overworld",
+          "type": 0,
+          "generator": "superflat",
+          "viewDistance": 20,
+          "simulationDistance": 10,
+          "spawnPosition": [
+            0,
+            -57,
+            0
+          ],
+          "chunkPregeneration": {
+            "start": [
+              -30,
+              -30
+            ],
+            "end": [
+              30,
+              30
+            ],
+            "memoryLock": true
+          },
+          "threadingAreas": [
+            {
+              "name": "default",
+              "start": [
+                -3,
+                -3
+              ],
+              "end": [
+                2,
+                2
+              ]
+            }
+          ]
+        }
+      ],
+      "gamerules": {
+        "showCoordinates": true,
+        "showDaysPlayed": false,
+        "doDayLightCycle": false,
+        "doImmediateRespawn": false,
+        "doTileDrops": false,
+        "keepInventory": false,
+        "fallDamage": false,
+        "fireDamage": false,
+        "drowningDamage": false,
+        "randomTickSpeed": 1,
+        "locatorBar": false
+      }
+    },
+    "Network": {
+      "CompressionMethod": 0,
+      "CompressionThreshold": 1,
+      "FrameMonitoring": true,
+      "PacketsPerFrame": 64
+    },
+    "Raknet": {
+      "Address": "0.0.0.0",
+      "PortIPV4": 19132,
+      "PortIPV6": 19133,
+      "Protocol": 1001,
+      "Version": "1.26.30",
+      "Message": "Orion",
+      "MaxConnections": 40,
+      "MtuMaxSize": 1492,
+      "MtuMinSize": 400,
+      "ValidatePort": true
+    }
+  },
+  "Runtime": {
+    "ThreadPool": {
+      "MinWorkerThreads": 1,
+      "MaxWorkerThreads": 4,
+      "MinIoCompletionThreads": 1,
+      "MaxIoCompletionThreads": 4
+    }
+  },
+  "Plugins": {
+    "Enabled": true,
+    "Directory": "plugins",
+    "ConflictMode": "warn"
+  }
+}
