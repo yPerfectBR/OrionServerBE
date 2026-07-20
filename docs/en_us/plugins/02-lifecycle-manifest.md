@@ -1,6 +1,6 @@
 # Phase 2 — Lifecycle & manifest
 
-**Status:** `implemented`  
+**Status:** `implemented` (lifecycle); **dependency fields superseded by** [19 — Manifest v2](19-manifest-v2.md)  
 **Language twin:** [`../../pt_br/plugins/02-lifecycle-manifest.md`](../../pt_br/plugins/02-lifecycle-manifest.md)
 
 ## 1. Goal
@@ -15,7 +15,9 @@ Define a deterministic plugin lifecycle and a **`plugin.json`** manifest so the 
 
 ## 3. Public API sketch
 
-### `plugin.json`
+> **Manifest v2:** `depend` / `softdepend` are **objects** with SemVer ranges; `loadbefore` is removed. See [19 — Manifest v2](19-manifest-v2.md).
+
+### `plugin.json` (lifecycle fields — see [19](19-manifest-v2.md) for full schema)
 
 ```json
 {
@@ -38,9 +40,8 @@ Define a deterministic plugin lifecycle and a **`plugin.json`** manifest so the 
 | `version` | yes | SemVer plugin version |
 | `api` | yes | Minimum Orion PluginContracts API version |
 | `main` | yes | Fully qualified type implementing `IOrionPlugin` |
-| `depend` | no | Hard dependencies (other plugin ids) — missing ⇒ boot error |
-| `softdepend` | no | If present, load those plugins first (reorder only) |
-| `loadbefore` | no | Ask host to load this plugin before listed ids when both exist |
+| `depend` | no | Hard dependencies — see [19](19-manifest-v2.md) |
+| `softdepend` | no | Optional ordering — see [19](19-manifest-v2.md) |
 | `provides` | no | Capability names for discovery (`Services` / diagnostics) |
 
 Inspired by PocketMine / Endstone `depend` / `soft_depend` / `load_before` / `provides`.
