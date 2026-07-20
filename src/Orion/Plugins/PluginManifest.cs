@@ -12,11 +12,11 @@ public sealed partial class PluginManifest : IPluginManifest
         PropertyNameCaseInsensitive = true
     };
 
-    // Hyphens allowed so ids like orion:block-containers / orion:creative-fillers validate.
+    // Hyphens/underscores allowed so ids like orion:block_containers / orion:creative-fillers validate.
     [GeneratedRegex(@"^[a-z0-9_]{1,18}:[a-z0-9_-]{1,18}$", RegexOptions.CultureInvariant)]
     private static partial Regex PluginIdRegex();
 
-    [GeneratedRegex(@"^[a-z0-9:-]{1,25}$", RegexOptions.CultureInvariant)]
+    [GeneratedRegex(@"^[a-z0-9:_-]{1,25}$", RegexOptions.CultureInvariant)]
     private static partial Regex FolderNameRegex();
 
     public required string Id { get; init; }
@@ -91,12 +91,18 @@ public sealed partial class PluginManifest : IPluginManifest
 
     internal static void ValidateFolderName(string folderName, string id, string source)
     {
-        if (!string.Equals(folderName, id, StringComparison.Ordinal)
-            || !FolderNameRegex().IsMatch(folderName))
+        if (!string.Equals(folderName, id, StringComparison.Ordinal))
         {
             throw new PluginManifestException(
                 "MANIFEST_REGEX",
-                $"{source}: folder '{folderName}' must match manifest id '{id}'");
+                $"{source}: folder '{folderName}' must equal manifest id '{id}'");
+        }
+
+        if (!FolderNameRegex().IsMatch(folderName))
+        {
+            throw new PluginManifestException(
+                "MANIFEST_REGEX",
+                $"{source}: folder '{folderName}' is invalid (expected [a-z0-9:_-], length ≤25)");
         }
     }
 
