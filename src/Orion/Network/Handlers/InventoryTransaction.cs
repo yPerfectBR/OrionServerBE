@@ -172,12 +172,12 @@ public static class InventoryTransaction
                 continue;
             }
 
-            Container? container = null;
+            IContainer? container = null;
             if (action.WindowId == (inventory.Container.Identifier ?? 0))
             {
                 container = inventory.Container;
             }
-            else if (player.TryGetOpenContainer(action.WindowId, out Container? opened))
+            else if (player.TryGetOpenContainer(action.WindowId, out IContainer? opened))
             {
                 container = opened;
             }
