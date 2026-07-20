@@ -63,6 +63,8 @@ jobs:
         run: dotnet test OrionServerBE.slnx -c Release --no-build --verbosity normal
 
   publish:
+    # Trusted Publishing + NUGET_USER exist only on OrionBedrock (not forks).
+    if: github.repository_owner == 'OrionBedrock'
     needs: build-test
     runs-on: ubuntu-latest
     steps:
