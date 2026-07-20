@@ -39,7 +39,6 @@ plugins/orion:my-plugin/
 - **`depend`**: hard — target must exist; loads before you; `versions: [min, max]` inclusive.
 - **`softdepend`**: optional — `load: "after"` (default) or `"before"`; ignored if target missing.
 - **`provides`**: capability strings for docs/diagnostics — **not** plugin ids.
-- **`api`**: minimum host PluginContracts version ([10](10-sdk-packages-versioning.md)).
 
 Example soft conflict:
 
@@ -102,7 +101,6 @@ Enable `Debug` when diagnosing load-order or `TryOwnHandler` conflicts.
 | `VERSION_OUT_OF_RANGE` | Installed plugin outside edge range | Bump dependency version or widen range |
 | `VERSION_CONSTRAINT_CONFLICT` | Two plugins require disjoint ranges on same id | Align ranges or remove one plugin |
 | `ORDER_CYCLE` | Circular before/after + depend | Fix `softdepend.load` / hard deps |
-| `API_MISMATCH` | `api` in manifest < host | Update plugin or host |
 | Assembly not found | DLL name ≠ `id` with `:` → `.` | Set `AssemblyName` in csproj |
 | McMaster load fail | Missing shared contract types | Reference same PluginContracts version as host |
 

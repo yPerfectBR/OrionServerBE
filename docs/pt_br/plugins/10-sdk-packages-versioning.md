@@ -6,7 +6,7 @@
 
 ## 1. Goal
 
-Especificar o layout **final** de projetos, identidades NuGet, semver, validação de `api` no `plugin.json` e a allowlist completa de `SharedAssemblies` do McMaster para identidade de tipos compile-time/runtime em plugins deep.
+Especificar o layout **final** de projetos, identidades NuGet, semver dos pacotes SDK e a allowlist completa de `SharedAssemblies` do McMaster para identidade de tipos compile-time/runtime em plugins deep. **Não** há campo `api` no `plugin.json` nem versionamento de API de host.
 
 ## 2. Non-goals
 
@@ -70,16 +70,9 @@ Os três pacotes de um release compartilham a **mesma** `Version`.
 
 Escape Protocol ([15](15-sdk-protocol-escape.md)): PackageReference **com** runtime assets (cópia privada OK; não entra em SharedAssemblies).
 
-## 5. Validação de `api` (final)
+## 5. `plugin.json` e versão de host
 
-| Condição | Resultado |
-|----------|-----------|
-| major do plugin > major do host | **Fatal** |
-| mesmo major, minor do plugin > host | **Fatal** |
-| mesmo major, minor ≤ host | Carrega |
-| major do plugin < host | **Fatal** (padrão) |
-
-Versão do host = informational version de `Orion.Api` (mesmo train).
+O manifest **não** declara versão de API do host. Compatibilidade de SDK fica implícita no train NuGet referenciado em compile-time; o boot **não** valida um campo `api`.
 
 ## 6. SharedAssemblies McMaster (lista final)
 
@@ -108,7 +101,7 @@ dotnet pack src/Orion.Gameplay.Api/Orion.Gameplay.Api.csproj -c Release -o artif
 |------|---------|
 | `src/Orion.Api/` | Criar |
 | `src/Orion.Gameplay.Api/` | Criar |
-| `PluginHost.cs` | SharedAssemblies + validação api |
+| `PluginHost.cs` | SharedAssemblies |
 | `Orion.csproj` | Refs Api; remover IVT Vanilla |
 | CI | pack (+ publish opcional) |
 
@@ -117,7 +110,6 @@ dotnet pack src/Orion.Gameplay.Api/Orion.Gameplay.Api.csproj -c Release -o artif
 - Três nupkgs com mesma Version.
 - Plugin com ExcludeAssets=runtime **não** copia `Orion.Api.dll` para a pasta do plugin.
 - Identidade de `IPlayer` unificada host/plugin.
-- `"api": "9.0.0"` falha no boot; `"api": "0.1.0"` em host `0.2.0` (mesmo major) carrega.
 
 ## 10. Migration notes
 
@@ -127,4 +119,4 @@ dotnet pack src/Orion.Gameplay.Api/Orion.Gameplay.Api.csproj -c Release -o artif
 
 ## 11. Status
 
-`spec` — **auditoria jul/2026:** `Orion.Api` / `Orion.Gameplay.Api` **não existem** em `src/`; sem `dotnet pack` SDK; `api` no manifest **não é validado** no boot; SharedAssemblies ainda não lista pacotes Api. Plugins em `Plugins-Orion/` ainda usam `ProjectReference` → `Orion.csproj`.
+`spec` — **auditoria jul/2026:** `Orion.Api` / `Orion.Gameplay.Api` **não existem** em `src/`; sem `dotnet pack` SDK; SharedAssemblies ainda não lista pacotes Api. Plugins em `Plugins-Orion/` ainda usam `ProjectReference` → `Orion.csproj`.

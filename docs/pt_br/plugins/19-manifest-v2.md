@@ -10,6 +10,7 @@ Definir **`plugin.json` v2**: ids com namespace (`prefixo:produto`), dependênci
 
 ## 2. Fora de escopo
 
+- Campo `api` / versionamento de API de host — intencionalmente ausente.
 - Compatibilidade com v1 (`depend: ["string"]`, `loadbefore`) — breaking change intencional.
 - Campo `nome` de exibição separado do `id`.
 - Marketplace / hot-reload em runtime.
@@ -20,7 +21,6 @@ Definir **`plugin.json` v2**: ids com namespace (`prefixo:produto`), dependênci
 {
   "id": "orion:inventory",
   "version": "1.0.0",
-  "api": "0.1.0",
   "description": "Runtime de inventário do jogador",
   "authors": ["Orion"],
   "main": "OrionInventory.OrionInventoryPlugin",
@@ -38,7 +38,6 @@ Definir **`plugin.json` v2**: ids com namespace (`prefixo:produto`), dependênci
 |-------|-------------|-------------|
 | `id` | sim | Id único; **deve ser igual ao nome da pasta** |
 | `version` | sim | Versão SemVer do plugin |
-| `api` | sim | API mínima do host (ver [10](10-sdk-packages-versioning.md)) |
 | `main` | sim | Tipo que implementa `IOrionPlugin` |
 | `depend` | não | Dependências duras — alvo ausente ⇒ fatal; alvo carrega **antes** |
 | `softdepend` | não | Ordenação opcional quando o alvo existe |
@@ -103,7 +102,6 @@ Ordenação topológica com desempate alfabético. Ciclo ⇒ fatal.
 | `VERSION_OUT_OF_RANGE` | Versão fora do intervalo da aresta |
 | `VERSION_CONSTRAINT_CONFLICT` | Intervalos disjuntos no mesmo alvo |
 | `ORDER_CYCLE` | Ciclo no grafo |
-| `API_MISMATCH` | Campo `api` incompatível com o host |
 
 ## 7. Resolução de assembly
 

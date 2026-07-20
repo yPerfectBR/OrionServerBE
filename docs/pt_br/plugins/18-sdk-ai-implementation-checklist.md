@@ -17,7 +17,7 @@ Ordem **estrita** de PRs/commits para construir o SDK final das fases 09–17 **
 
 | Passo | Doc | Trabalho | Critério de saída |
 |-------|-----|----------|-------------------|
-| S1 | [10](10-sdk-packages-versioning.md) | Projetos Api skeleton, pack, SharedAssemblies, validação `api` | pack ok; api inválida rejeitada |
+| S1 | [10](10-sdk-packages-versioning.md) | Projetos Api skeleton, pack, SharedAssemblies | pack ok |
 | S2 | [11](11-sdk-orion-api-surface.md) | Facades + implementação; stubs removidos | IPlayer usável de plugin Api |
 | S3 | [12](12-sdk-registries-traits.md) | Registries ricos + traits | Bloco+trait no Load |
 | S4 | [13](13-sdk-events-signals.md) | Sinais em Orion.Api.Events + novos | Cancel place/eat |
@@ -29,7 +29,7 @@ Ordem **estrita** de PRs/commits para construir o SDK final das fases 09–17 **
 
 ## 4. Definition of Done global
 
-- Três pacotes mesma Version; SharedAssemblies; `api` enforced; zero ProjectReference plugins→Orion; zero IVT Vanilla; MinimalInventoryItems ok; sample deep NuGet-only; smoke Vanilla\*; testes verdes; docs 09–18 `implemented`.
+- Três pacotes mesma Version; SharedAssemblies; zero ProjectReference plugins→Orion; zero IVT Vanilla; MinimalInventoryItems ok; sample deep NuGet-only; smoke Vanilla\*; testes verdes; docs 09–18 `implemented`.
 
 ## 5. Anti-padrões
 

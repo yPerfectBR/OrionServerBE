@@ -71,7 +71,7 @@ flowchart TB
 | Gameplay interfaces live in `Orion.dll` | Moved to `Orion.Gameplay.Api` |
 | Block/item registry = allowlist/hash only | Rich registrations + trait registries in `Orion.Api` |
 | Deep plugins construct Protocol packets ad hoc | Prefer `Orion.Api` helpers; Protocol is documented escape hatch |
-| `api` in `plugin.json` stored but not enforced | Boot validates against host SDK major.minor |
+| (removed) `api` field in `plugin.json` | No host API versioning |
 | Doc rule “don’t reference Orion” vs Vanilla reality | Aligned: nobody references the monolith at compile time |
 
 ## 5. Plugin neutrality (host)
@@ -86,7 +86,7 @@ First-party plugins use the same manifest ids as third parties (`orion:inventory
 2. **No `ProjectReference` to `src/Orion/Orion.csproj`** from any plugin (first-party or third-party).
 3. **No `InternalsVisibleTo` for plugin assemblies** (except `Orion.Game.Tests` and similar test projects).
 4. **Shared types** across ALC are exactly the published SDK assemblies listed in [10](10-sdk-packages-versioning.md).
-5. **`plugin.json` `api`** must satisfy host SDK version (see [10](10-sdk-packages-versioning.md)).
+5. **No `api` field in `plugin.json`** — there is no host API version gate.
 6. **Domain capabilities** are discovered via `provides` + `IServiceRegistry.TryGet` (soft) or `depend` (hard).
 7. **Packet hooks** remain the escape hatch when no high-level API exists ([15](15-sdk-protocol-escape.md)).
 
@@ -147,7 +147,7 @@ Full surface: [11](11-sdk-orion-api-surface.md), [14](14-sdk-gameplay-services.m
 | New `src/Orion.Api/Orion.Api.csproj` | Facades, signals, rich registry DTOs |
 | New `src/Orion.Gameplay.Api/Orion.Gameplay.Api.csproj` | Move from `src/Orion/Gameplay/` |
 | `src/PluginContracts/` | Keep lifecycle; thin registries evolve per [12](12-sdk-registries-traits.md) |
-| `src/Orion/Plugins/PluginHost.cs` | Expand SharedAssemblies; validate `api` |
+| `src/Orion/Plugins/PluginHost.cs` | Expand SharedAssemblies |
 | `plugins/Vanilla*/` | PackageReference NuGets; drop Orion ProjectReference |
 | `templates/OrionPlugin/` | `dotnet new` template (optional ship with SDK) |
 | CI | Pack + publish NuGet (GitHub Packages or nuget.org) |
@@ -157,7 +157,6 @@ Full surface: [11](11-sdk-orion-api-surface.md), [14](14-sdk-gameplay-services.m
 - A third-party plugin project restores NuGets only (no git submodule of Orion) and builds.
 - That plugin loads under McMaster with `typeof(IPlayer).Assembly` shared with the host.
 - VanillaInventory builds without `ProjectReference` to Orion and still registers `IPlayerInventoryService`.
-- Boot rejects plugins whose `api` major.minor is newer than the host SDK.
 - Docs 09–18 status flip to `implemented` only when [18](18-sdk-ai-implementation-checklist.md) DoD is met.
 
 ## 11. Migration notes

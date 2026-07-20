@@ -10,6 +10,7 @@ Define **`plugin.json` v2**: namespaced plugin ids (`prefix:product`), object-sh
 
 ## 2. Non-goals
 
+- `api` field / host API versioning — intentionally absent.
 - Backward compatibility with v1 `depend: ["string"]` or `loadbefore` (breaking change).
 - Display `name` field separate from `id` (may be added later).
 - Runtime plugin marketplace / hot-reload.
@@ -20,7 +21,6 @@ Define **`plugin.json` v2**: namespaced plugin ids (`prefix:product`), object-sh
 {
   "id": "orion:inventory",
   "version": "1.0.0",
-  "api": "0.1.0",
   "description": "Player inventory runtime",
   "authors": ["Orion"],
   "main": "OrionInventory.OrionInventoryPlugin",
@@ -38,7 +38,6 @@ Define **`plugin.json` v2**: namespaced plugin ids (`prefix:product`), object-sh
 |-------|----------|---------|
 | `id` | yes | Unique plugin id; **must equal folder name** |
 | `version` | yes | SemVer plugin version |
-| `api` | yes | Minimum Orion PluginContracts API (host validates — see [10](10-sdk-packages-versioning.md)) |
 | `main` | yes | Fully qualified type implementing `IOrionPlugin` |
 | `depend` | no | Hard dependencies — missing target ⇒ fatal; target loads **before** this plugin |
 | `softdepend` | no | Optional ordering when target exists |
@@ -110,7 +109,6 @@ Example: plugin A requires `orion:containers` in `[1.0, 2.0]`; plugin C requires
 | `VERSION_OUT_OF_RANGE` | Installed version outside edge `versions` |
 | `VERSION_CONSTRAINT_CONFLICT` | Disjoint ranges on same target from multiple plugins |
 | `ORDER_CYCLE` | Cycle in dependency graph |
-| `API_MISMATCH` | Plugin `api` incompatible with host (see [10](10-sdk-packages-versioning.md)) |
 
 Messages should include plugin id, target id, and the offending range.
 

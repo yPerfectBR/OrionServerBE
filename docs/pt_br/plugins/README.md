@@ -60,7 +60,7 @@ flowchart TB
 | 7 | [07 — Conflitos e compatibilidade](07-conflicts-compatibility.md) | Ferramentas quando plugins colidem | `implemented` |
 | — | [08 — Checklist de implementação (IA)](08-ai-implementation-checklist.md) | Ordem de PRs da plataforma (fases 1–7) | `spec` |
 | 9 | [09 — Visão SDK](09-sdk-overview.md) | Arquitetura final NuGet para plugins deep | `spec` |
-| 10 | [10 — Pacotes e versionamento](10-sdk-packages-versioning.md) | Layout NuGet, semver, SharedAssemblies, `api` | `spec` |
+| 10 | [10 — Pacotes e versionamento](10-sdk-packages-versioning.md) | Layout NuGet, semver, SharedAssemblies | `spec` |
 | 11 | [11 — Superfície Orion.Api](11-sdk-orion-api-surface.md) | IServer / IWorld / IDimension / IPlayer / block / item / container | `spec` |
 | 12 | [12 — Registries e traits](12-sdk-registries-traits.md) | Registros ricos + trait registries | `spec` |
 | 13 | [13 — Events e sinais](13-sdk-events-signals.md) | Catálogo final em Orion.Api.Events | `spec` |

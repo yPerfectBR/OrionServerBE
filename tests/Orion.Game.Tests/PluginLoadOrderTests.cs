@@ -146,7 +146,6 @@ public sealed class PluginLoadOrderTests
                 {
                   "id": "badid",
                   "version": "1.0.0",
-                  "api": "0.1.0",
                   "main": "X.Y",
                   "depend": []
                 }
@@ -176,7 +175,6 @@ public sealed class PluginLoadOrderTests
                 {
                   "id": "orion:block-containers",
                   "version": "1.0.0",
-                  "api": "0.1.0",
                   "main": "X.Y",
                   "depend": []
                 }
@@ -206,7 +204,6 @@ public sealed class PluginLoadOrderTests
                 {
                   "id": "orion:block_containers",
                   "version": "1.0.0",
-                  "api": "0.1.0",
                   "main": "X.Y",
                   "depend": []
                 }
@@ -264,7 +261,6 @@ public sealed class PluginLoadOrderTests
         {
             Id = id,
             Version = Version.Parse(version),
-            ApiVersion = new Version(0, 1, 0),
             Main = id + ".Main",
             Depend = depend ?? [],
             SoftDepend = softDepend ?? [],
