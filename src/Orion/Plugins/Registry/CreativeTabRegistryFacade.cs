@@ -19,7 +19,7 @@ internal sealed class CreativeTabRegistryFacade(ContentRegistriesCore core) : IC
         if (category == 2)
         {
             Log.Warn(
-                LogCategory.System,
+                LogCategory.Plugins,
                 "CreativeTabs: category 2 (Nature) is reserved for core; plugin '{0}' entry '{1}' rejected.",
                 pluginId,
                 identifier);
@@ -29,7 +29,7 @@ internal sealed class CreativeTabRegistryFacade(ContentRegistriesCore core) : IC
         if (category is < 1 or > 4)
         {
             Log.Warn(
-                LogCategory.System,
+                LogCategory.Plugins,
                 "CreativeTabs: invalid category {0} from plugin '{1}' for '{2}'.",
                 category,
                 pluginId,
