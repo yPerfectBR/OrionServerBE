@@ -5,7 +5,7 @@ using Orion.Gameplay;
 using Orion.Plugins;
 using Orion.Protocol.Enums;
 using Orion.Protocol.Types;
-using Orion.Traits;
+using Orion.Api.Traits;
 using Orion.World;
 
 
@@ -79,7 +79,7 @@ public sealed class EntityAirSupplyTrait : EntityTrait
             Entity,
             0.5f,
             null,
-            Entity.IsSwimming ? ActorDamageCause.Drowning : ActorDamageCause.Suffocation);
+            (int)(Entity.IsSwimming ? ActorDamageCause.Drowning : ActorDamageCause.Suffocation));
     }
 
     public int GetAirSupplyTicks()

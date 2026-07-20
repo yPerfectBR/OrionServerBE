@@ -22,7 +22,5 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\Orion\Orion.csproj" />
-    <ProjectReference Include="..\..\..\Plugins-Orion\orion:containers\OrionContainers.csproj" />
-    <ProjectReference Include="..\..\..\Plugins-Orion\orion:inventory\OrionInventory.csproj" />
   </ItemGroup>
 </Project>
