@@ -6,7 +6,7 @@
 
 ## 1. Goal
 
-Update operator bootstrap (`scripts/first-run.sh`, [`assets/first-run/`](../../../assets/first-run/), [`assets/ci/`](../../../assets/ci/)) and document the **minimum plugin set** for a playable post-extraction server, with default world generator **`void`**.
+Update operator bootstrap (`scripts/first-run.sh`, [`scripts/fixtures/`](../../../scripts/fixtures/)) and document the **minimum plugin set** for a playable post-extraction server, with default world generator **`void`**.
 
 ## 2. Non-goals
 
@@ -17,8 +17,7 @@ Update operator bootstrap (`scripts/first-run.sh`, [`assets/first-run/`](../../.
 
 | File | Field | From | To |
 |------|-------|------|-----|
-| `assets/first-run/server.json` | `dimensions[].generator` | `superflat` | **`void`** |
-| `assets/ci/server.json` | same | (align) | **`void`** |
+| `scripts/fixtures/server.json` | `dimensions[].generator` | `superflat` | **`void`** |
 | Code default in `OrionConfig` if any | generator | `superflat` | **`void`** |
 | `docs/*/first-run.md` | prose | mentions superflat | void + how to enable superflat plugin |
 
@@ -46,7 +45,7 @@ Update `Plugins-Orion/` script to include new ids in dependency order. Deploy to
 ## 6. Example commits
 
 1. `chore(first-run): default world generator to void`
-2. `chore(ci-fixtures): align assets/ci server.json generator to void`
+2. `chore(fixtures): align scripts/fixtures server.json generator to void`
 3. `docs: document minimal plugin set and superflat opt-in`
 4. `chore(build-plugins): add new first-party plugin ids to build order`
 

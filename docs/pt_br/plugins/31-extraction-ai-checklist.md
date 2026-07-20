@@ -74,7 +74,7 @@ chore(first-run): default generator to void
 - [ ] Traits Entity/Block/Item/Player listados nas fases 24–27 não existem no Orion.dll.
 - [ ] Zero conteúdo em `RegisterFromBedrockStates`.
 - [ ] `GeneratorFactory` sem builtin superflat; void default.
-- [ ] First-run / assets/ci com `generator: void`.
+- [ ] First-run / `scripts/fixtures` com `generator: void`.
 - [ ] Todos os novos plugins no padrão NuGet/CI.
 - [ ] First-party sem `ProjectReference` Orion (dogfood [17](17-sdk-vanilla-dogfood.md)).
 - [ ] Game.Tests + CI development verdes.
