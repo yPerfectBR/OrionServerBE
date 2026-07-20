@@ -149,4 +149,4 @@ Preferência final: tipos concretos (`Player`, `Entity`, `ItemStack`, …) **imp
 
 ## 9. Status
 
-`spec`
+`spec` — **auditoria jul/2026:** facades `IServer`/`IWorld`/`IPlayer` em `Orion.Api` **ausentes**; `IPluginContext` ainda expõe stubs em PluginContracts; tipos de gameplay (`Player`, `Entity`) **não implementam** interfaces Api públicas.

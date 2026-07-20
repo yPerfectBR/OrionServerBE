@@ -42,4 +42,4 @@ Migrar todos os Vanilla\* para os **mesmos pacotes SDK finais** usados por terce
 
 ## 6. Status
 
-`spec`
+`spec` — **auditoria jul/2026:** parcial — 7 plugins migrados para ids `orion:*`, layout `src/`, manifest v2, externalizados em `Plugins-Orion/`; `InternalsVisibleTo` removido; **pendente** `PackageReference` NuGet e zero `ProjectReference` a `Orion.csproj`.

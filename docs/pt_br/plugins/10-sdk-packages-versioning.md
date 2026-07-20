@@ -127,4 +127,4 @@ dotnet pack src/Orion.Gameplay.Api/Orion.Gameplay.Api.csproj -c Release -o artif
 
 ## 11. Status
 
-`spec`
+`spec` — **auditoria jul/2026:** `Orion.Api` / `Orion.Gameplay.Api` **não existem** em `src/`; sem `dotnet pack` SDK; `api` no manifest **não é validado** no boot; SharedAssemblies ainda não lista pacotes Api. Plugins em `Plugins-Orion/` ainda usam `ProjectReference` → `Orion.csproj`.

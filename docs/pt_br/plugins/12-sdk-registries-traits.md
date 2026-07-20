@@ -75,4 +75,4 @@ Expandir DTOs; interfaces de trait registry; facades → `*TraitRegistry` intern
 
 ## 8. Status
 
-`spec`
+`spec` — **auditoria jul/2026:** registries finos (allowlist/hash) em PluginContracts **permanecem**; trait bases ricos em `Orion.Api` **não existem**; `RegisterFromAssembly` ainda no core.

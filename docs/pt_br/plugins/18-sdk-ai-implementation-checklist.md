@@ -41,4 +41,4 @@ Ordem **estrita** de PRs/commits para construir o SDK final das fases 09–17 **
 
 ## 6. Status
 
-`spec` — só vira `implemented` com §4 completo.
+`spec` — **auditoria jul/2026:** S1–S6 **não iniciados** (sem projetos Api/pack); S7 **parcial** (externalização + neutralidade); S8–S9 **pendentes**. DoD §4 **não cumprido**. Fase [19](19-manifest-v2.md) e docs [20–21](20-plugin-developer-guide.md) **implementados** fora desta sequência.
