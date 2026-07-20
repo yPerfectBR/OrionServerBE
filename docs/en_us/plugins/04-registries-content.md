@@ -126,7 +126,7 @@ public interface IWorldInitContext
 |-------|--------|
 | `CuratedItemCatalog.RegisterCreativeTabEntries` | `ICreativeTabRegistry.AddEntry` |
 | Private `BlockRegistry.RegisterBlock` | `IBlockRegistry.Register` |
-| Traits only from Orion assembly | `RegisterFromAssembly(pluginAssembly)` or explicit trait API later |
+| Traits only from Orion assembly | `RegisterFromAssembly(pluginAssembly)` (see `VanillaAttributes`) |
 
 ## 8. Status
 

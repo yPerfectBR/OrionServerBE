@@ -51,6 +51,12 @@ Phase 0 is conceptual. The only “API” is the boundary checklist:
 | [`src/Orion/Plugins/`](../../../src/Orion/Plugins/) | Current stub host |
 | [`config/server.json`](../../../config/server.json) | `Plugins` section |
 | [`plugins/MinimalInventoryItems/`](../../../plugins/MinimalInventoryItems/) | Sample opt-in plugin |
+| [`plugins/VanillaAttributes/`](../../../plugins/VanillaAttributes/) | Vanilla health/hunger + attribute API (opt-in; refs Orion) |
+| [`plugins/VanillaInventory/`](../../../plugins/VanillaInventory/) | Player inventory + ISR (opt-in; `depend` VanillaContainers) |
+| [`plugins/VanillaContainers/`](../../../plugins/VanillaContainers/) | Storage/UI runtime (`provides` orion:containers) |
+| [`plugins/VanillaContainerBlocks/`](../../../plugins/VanillaContainerBlocks/) | Chest/barrel (`depend` VanillaContainers + VanillaInventory) |
+| [`plugins/VanillaBuilding/`](../../../plugins/VanillaBuilding/) | Block place / use-on-block (`softdepend` VanillaInventory) |
+| [`plugins/VanillaMining/`](../../../plugins/VanillaMining/) | Block crack / destroy (`softdepend` VanillaInventory) |
 
 ## 6. Acceptance tests (definition of done for the vision)
 

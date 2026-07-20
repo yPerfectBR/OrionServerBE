@@ -79,7 +79,7 @@ public sealed partial class PluginMessenger : IPluginMessenger
             catch (Exception exception)
             {
                 Log.Warn(
-                    LogCategory.System,
+                    LogCategory.Plugins,
                     "Plugin messenger handler for '{0}' failed: {1}",
                     channel,
                     exception.Message);

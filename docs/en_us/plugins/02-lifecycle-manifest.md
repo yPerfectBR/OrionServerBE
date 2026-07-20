@@ -1,6 +1,6 @@
 # Phase 2 — Lifecycle & manifest
 
-**Status:** `implemented`  
+**Status:** `implemented` (lifecycle); **dependency fields superseded by** [19 — Manifest v2](19-manifest-v2.md)  
 **Language twin:** [`../../pt_br/plugins/02-lifecycle-manifest.md`](../../pt_br/plugins/02-lifecycle-manifest.md)
 
 ## 1. Goal
@@ -11,17 +11,18 @@ Define a deterministic plugin lifecycle and a **`plugin.json`** manifest so the 
 
 - Runtime install from the internet / marketplace.
 - Hot-reload of changed DLLs without process restart (may come later with unloadable ALCs).
-- Resolving semantic version ranges beyond a simple `api` major compatibility check in v1.
+- Host API version field in `plugin.json` (removed; see [19](19-manifest-v2.md)).
 
 ## 3. Public API sketch
 
-### `plugin.json`
+> **Manifest v2:** `depend` / `softdepend` are **objects** with SemVer ranges; `loadbefore` is removed. See [19 — Manifest v2](19-manifest-v2.md).
+
+### `plugin.json` (lifecycle fields — see [19](19-manifest-v2.md) for full schema)
 
 ```json
 {
   "id": "MinimalInventoryItems",
   "version": "1.0.0",
-  "api": "0.1.0",
   "description": "Fills non-Nature creative tabs",
   "authors": ["Orion"],
   "main": "MinimalInventoryItems.MinimalInventoryItemsPlugin",
@@ -36,11 +37,9 @@ Define a deterministic plugin lifecycle and a **`plugin.json`** manifest so the 
 |-------|----------|---------|
 | `id` | yes | Unique plugin id; matches folder name |
 | `version` | yes | SemVer plugin version |
-| `api` | yes | Minimum Orion PluginContracts API version |
 | `main` | yes | Fully qualified type implementing `IOrionPlugin` |
-| `depend` | no | Hard dependencies (other plugin ids) — missing ⇒ boot error |
-| `softdepend` | no | If present, load those plugins first (reorder only) |
-| `loadbefore` | no | Ask host to load this plugin before listed ids when both exist |
+| `depend` | no | Hard dependencies — see [19](19-manifest-v2.md) |
+| `softdepend` | no | Optional ordering — see [19](19-manifest-v2.md) |
 | `provides` | no | Capability names for discovery (`Services` / diagnostics) |
 
 Inspired by PocketMine / Endstone `depend` / `soft_depend` / `load_before` / `provides`.
@@ -68,7 +67,7 @@ public enum PluginState
 ## 4. Boot / runtime sequence
 
 1. Discover `plugins/*/plugin.json`.
-2. Validate ids unique; validate `api` against host.
+2. Validate ids unique.
 3. Build graph:
    - Edge `depend`: A → B means B must load before A; missing B ⇒ fatal.
    - Edge `softdepend`: same order **if B exists**; else ignore.

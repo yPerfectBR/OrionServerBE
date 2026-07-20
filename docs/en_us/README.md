@@ -8,6 +8,7 @@ Welcome to the English documentation hub for OrionServer.
 - [Architecture and Philosophy](architecture-philosophy.md)
 - [Chunk streaming (Bedrock)](chunk-streaming.md)
 - [Teleport (client ↔ server)](teleport.md)
+- [Area threading (multithreaded simulation)](area-threading.md)
 - [Item drop (client ↔ server)](item-drop.md)
 - [First run (creative menu / plugins)](first-run.md)
 - [Creative inventory (minimum per tab)](creative-inventory.md)

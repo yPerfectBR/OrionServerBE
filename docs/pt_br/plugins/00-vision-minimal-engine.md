@@ -51,6 +51,12 @@ A fase 0 é conceitual. A “API” é o checklist de fronteira:
 | [`src/Orion/Plugins/`](../../../src/Orion/Plugins/) | Host stub atual |
 | [`config/server.json`](../../../config/server.json) | Seção `Plugins` |
 | [`plugins/MinimalInventoryItems/`](../../../plugins/MinimalInventoryItems/) | Sample opt-in |
+| [`plugins/VanillaAttributes/`](../../../plugins/VanillaAttributes/) | Vida/fome vanilla + API de atributos (opt-in; refs Orion) |
+| [`plugins/VanillaInventory/`](../../../plugins/VanillaInventory/) | Inventário do jogador + ISR (opt-in; `depend` VanillaContainers) |
+| [`plugins/VanillaContainers/`](../../../plugins/VanillaContainers/) | Runtime de grades/UI (`provides` orion:containers) |
+| [`plugins/VanillaContainerBlocks/`](../../../plugins/VanillaContainerBlocks/) | Baú/barril (`depend` VanillaContainers + VanillaInventory) |
+| [`plugins/VanillaBuilding/`](../../../plugins/VanillaBuilding/) | Place de bloco / use-on-block (`softdepend` VanillaInventory) |
+| [`plugins/VanillaMining/`](../../../plugins/VanillaMining/) | Crack / destroy de bloco (`softdepend` VanillaInventory) |
 
 ## 6. Testes de aceitação (definição de pronto da visão)
 

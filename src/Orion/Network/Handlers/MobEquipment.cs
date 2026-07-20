@@ -1,11 +1,12 @@
 namespace Orion.Network.Handlers;
 
 using Orion;
-using Orion.Entity.Traits;
-using Orion.Item;
+using Orion.Gameplay;
+using Orion.Plugins;
 using Orion.Protocol.Packets;
 using Orion.RakNet;
 
+/// <summary>Fallback when VanillaInventory is not loaded / not owning the packet.</summary>
 public static class MobEquipment
 {
     public static void Handle(Server server, NetworkConnection connection, ReadOnlySpan<byte> packetBuffer)
@@ -24,15 +25,11 @@ public static class MobEquipment
             return;
         }
 
-        EntityInventoryTrait? inventory = player.GetTrait<EntityInventoryTrait>();
-        if (inventory is null)
+        if (packet.HotBarSlot < 9
+            && PluginHost.Services.TryGet(out IPlayerInventoryService? inventory)
+            && inventory is not null)
         {
-            return;
-        }
-
-        if (packet.HotBarSlot < 9)
-        {
-            inventory.SetHeldItem(packet.HotBarSlot);
+            _ = inventory.TrySetHeldSlot(player, packet.HotBarSlot);
         }
     }
 }

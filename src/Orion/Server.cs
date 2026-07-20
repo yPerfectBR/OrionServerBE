@@ -262,6 +262,12 @@ public sealed class Server
             case PlayerBreakBlockSignal brk:
                 brk.SetCancelled(cancelled);
                 break;
+            case PlayerOpenInventorySignal openInv:
+                openInv.SetCancelled(cancelled);
+                break;
+            case PlayerOpenContainerSignal openCtr:
+                openCtr.SetCancelled(cancelled);
+                break;
             case EntityHurtSignal hurt:
                 hurt.SetCancelled(cancelled);
                 break;

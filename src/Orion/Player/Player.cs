@@ -16,6 +16,8 @@ using Orion.World;
 
 using Basalt.Binary;
 using Orion.Entity.Traits;
+using Orion.Gameplay;
+using Orion.Plugins;
 using Orion.Entity.Traits.Types;
 using Orion.Player.Traits;
 
@@ -40,7 +42,7 @@ public readonly string Username;
     public BlockPos? LastActionBlockPosition { get; set; }
     public BlockPos? LastActionResultPosition { get; set; }
     public int LastActionFace { get; set; }
-    public Dictionary<int, Container> openedContainers = [];
+    public Dictionary<int, IContainer> openedContainers = [];
 
     /// <summary>Null for NPCs and fake players.</summary>
     public PlayerSession? Session { get; internal set; }
@@ -220,6 +222,23 @@ public readonly string Username;
         Session?.Send(packets);
     }
 
+    /// <summary>
+    /// Show or hide HUD elements for this client (Bedrock SetHud /hud).
+    /// </summary>
+    public void SetHud(HudVisibility visibility, params HudElement[] elements)
+    {
+        if (elements.Length == 0 || Session is null)
+        {
+            return;
+        }
+
+        Send(new SetHudPacket
+        {
+            Elements = [.. elements],
+            Visibility = visibility
+        });
+    }
+
     public bool DropItem(Item.ItemStack item)
     {
         if (Dimension is null || item.StackSize == 0 || item.Type == Item.ItemType.Air)
@@ -256,59 +275,12 @@ public readonly string Username;
 
     public ushort CollectItem(Item.ItemStack item)
     {
-        var inventory = GetTrait<EntityInventoryTrait>();
-        if (inventory is null || item.StackSize == 0)
+        if (!PluginHost.Services.TryGet(out IPlayerInventoryService? inventory) || inventory is null)
         {
             return 0;
         }
 
-        var container = inventory.Container;
-        ushort remaining = item.StackSize;
-        ushort moved = 0;
-
-        for (int i = 0; i < container.GetSize() && remaining > 0; i++)
-        {
-            Item.ItemStack? existing = container.GetItem(i);
-            if (existing is null || !existing.CanStackWith(item) || existing.StackSize >= existing.Type.MaxStackSize)
-            {
-                continue;
-            }
-
-            int space = existing.Type.MaxStackSize - existing.StackSize;
-            int transfer = Math.Min(space, remaining);
-            if (transfer <= 0)
-            {
-                continue;
-            }
-
-            existing.IncrementStack((ushort)transfer);
-            container.UpdateSlot(i);
-            remaining = (ushort)(remaining - transfer);
-            moved = (ushort)(moved + transfer);
-        }
-
-        for (int i = 0; i < container.GetSize() && remaining > 0; i++)
-        {
-            if (container.GetItem(i) is not null)
-            {
-                continue;
-            }
-
-            ushort transfer = (ushort)Math.Min(remaining, item.Type.MaxStackSize);
-            Item.ItemStack stack = item.Clone(transfer);
-            container.SetItem(i, stack);
-            remaining = (ushort)(remaining - transfer);
-            moved = (ushort)(moved + transfer);
-        }
-
-        if (moved == 0)
-        {
-            return 0;
-        }
-
-        item.SetStackSize(remaining);
-        inventory.SyncToPlayer(this);
-        return moved;
+        return inventory.TryCollect(this, item, out ushort moved) ? moved : (ushort)0;
     }
 
     public void Disconnect(string reason = "")
@@ -344,19 +316,9 @@ public readonly string Username;
 
         openedContainers.Clear();
 
-        EntityInventoryTrait? inventory = GetTrait<EntityInventoryTrait>();
-        if (inventory is not null)
+        if (PluginHost.Services.TryGet(out IPlayerInventoryService? inventory) && inventory is not null)
         {
-            EnsureContainerViewer(this, inventory.Container, inventory.Container.Identifier ?? 0);
-            inventory.SyncToPlayer(this);
-            inventory.SyncHeldItemToClient(this);
-        }
-
-        PlayerCursorTrait? cursor = GetTrait<PlayerCursorTrait>();
-        if (cursor is not null)
-        {
-            EnsureContainerViewer(this, cursor.Container, cursor.Container.Identifier ?? 124);
-            cursor.Container.Update();
+            _ = inventory.TrySyncToClient(this);
         }
 
         SendAttributes();
@@ -404,26 +366,10 @@ public readonly string Username;
             return;
         }
 
-        EntityInventoryTrait? inventory = GetTrait<EntityInventoryTrait>();
-        if (inventory is null)
+        if (PluginHost.Services.TryGet(out IPlayerInventoryService? inventory) && inventory is not null)
         {
-            return;
+            _ = inventory.TrySyncToClient(this);
         }
-
-        EnsureContainerViewer(this, inventory.Container, inventory.Container.Identifier ?? 0);
-        inventory.SyncToPlayer(this);
-        inventory.SyncHeldItemToClient(this);
-    }
-
-    static void EnsureContainerViewer(Player player, Containers.Container container, int windowId)
-    {
-        if (container.occupants.ContainsKey(player))
-        {
-            return;
-        }
-
-        container.occupants[player] = windowId;
-        player.RegisterOpenContainer(windowId, container);
     }
 
     public void SetSpawned(bool spawned)
@@ -475,8 +421,7 @@ public readonly string Username;
 
         Position = position;
 
-        // TEMP (with SoftCrossWorkerRegionHandoff): do not force a full client chunk reload just
-        // because the destination lies in another threading area — keep columns if already rendered.
+        // Full client chunk reload only on dimension change; keep columns if destination already rendered.
         bool forceFullChunkReload = changedDimension || forceDimensionChange;
 
         OnTeleport(new EntityTeleportOptions(previousPosition, position, forceFullChunkReload));
@@ -592,146 +537,28 @@ public readonly string Username;
 
     /// <summary>
     /// Client sync after cross-region handoff within the same dimension.
-    /// TEMP: both same-worker and cross-worker only refresh publisher/presence — no MovePlayer
-    /// teleport and no ForceReloadViewDistance (thread switch is ownership-only on the server).
+    /// Ownership moves on the server; client only refreshes publisher/presence (no MovePlayer teleport).
     /// </summary>
-    public void ResyncAfterRegionHandoff(bool crossWorker = false)
+    public void ResyncAfterRegionHandoff()
     {
-        ulong tick = Dimension?.World is Tickable tickable ? tickable.TickValue : 0;
-        ulong inputTick = PlayerAuthInput.GetLastInputTick(RuntimeId);
-        Thread thread = Thread.CurrentThread;
-        int? owningArea = OwningAreaIndex;
-        int? attachedWorker = null;
-        if (Dimension is not null && owningArea.HasValue)
-        {
-            attachedWorker = Dimension.GetAreaShard(owningArea.Value).AttachedWorkerId;
-        }
-
-        Info(
-            LogCategory.Orion,
-            "[Teleport] ResyncAfterRegionHandoff player={0} crossWorker={1} pos=({2:0.##},{3:0.##},{4:0.##}) " +
-            "owningArea={5} simAw={6} worldTick={7} inputTick={8} mode={9} " +
-            "callerTid={10} callerName={11}",
-            Username,
-            crossWorker,
-            Position.X,
-            Position.Y,
-            Position.Z,
-            owningArea?.ToString() ?? "-",
-            attachedWorker?.ToString() ?? "-",
-            tick,
-            inputTick,
-            SoftCrossWorkerRegionHandoff ? "AfterRegionHandoff(soft)" : crossWorker ? "MovePlayer+ForceReloadViewDistance" : "AfterRegionHandoff",
-            thread.ManagedThreadId,
-            thread.Name ?? "-");
-
-        PlayerChunkRenderingTrait? chunkRendering = GetTrait<PlayerChunkRenderingTrait>();
-
-        // TEMP: treat cross-worker like same-worker — only retarget streaming metadata.
-        if (SoftCrossWorkerRegionHandoff || !crossWorker)
-        {
-            chunkRendering?.AfterRegionHandoff();
-            return;
-        }
-
-        // Legacy hard path (disabled while SoftCrossWorkerRegionHandoff is true).
-        Send(new MovePlayerPacket
-        {
-            RuntimeId = RuntimeId,
-            Position = Position,
-            Pitch = Pitch,
-            Yaw = Yaw,
-            HeadYaw = HeadYaw,
-            Mode = MoveMode.Teleport,
-            OnGround = false,
-            RiddenRuntimeId = 0,
-            TeleportCause = TeleportCause.Command,
-            TeleportSourceEntityType = 0,
-            Tick = inputTick
-        });
-
-        PlayerAuthInput.OnServerTeleport(RuntimeId, tick);
-        AreaBorderTransfer.ResetTransferCooldown(RuntimeId);
-        chunkRendering?.ForceReloadViewDistance();
+        GetTrait<PlayerChunkRenderingTrait>()?.AfterRegionHandoff();
     }
 
-    /// <summary>
-    /// TEMP experiment: cross-worker handoff without client teleport / full chunk reload.
-    /// Set to <c>false</c> to restore MovePlayer(Teleport) + ForceReloadViewDistance.
-    /// </summary>
-    const bool SoftCrossWorkerRegionHandoff = true;
-
-    public void RegisterOpenContainer(int windowId, Container container)
+    public void RegisterOpenContainer(int windowId, IContainer container)
     {
         openedContainers[windowId] = container;
     }
 
-    public bool TryGetOpenContainer(int windowId, out Container? container)
+    public bool TryGetOpenContainer(int windowId, out IContainer? container)
     {
         return openedContainers.TryGetValue(windowId, out container);
     }
 
-    public Container? GetContainer(FullContainerName name)
+    public IContainer? GetContainer(FullContainerName name)
     {
-        EntityInventoryTrait? inventory = GetTrait<EntityInventoryTrait>();
-        if (inventory is null)
+        if (PluginHost.Services.TryGet(out IPlayerInventoryService? inventory) && inventory is not null)
         {
-            return null;
-        }
-
-        // Prefer ContainerId values used by ItemStackRequest (same mapping as Basalt).
-        if (name.ContainerId is (byte)ContainerId.Armor or 12
-            or (byte)ContainerId.Inventory or (byte)ContainerId.Hotbar
-            or (byte)ContainerId.FixedInventory or (byte)ContainerId.Offhand)
-        {
-            return inventory.Container;
-        }
-
-        if (name.ContainerId is (byte)ContainerId.Cursor or (byte)ContainerId.CreatedOutput
-            or (byte)ContainerName.Cursor or (byte)ContainerName.CreativeOutput)
-        {
-            return GetTrait<PlayerCursorTrait>()?.Container;
-        }
-
-        if (name.ContainerId == (byte)ContainerId.Barrel || name.ContainerId == (byte)ContainerId.InventoryUi
-            || name.ContainerId == (byte)ContainerName.Barrel || name.ContainerId == (byte)ContainerName.Container)
-        {
-            if (name.DynamicContainerId.HasValue &&
-                TryGetOpenContainer((int)name.DynamicContainerId.Value!, out Container? containerById))
-            {
-                return containerById;
-            }
-
-            foreach ((int _, Container candidate) in openedContainers)
-            {
-                if (candidate.Type != ContainerType.Inventory)
-                {
-                    return candidate;
-                }
-            }
-
-            return inventory.Container;
-        }
-
-        ContainerName containerName = (ContainerName)name.ContainerId;
-        switch (containerName)
-        {
-            case ContainerName.HotbarAndInventory:
-            case ContainerName.Hotbar:
-            case ContainerName.Inventory:
-            case ContainerName.Armor:
-            case ContainerName.Offhand:
-                return inventory.Container;
-
-            case ContainerName.Cursor:
-            case ContainerName.CreativeOutput:
-                return GetTrait<PlayerCursorTrait>()?.Container;
-        }
-
-        if (name.DynamicContainerId.HasValue &&
-            TryGetOpenContainer((int)name.DynamicContainerId.Value!, out Container? container))
-        {
-            return container;
+            return inventory.ResolveContainer(this, name);
         }
 
         return null;
@@ -805,8 +632,9 @@ public readonly string Username;
     public override void SpawnTo(Player player, ulong tick)
     {
         ItemInstance heldItem = new();
-        EntityInventoryTrait? inventory = GetTrait<EntityInventoryTrait>();
-        Item.ItemStack? held = inventory?.GetHeldItem();
+        Item.ItemStack? held = PluginHost.Services.TryGet(out IPlayerInventoryService? invSvc) && invSvc is not null
+            ? invSvc.GetHeldItem(this)
+            : null;
         if (held is not null)
         {
             heldItem.Stack = held.ToNetworkStack();

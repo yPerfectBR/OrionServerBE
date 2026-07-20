@@ -6,14 +6,12 @@ using System.Linq;
 using Orion;
 using Orion.Scheduling;
 using Orion.Player;
-using Orion.Block.Traits.Types;
 using Orion.Entity.Traits;
 using Orion.Entity.Traits.Types;
-using Orion.Events;
+using Orion.Gameplay;
 using Orion.Item;
-using Orion.Item.Traits;
-using Orion.Item.Traits.Types;
 using Orion.Player.Traits;
+using Orion.Plugins;
 
 using Orion.Protocol.Enums;
 using Orion.Protocol.Packets;
@@ -24,8 +22,6 @@ using Orion.World;
 public static class PlayerAuthInput
 {
     private const float MaxHorizontalMovePerTick = 2.0f;
-    private const float MaxBlockReachDistance = 6.5f;
-    private const ulong DefaultFoodUseTicks = 32UL;
     private const ulong MovementGraceTicks = 5UL;
 
     private static readonly ConcurrentDictionary<ulong, ulong> LastInputTickByRuntimeId = new();
@@ -138,18 +134,13 @@ public static class PlayerAuthInput
 
     private static void StartUsingItem(global::Orion.Player.Player player)
     {
-        EntityInventoryTrait? inventory = player.GetTrait<EntityInventoryTrait>();
+        IPlayerInventoryAccess? inventory = ResolveInventory(player);
         ItemStack? heldItem = inventory?.GetHeldItem();
-        ItemStackFoodTrait? food = heldItem?.GetTrait<ItemStackFoodTrait>();
-        if (inventory is null || heldItem is null || food is null)
-        {
-            PendingItemUses.TryRemove(player.RuntimeId, out _);
-            player.Flags.SetActorFlag(ActorFlag.UsingItem, false);
-            return;
-        }
-
-        PlayerHungerTrait? hunger = player.GetTrait<PlayerHungerTrait>();
-        if (hunger is null || (!food.CanAlwaysEat && hunger.CurrentValue >= hunger.MaximumValue))
+        if (inventory is null
+            || heldItem is null
+            || !PluginHost.Services.TryGet(out IPlayerItemUseHandler? handler)
+            || handler is null
+            || !handler.TryBeginUse(player, heldItem, out ulong durationTicks))
         {
             PendingItemUses.TryRemove(player.RuntimeId, out _);
             player.Flags.SetActorFlag(ActorFlag.UsingItem, false);
@@ -157,11 +148,10 @@ public static class PlayerAuthInput
         }
 
         ulong currentTick = GetCurrentTick(player);
-        ulong useTicks = GetUseDurationTicks(heldItem);
         PendingItemUses[player.RuntimeId] = new PendingItemUse(
             inventory.SelectedSlot,
             heldItem.NetworkStackId,
-            currentTick + Math.Max(1UL, useTicks));
+            currentTick + Math.Max(1UL, durationTicks));
 
         player.Flags.SetActorFlag(ActorFlag.UsingItem, true);
     }
@@ -173,7 +163,7 @@ public static class PlayerAuthInput
             return;
         }
 
-        EntityInventoryTrait? inventory = player.GetTrait<EntityInventoryTrait>();
+        IPlayerInventoryAccess? inventory = ResolveInventory(player);
         ItemStack? heldItem = inventory?.Container.GetItem(pending.Slot);
         if (inventory is null || heldItem is null || heldItem.NetworkStackId != pending.StackNetworkId)
         {
@@ -190,48 +180,17 @@ public static class PlayerAuthInput
         PendingItemUses.TryRemove(player.RuntimeId, out _);
         player.Flags.SetActorFlag(ActorFlag.UsingItem, false);
 
-        ItemStackFoodTrait? food = heldItem.GetTrait<ItemStackFoodTrait>();
-        PlayerHungerTrait? hunger = player.GetTrait<PlayerHungerTrait>();
-        if (food is null || hunger is null || !hunger.Eat(food.Nutrition, food.SaturationModifier, food.CanAlwaysEat))
+        if (!PluginHost.Services.TryGet(out IPlayerItemUseHandler? handler) || handler is null)
         {
             return;
         }
 
-        heldItem.DecrementStack();
-        if (heldItem.StackSize == 0)
-        {
-            inventory.Container.ClearSlot(pending.Slot);
-        }
-        else
-        {
-            inventory.Container.UpdateSlot(pending.Slot);
-        }
-
-        if (!string.IsNullOrWhiteSpace(food.UsingConvertsTo) && ItemType.Get(food.UsingConvertsTo) is ItemType convertedType)
-        {
-            ItemStack converted = new(convertedType);
-            if (!inventory.Container.AddItem(converted))
-            {
-                _ = player.DropItem(converted);
-            }
-        }
-
-        player.SendAttributes();
+        _ = handler.TryCompleteUse(player, heldItem, pending.Slot);
     }
 
     private static ulong GetCurrentTick(global::Orion.Player.Player player)
     {
         return player.Dimension?.World is Orion.World.Tickable tickable ? tickable.TickValue : 0UL;
-    }
-
-    private static ulong GetUseDurationTicks(ItemStack item)
-    {
-        if (item.Type.TryGetComponentProperties("minecraft:use_duration", out Orion.Protocol.Nbt.CompoundTag tag))
-        {
-            return (ulong)Math.Max(1, tag.Get<Orion.Protocol.Nbt.IntTag>("value")?.Value ?? (int)DefaultFoodUseTicks);
-        }
-
-        return DefaultFoodUseTicks;
     }
 
     private static ItemStackResponse ProcessItemStackRequest(global::Orion.Player.Player player, Protocol.Types.ItemStackRequest request)
@@ -245,7 +204,7 @@ public static class PlayerAuthInput
                 continue;
             }
 
-            EntityInventoryTrait? inventory = player.GetTrait<EntityInventoryTrait>();
+            IPlayerInventoryAccess? inventory = ResolveInventory(player);
             ItemStack? item = inventory?.Container.GetItem(mineBlock.HotbarSlot);
 
             containers.Add(new StackResponseContainerInfo
@@ -370,7 +329,7 @@ public static class PlayerAuthInput
         {
             foreach (PlayerBlockAction action in packet.BlockActions)
             {
-                HandleBlockAction(player, action);
+                HandleBlockAction(player, action, packet.Tick);
             }
         }
 
@@ -407,12 +366,10 @@ public static class PlayerAuthInput
                 position.Z,
                 player.LastActionFace);
 
-            DestroyBlock(player, new PlayerBlockAction
+            if (PluginHost.Services.TryGet(out IPlayerBlockBreakHandler? breakHandler) && breakHandler is not null)
             {
-                Action = PlayerActionType.PredictDestroyBlock,
-                BlockPos = position,
-                Face = player.LastActionFace
-            });
+                breakHandler.OnPredictDestroy(player, position, player.LastActionFace, packet.Tick);
+            }
         }
         else if (mineBlockRequest is not null)
         {
@@ -487,12 +444,8 @@ public static class PlayerAuthInput
 
         bool borderTransfer = AreaBorderTransfer.TryAfterMove(server, player, previousPosition);
 
-        // TEMP: on border cross, still broadcast MoveActorDelta so spectators do not lag one step
-        // behind and then jump when the actor is re-added. Gated by PreserveSpectatorVisibilityAcrossAreaTransfer.
-        bool shouldBroadcastMove = !borderTransfer
-            || AreaBorderTransfer.PreserveSpectatorVisibilityAcrossAreaTransfer;
-
-        if (shouldBroadcastMove && player.Dimension is not null)
+        // Always broadcast the border step so peers do not lag one tick behind during handoff.
+        if (player.Dimension is not null)
         {
             bool positionChanged = previousPosition.X != player.Position.X
                 || previousPosition.Y != player.Position.Y
@@ -535,282 +488,52 @@ public static class PlayerAuthInput
         }
     }
 
-    private static void HandleBlockAction(global::Orion.Player.Player player, PlayerBlockAction action)
+    private static void HandleBlockAction(global::Orion.Player.Player player, PlayerBlockAction action, ulong tick)
     {
-        // Warn(
-        //     "PlayerAuthInput block action player={0} action={1} pos={2},{3},{4} face={5}",
-        //     player.Username,
-        //     action.Action,
-        //     action.BlockPos.X,
-        //     action.BlockPos.Y,
-        //     action.BlockPos.Z,
-        //     action.Face);
+        if (!PluginHost.Services.TryGet(out IPlayerBlockBreakHandler? handler) || handler is null)
+        {
+            return;
+        }
 
         switch (action.Action)
         {
             case PlayerActionType.StartDestroyBlock:
-                CrackBlock(player, action.BlockPos);
+                handler.OnStartDestroy(player, action.BlockPos, action.Face, tick);
+                break;
+
+            case PlayerActionType.ContinueDestroyBlock:
+                handler.OnContinueDestroy(player, action.BlockPos, action.Face, tick);
                 break;
 
             case PlayerActionType.CrackBlock:
-            case PlayerActionType.ContinueDestroyBlock:
-                CrackBlock(player, action.BlockPos);
+                handler.OnCrack(player, action.BlockPos, action.Face, tick);
                 break;
 
             case PlayerActionType.AbortDestroyBlock:
-                StopCrackBlock(player, player.BreakingBlock ?? action.BlockPos);
-                player.BreakingBlock = null;
-                break;
-
             case PlayerActionType.StopDestroyBlock:
+                handler.OnAbortDestroy(player, action.BlockPos, action.Face);
+                break;
+
             case PlayerActionType.PredictDestroyBlock:
+                handler.OnPredictDestroy(player, action.BlockPos, action.Face, tick);
+                break;
+
             case PlayerActionType.CreativeDestroyBlock:
-                DestroyBlock(player, action);
+                handler.OnCreativeDestroy(player, action.BlockPos, action.Face);
                 break;
         }
     }
 
-    private static void CrackBlock(global::Orion.Player.Player player, BlockPos blockPosition)
+    private static IPlayerInventoryAccess? ResolveInventory(global::Orion.Player.Player player)
     {
-        if (!IsBlockInReach(player, blockPosition))
+        if (PluginHost.Services.TryGet(out IPlayerInventoryService? service)
+            && service is not null
+            && service.TryGetAccess(player, out IPlayerInventoryAccess? access))
         {
-            return;
+            return access;
         }
 
-        if (player.BreakingBlock.HasValue && !SameBlock(player.BreakingBlock.Value, blockPosition))
-        {
-            StopCrackBlock(player, player.BreakingBlock.Value);
-        }
-
-        player.BreakingBlock = blockPosition;
-        int breakTimeTicks = GetBreakTimeTicksForAnimation(player, blockPosition);
-        int crackSpeed = Math.Max(1, 65535 / breakTimeTicks);
-
-        player.Dimension?.Broadcast(new LevelEventPacket
-        {
-            Event = LevelEvent.StartBlockCracking,
-            Position = CenterOf(blockPosition),
-            Data = crackSpeed
-        });
-    }
-
-    private static bool IsAirBlock(Orion.Block.BlockPermutation block) =>
-        block.Type.Identifier is "minecraft:air" or "minecraft:cave_air" or "minecraft:void_air";
-
-    private static void DestroyBlock(global::Orion.Player.Player player, PlayerBlockAction action)
-    {
-        if (IsZero(action.BlockPos) && !player.BreakingBlock.HasValue)
-        {
-            // Warn("PlayerAuthInput destroy skipped player={0} reason=zero-position-no-target action={1}", player.Username, action.Action);
-            return;
-        }
-
-        BlockPos blockPosition = IsZero(action.BlockPos)
-            ? player.BreakingBlock!.Value
-            : action.BlockPos;
-
-        if (!IsBlockInReach(player, blockPosition))
-        {
-            return;
-        }
-
-        StopCrackBlock(player, blockPosition);
-        player.BreakingBlock = null;
-
-        if (player.Dimension is null)
-        {
-            return;
-        }
-
-        Orion.Block.BlockPermutation? block =
-            player.Dimension.GetGameplayPermutation(blockPosition.X, blockPosition.Y, blockPosition.Z);
-
-        if (block is null)
-        {
-            return;
-        }
-
-        if (IsAirBlock(block) && player.Gamemode == Gamemode.Creative)
-        {
-            EntityInventoryTrait? creativeInventory = player.GetTrait<EntityInventoryTrait>();
-            ItemStack? creativeHeldItem = creativeInventory?.GetHeldItem();
-            int effectRuntime = creativeHeldItem is not null ? ItemBlockRuntimeIds.Resolve(creativeHeldItem.Type) : 0;
-
-            if (effectRuntime == 0)
-            {
-                return;
-            }
-
-            Vec3f creativeBlockCenter = CenterOf(blockPosition);
-
-            player.Dimension.Broadcast(new LevelEventPacket
-            {
-                Event = LevelEvent.ParticlesDestroyBlock,
-                Position = creativeBlockCenter,
-                Data = effectRuntime
-            });
-
-            player.Dimension.Broadcast(new LevelSoundEventPacket
-            {
-                Event = LevelSoundEvent.BreakBlock,
-                Position = creativeBlockCenter,
-                Data = effectRuntime,
-                ActorIdentifier = string.Empty,
-                BabyMob = false,
-                DisableRelativeVolume = false,
-                UniqueActorId = 0,
-                FireAtPosition = new Optional<Vec3f> { HasValue = false, Value = default }
-            });
-            return;
-        }
-
-        Server? server = player.Dimension.World?.Server as Server;
-        if (server is not null)
-        {
-            PlayerBreakBlockSignal signal = new(player, blockPosition, action.Face);
-            server.Emit(signal);
-            if (!signal.Emit())
-            {
-                player.Send(new UpdateBlockPacket
-                {
-                    Position = blockPosition,
-                    NetworkBlockId = block.NetworkId,
-                    Flags = UpdateBlockFlagsType.Network,
-                    Layer = UpdateBlockLayerType.Normal
-                });
-
-                EntityInventoryTrait? cancelInventory = player.GetTrait<EntityInventoryTrait>();
-                if (cancelInventory is not null)
-                {
-                    ItemStack? rollbackItem = cancelInventory.GetHeldItem();
-                    if (rollbackItem is not null)
-                    {
-                        cancelInventory.Container.SetItem(cancelInventory.SelectedSlot, rollbackItem.Clone());
-                    }
-                    cancelInventory.Container.UpdateSlot(cancelInventory.SelectedSlot);
-                    cancelInventory.Container.Update();
-                    cancelInventory.SyncToPlayer(player);
-                }
-                return;
-            }
-        }
-
-        Vec3f blockCenter = CenterOf(blockPosition);
-
-        player.Dimension.Broadcast(new LevelEventPacket
-        {
-            Event = LevelEvent.ParticlesDestroyBlock,
-            Position = blockCenter,
-            Data = block.NetworkId
-        });
-
-        player.Dimension.Broadcast(new LevelSoundEventPacket
-        {
-            Event = LevelSoundEvent.BreakBlock,
-            Position = blockCenter,
-            Data = block.NetworkId,
-            ActorIdentifier = string.Empty,
-            BabyMob = false,
-            DisableRelativeVolume = false,
-            UniqueActorId = 0,
-            FireAtPosition = new Optional<Vec3f> { HasValue = false, Value = default }
-        });
-
-        Orion.Block.BlockPermutation air = Orion.Block.BlockType
-            .GetOrAir("minecraft:air")
-            .GetPermutation();
-
-        Orion.Block.Block breakingBlock =
-            player.Dimension.GetBlock(blockPosition.X, blockPosition.Y, blockPosition.Z) ??
-            new Orion.Block.Block(block);
-
-        breakingBlock.OnBreak(new BlockBreakDetails(player, blockPosition));
-
-        player.Dimension.SetGameplayPermutation(blockPosition.X, blockPosition.Y, blockPosition.Z, air);
-
-        player.Dimension.Broadcast(new UpdateBlockPacket
-        {
-            Position = blockPosition,
-            NetworkBlockId = air.NetworkId,
-            Flags = UpdateBlockFlagsType.Network,
-            Layer = UpdateBlockLayerType.Normal
-        });
-
-        EntityInventoryTrait? inventory = player.GetTrait<EntityInventoryTrait>();
-        ItemStack? heldItem = inventory?.GetHeldItem();
-
-        if (inventory is not null && heldItem is not null)
-        {
-            heldItem.OnBreakBlock(new ItemBreakBlockDetails(
-                player,
-                inventory.SelectedSlot,
-                blockPosition,
-                action.Face));
-        }
-    }
-
-    private static void StopCrackBlock(global::Orion.Player.Player player, BlockPos blockPosition)
-    {
-        player.Dimension?.Broadcast(new LevelEventPacket
-        {
-            Event = LevelEvent.StopBlockCracking,
-            Position = CenterOf(blockPosition),
-            Data = 0
-        });
-    }
-
-    private static int GetBreakTimeTicksForAnimation(global::Orion.Player.Player player, BlockPos blockPosition)
-    {
-        Orion.Block.BlockPermutation? block =
-            player.Dimension?.GetGameplayPermutation(blockPosition.X, blockPosition.Y, blockPosition.Z);
-
-        if (block is null)
-        {
-            return 20;
-        }
-
-        float hardness = block.Type.Hardness;
-        if (hardness < 0f)
-        {
-            return 9999;
-        }
-
-        if (hardness == 0f)
-        {
-            return 1;
-        }
-
-        return Math.Max(1, (int)(hardness * 1.5f * 20f));
-    }
-
-    private static Vec3f CenterOf(BlockPos position)
-    {
-        return new Vec3f
-        {
-            X = position.X + 0.5f,
-            Y = position.Y + 0.5f,
-            Z = position.Z + 0.5f
-        };
-    }
-
-    private static bool SameBlock(BlockPos a, BlockPos b)
-    {
-        return a.X == b.X && a.Y == b.Y && a.Z == b.Z;
-    }
-
-    private static bool IsZero(BlockPos position)
-    {
-        return position.X == 0 && position.Y == 0 && position.Z == 0;
-    }
-
-    private static bool IsBlockInReach(global::Orion.Player.Player player, BlockPos blockPosition)
-    {
-        Vec3f blockCenter = CenterOf(blockPosition);
-        float deltaX = blockCenter.X - player.Position.X;
-        float deltaY = blockCenter.Y - player.Position.Y;
-        float deltaZ = blockCenter.Z - player.Position.Z;
-        float distanceSquared = deltaX * deltaX + deltaY * deltaY + deltaZ * deltaZ;
-        return distanceSquared <= MaxBlockReachDistance * MaxBlockReachDistance;
+        return null;
     }
 }
 

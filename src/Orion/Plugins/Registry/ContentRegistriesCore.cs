@@ -209,7 +209,7 @@ public sealed class ContentRegistriesCore
             return;
         }
 
-        Log.Warn(LogCategory.System, message);
+        Log.Warn(LogCategory.Plugins, message);
     }
 
     internal void ThrowIfCreativeFrozen()

@@ -170,7 +170,7 @@ public sealed class PacketPipeline : IPacketPipeline
         }
         else
         {
-            Log.Warn(LogCategory.System, message);
+            Log.Warn(LogCategory.Plugins, message);
         }
 
         return false;
@@ -265,7 +265,7 @@ public sealed class PacketPipeline : IPacketPipeline
             catch (Exception exception)
             {
                 Log.Warn(
-                    LogCategory.System,
+                    LogCategory.Plugins,
                     "Packet owner handler for {0} failed: {1}",
                     context.PacketId,
                     exception.Message);
@@ -393,14 +393,14 @@ public sealed class PacketPipeline : IPacketPipeline
                 }
                 catch (Exception exception)
                 {
-                    Log.Warn(LogCategory.System, "Packet receive Monitor hook failed: {0}", exception.Message);
+                    Log.Warn(LogCategory.Plugins, "Packet receive Monitor hook failed: {0}", exception.Message);
                 }
 
                 if (!before && context.Cancelled)
                 {
                     context.SetCancelled(false);
                     Log.Warn(
-                        LogCategory.System,
+                        LogCategory.Plugins,
                         "Monitor receive hook for packet {0} called Cancel(); cancel was ignored.",
                         context.PacketId);
                 }
@@ -414,7 +414,7 @@ public sealed class PacketPipeline : IPacketPipeline
             }
             catch (Exception exception)
             {
-                Log.Warn(LogCategory.System, "Packet receive hook failed: {0}", exception.Message);
+                Log.Warn(LogCategory.Plugins, "Packet receive hook failed: {0}", exception.Message);
             }
         }
     }
@@ -433,14 +433,14 @@ public sealed class PacketPipeline : IPacketPipeline
                 }
                 catch (Exception exception)
                 {
-                    Log.Warn(LogCategory.System, "Packet send Monitor hook failed: {0}", exception.Message);
+                    Log.Warn(LogCategory.Plugins, "Packet send Monitor hook failed: {0}", exception.Message);
                 }
 
                 if (!before && context.Cancelled)
                 {
                     context.SetCancelled(false);
                     Log.Warn(
-                        LogCategory.System,
+                        LogCategory.Plugins,
                         "Monitor send hook for packet {0} called Cancel(); cancel was ignored.",
                         context.PacketId);
                 }
@@ -454,7 +454,7 @@ public sealed class PacketPipeline : IPacketPipeline
             }
             catch (Exception exception)
             {
-                Log.Warn(LogCategory.System, "Packet send hook failed: {0}", exception.Message);
+                Log.Warn(LogCategory.Plugins, "Packet send hook failed: {0}", exception.Message);
             }
         }
     }
@@ -471,7 +471,7 @@ public sealed class PacketPipeline : IPacketPipeline
         if (_warnedSubscribeAll.Add(pluginId))
         {
             Log.Warn(
-                LogCategory.System,
+                LogCategory.Plugins,
                 "Plugin '{0}' registered a packet hook without PacketIdFilter (subscribe-all). Prefer filtering by PacketId.",
                 pluginId);
         }

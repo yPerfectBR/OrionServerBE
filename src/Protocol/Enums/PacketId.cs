@@ -1,6 +1,6 @@
 namespace Orion.Protocol.Enums
 {
-    public enum PacketId : byte
+    public enum PacketId : int
     {
         Login = 0x01,
         PlayStatus = 0x02,
@@ -64,6 +64,7 @@ namespace Orion.Protocol.Enums
         ItemRegistry = 0xa2,
         SyncActorProperty = 0xa8,
         UpdateAbilities = 0xbb,
-        RequestNetworkSettings = 0xc1
+        RequestNetworkSettings = 0xc1,
+        SetHud = 0x134
     }
 }

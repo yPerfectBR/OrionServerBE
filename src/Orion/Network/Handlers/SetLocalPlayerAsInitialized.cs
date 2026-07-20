@@ -2,8 +2,11 @@ namespace Orion.Network.Handlers;
 
 using Orion;
 using Orion.Entity.Traits;
+using Orion.Gameplay;
 using Orion.Player;
 using Orion.Player.Traits;
+using Orion.Plugins;
+using Orion.Protocol.Enums;
 using Orion.Protocol.Packets;
 using Orion.RakNet;
 using Orion.Scheduling;
@@ -47,10 +50,22 @@ public static class SetLocalPlayerAsInitialized
 
         player.SetSpawned(true);
 
-        EntityInventoryTrait? inventory = player.GetTrait<EntityInventoryTrait>();
-        if (inventory is not null)
+        // Minimal engine: hide gameplay HUD until opt-in plugins re-enable their pieces.
+        player.SetHud(
+            HudVisibility.Hide,
+            HudElement.HotBar,
+            HudElement.Health,
+            HudElement.Hunger);
+
+        if (PluginHost.Services.TryGet(out IPlayerInventoryService? inventory) && inventory is not null)
         {
-            inventory.Container.Update();
+            _ = inventory.TrySyncToClient(player);
+            inventory.EnableHud(player);
+        }
+
+        if (PluginHost.Services.TryGet(out IAttributesApi? attributes) && attributes is not null)
+        {
+            attributes.EnableHud(player);
         }
 
         string joinMessage = $"§e{player.Username} joined the server.";

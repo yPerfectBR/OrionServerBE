@@ -1,13 +1,12 @@
 namespace Orion.Network.Handlers;
 
 using Orion;
+using Orion.Containers;
 using Orion.Scheduling;
-using Orion.Block.Traits.Types;
-using Orion.Entity.Traits;
-using Orion.Entity.Traits.Attribute;
-using Orion.Events;
+using Orion.Gameplay;
 using Orion.Item;
 using Orion.Item.Traits.Types;
+using Orion.Plugins;
 
 using Orion.Protocol.Enums;
 using Orion.Protocol.Packets;
@@ -15,37 +14,13 @@ using Orion.Protocol.Types;
 using Orion.RakNet;
 using Orion.World;
 
-
+/// <summary>
+/// Inventory transactions: Normal/entity stay inventory-gated; UseItem place/air dispatch to VanillaBuilding.
+/// </summary>
 public static class InventoryTransaction
 {
     private const uint UseItemActionClickBlock = 0;
     private const uint UseItemActionClickAir = 1;
-    private const uint UseItemTriggerInitial = 1;
-    private const uint UseItemTriggerRepeat = 2;
-    private const uint UseItemClientPredictionPlace = 1;
-    private const UpdateBlockFlagsType PlaceBlockUpdateFlags =
-        UpdateBlockFlagsType.Network | UpdateBlockFlagsType.Neighbors;
-
-    private static readonly HashSet<string> ReplaceableBlocks =
-    [
-        "minecraft:air",
-        "minecraft:cave_air",
-        "minecraft:void_air",
-        "minecraft:water",
-        "minecraft:flowing_water",
-        "minecraft:lava",
-        "minecraft:flowing_lava",
-        "minecraft:short_grass",
-        "minecraft:tall_grass",
-        "minecraft:fern",
-        "minecraft:large_fern",
-        "minecraft:dead_bush",
-        "minecraft:vine",
-        "minecraft:seagrass",
-        "minecraft:tall_seagrass",
-        "minecraft:snow_layer",
-        "minecraft:fire"
-    ];
 
     public static void Handle(Server server, NetworkConnection connection, ReadOnlySpan<byte> packetBuffer)
     {
@@ -67,25 +42,28 @@ public static class InventoryTransaction
         }
 #endif
 
-        EntityInventoryTrait? inventory = player.GetTrait<EntityInventoryTrait>();
-        if (inventory is null)
-        {
-            return;
-        }
-
-
         switch (packet.TransactionData)
         {
             case NormalInventoryTransactionData:
+                if (!TryGetInventory(player, out IPlayerInventoryAccess? inventory) || inventory is null)
+                {
+                    return;
+                }
+
                 HandleInventoryActions(player, inventory, packet.Actions, packet.LegacySetItemSlots);
                 break;
 
             case UseItemInventoryTransactionData useItem:
-                HandleUseItem(player, inventory, useItem, packet.Actions);
+                DispatchUseItem(player, useItem);
                 break;
 
             case UseItemOnEntityInventoryTransactionData useItemOnEntity:
-                HandleUseItemOnEntity(player, inventory, useItemOnEntity);
+                if (!TryGetInventory(player, out IPlayerInventoryAccess? entityInventory) || entityInventory is null)
+                {
+                    return;
+                }
+
+                HandleUseItemOnEntity(player, entityInventory, useItemOnEntity);
                 break;
 
             case ReleaseItemInventoryTransactionData:
@@ -94,17 +72,10 @@ public static class InventoryTransaction
             case MismatchInventoryTransactionData:
                 break;
         }
-
     }
 
     public static void HandleUseItemFromAuthInput(global::Orion.Player.Player player, UseItemTransactionData data, float pitch, float yaw)
     {
-        EntityInventoryTrait? inventory = player.GetTrait<EntityInventoryTrait>();
-        if (inventory is null)
-        {
-            return;
-        }
-
         player.Pitch = pitch;
         player.Yaw = yaw;
         player.HeadYaw = yaw;
@@ -150,12 +121,40 @@ public static class InventoryTransaction
             }
         }
 
-        HandleUseItem(player, inventory, transaction, []);
+        DispatchUseItem(player, transaction);
+    }
+
+    private static void DispatchUseItem(global::Orion.Player.Player player, UseItemInventoryTransactionData transaction)
+    {
+        if (!PluginHost.Services.TryGet(out IPlayerBlockUseHandler? handler) || handler is null)
+        {
+            return;
+        }
+
+        if (transaction.ActionType == UseItemActionClickAir)
+        {
+            _ = handler.TryUseOnAir(player, transaction);
+            return;
+        }
+
+        if (transaction.ActionType == UseItemActionClickBlock)
+        {
+            _ = handler.TryUseOnBlock(player, transaction);
+        }
+    }
+
+    private static bool TryGetInventory(global::Orion.Player.Player player, out IPlayerInventoryAccess? inventory)
+    {
+        inventory = null;
+        return PluginHost.Services.TryGet(out IPlayerInventoryService? inventoryService)
+            && inventoryService is not null
+            && inventoryService.TryGetAccess(player, out inventory)
+            && inventory is not null;
     }
 
     private static void HandleInventoryActions(
         global::Orion.Player.Player player,
-        EntityInventoryTrait inventory,
+        IPlayerInventoryAccess inventory,
         List<InventoryAction> actions,
         List<LegacySetItemSlot> legacySetItemSlots)
     {
@@ -163,13 +162,7 @@ public static class InventoryTransaction
         {
             if (action.SourceType == (uint)InventoryActionSourceType.World)
             {
-                // int worldSlot = ResolveWorldActionSlot(inventory, action, actions, legacySetItemSlots);
                 SpawnWorldDrop(player, action);
-
-                // Info("World Interaction WindowId: " + action.WindowId + " Slot: " + worldSlot + " RawSlot: " + action.InventorySlot);
-                // Info("NetworkId Old/New: " + action.OldItem.Stack.NetworkId + "/" + action.NewItem.Stack.NetworkId);
-                // Info("StackSize Old/New: " + action.OldItem.Stack.StackSize + "/" + action.NewItem.Stack.StackSize);
-
                 inventory.Container.Update();
                 continue;
             }
@@ -179,12 +172,12 @@ public static class InventoryTransaction
                 continue;
             }
 
-            Containers.Container? container = null;
+            IContainer? container = null;
             if (action.WindowId == (inventory.Container.Identifier ?? 0))
             {
                 container = inventory.Container;
             }
-            else if (player.TryGetOpenContainer(action.WindowId, out Containers.Container? opened))
+            else if (player.TryGetOpenContainer(action.WindowId, out IContainer? opened))
             {
                 container = opened;
             }
@@ -200,379 +193,49 @@ public static class InventoryTransaction
                 continue;
             }
 
-            NetworkItemStackDescriptor stack = action.NewItem;
-            if (stack.NetworkId == 0 || stack.Count == 0)
+            if (action.NewItem.NetworkId == 0 || action.NewItem.Count == 0)
             {
                 container.ClearSlot(slot);
-                continue;
             }
-
-            try
+            else
             {
-                ItemStack item = ItemStack.FromNetworkStack(stack);
-                container.SetItem(slot, item);
-            }
-            catch
-            {
-            }
-        }
-    }
-
-    private static int ResolveWorldActionSlot(
-        EntityInventoryTrait inventory,
-        InventoryAction action,
-        List<InventoryAction> actions,
-        List<LegacySetItemSlot> legacySetItemSlots)
-    {
-        for (int i = 0; i < legacySetItemSlots.Count; i++)
-        {
-            LegacySetItemSlot legacy = legacySetItemSlots[i];
-            if (legacy.Slots.Length == 0)
-            {
-                continue;
-            }
-
-            if (legacy.ContainerId is (byte)ContainerId.Inventory or (byte)ContainerId.Hotbar or (byte)ContainerId.FixedInventory)
-            {
-                return legacy.Slots[0];
+                try
+                {
+                    ItemStack item = ItemStack.FromNetworkStack(action.NewItem);
+                    container.SetItem(slot, item);
+                }
+                catch
+                {
+                }
             }
         }
 
-        for (int i = 0; i < actions.Count; i++)
-        {
-            InventoryAction candidate = actions[i];
-            if (candidate.SourceType != (uint)InventoryActionSourceType.Container || candidate.WindowId != 0)
-            {
-                continue;
-            }
-
-            NetworkItemStackDescriptor candidateOld = candidate.OldItem;
-            NetworkItemStackDescriptor candidateNew = candidate.NewItem;
-            NetworkItemStackDescriptor dropped = action.NewItem;
-
-            if (candidateOld.NetworkId == 0 || dropped.NetworkId == 0)
-            {
-                continue;
-            }
-
-            if (candidateOld.NetworkId != dropped.NetworkId || candidateOld.Count <= candidateNew.Count)
-            {
-                continue;
-            }
-
-            int delta = candidateOld.Count - candidateNew.Count;
-            if (delta == dropped.Count)
-            {
-                return (int)candidate.InventorySlot;
-            }
-        }
-
-        if (action.InventorySlot == 0 && inventory.SelectedSlot is >= 0 and < 9)
-        {
-            return inventory.SelectedSlot;
-        }
-
-        return (int)action.InventorySlot;
+        _ = legacySetItemSlots;
     }
 
     private static void SpawnWorldDrop(global::Orion.Player.Player player, InventoryAction action)
     {
-        if (player.Dimension is null)
+        if (action.OldItem.NetworkId == 0 || action.OldItem.Count == 0)
         {
             return;
         }
 
-        NetworkItemStackDescriptor dropped = action.NewItem;
-        if (dropped.NetworkId == 0 || dropped.Count == 0)
-        {
-            return;
-        }
-
-        ItemStack item;
+        ItemStack? item;
         try
         {
-            item = ItemStack.FromNetworkStack(dropped);
+            item = ItemStack.FromNetworkStack(action.OldItem);
         }
         catch
         {
             return;
         }
+
         player.DropItem(item);
-    }
-
-    private static void HandleUseItem(
-        global::Orion.Player.Player player,
-        EntityInventoryTrait inventory,
-        UseItemInventoryTransactionData transaction,
-        List<InventoryAction> actions)
-    {
-        if (transaction.ActionType == UseItemActionClickAir)
-        {
-            ItemStack? airHeldItem = GetHeldItem(inventory, transaction.HotBarSlot);
-            if (airHeldItem is null)
-            {
-                return;
-            }
-
-            if (player.Dimension is not null)
-            {
-                BlockPos blockPosition = transaction.BlockPosition;
-                int blockFace = transaction.BlockFace;
-
-                if (IsEmptyPosition(blockPosition) && transaction.BlockRuntimeId == 0 && player.LastActionBlockPosition.HasValue)
-                {
-                    blockPosition = player.LastActionBlockPosition.Value;
-
-                    if (player.LastActionFace is >= 0 and <= 5)
-                    {
-                        blockFace = player.LastActionFace;
-                    }
-                }
-
-                Orion.Block.BlockPermutation clickedBlock =
-                    player.Dimension.GetGameplayPermutation(blockPosition.X, blockPosition.Y, blockPosition.Z);
-
-                if (clickedBlock.Type.Identifier is not "minecraft:air" and not "minecraft:cave_air" and not "minecraft:void_air")
-                {
-                    airHeldItem.OnUseOnBlock(new ItemUseOnBlockDetails(
-                        player,
-                        transaction.HotBarSlot,
-                        blockPosition,
-                        blockFace,
-                        transaction.Position,
-                        transaction.ClickedPosition));
-                    return;
-                }
-            }
-
-            airHeldItem.OnUseOnAir(new ItemUseOnAirDetails(player, transaction.HotBarSlot, transaction.Position));
-            return;
-        }
-
-        if (transaction.ActionType != UseItemActionClickBlock)
-        {
-            return;
-        }
-
-        if (transaction.TriggerType == UseItemTriggerRepeat)
-        {
-            return;
-        }
-
-        if (transaction.TriggerType == UseItemTriggerInitial &&
-            transaction.ClientPrediction != UseItemClientPredictionPlace &&
-            player.Gamemode != Gamemode.Creative)
-        {
-            return;
-        }
-
-        ItemStack? heldItem = GetHeldItem(inventory, transaction.HotBarSlot);
-        if (heldItem is null)
-        {
-            return;
-        }
-
-        if (player.Gamemode == Gamemode.Survival &&
-            transaction.TriggerType == UseItemTriggerInitial &&
-            actions.Count == 0)
-        {
-            return;
-        }
-
-        UseItemOnBlock(player, inventory, heldItem, transaction);
-    }
-
-    private static void UseItemOnBlock(
-        global::Orion.Player.Player player,
-        EntityInventoryTrait inventory,
-        ItemStack heldItem,
-        UseItemInventoryTransactionData transaction)
-    {
-        if (player.Dimension is null)
-        {
-            return;
-        }
-
-        BlockPos clickedPosition = transaction.BlockPosition;
-        int clickedFace = transaction.BlockFace;
-
-        if (IsEmptyPosition(clickedPosition) && transaction.BlockRuntimeId == 0 && player.LastActionBlockPosition.HasValue)
-        {
-            clickedPosition = player.LastActionBlockPosition.Value;
-
-            if (player.LastActionFace is >= 0 and <= 5)
-            {
-                clickedFace = player.LastActionFace;
-            }
-        }
-
-        Orion.Block.BlockPermutation clickedBlock =
-            player.Dimension.GetGameplayPermutation(clickedPosition.X, clickedPosition.Y, clickedPosition.Z);
-
-        BlockPos placePosition = GetPlacedBlockPosition(clickedPosition, clickedFace);
-
-        Orion.Block.BlockPermutation existingBlock =
-            player.Dimension.GetGameplayPermutation(placePosition.X, placePosition.Y, placePosition.Z);
-
-        Orion.Block.BlockType? blockType = heldItem.Type.BlockType ?? Orion.Block.BlockType.Get(heldItem.Identifier);
-        bool placingBlock = blockType is not null &&
-                            blockType.Identifier != "minecraft:air" &&
-                            existingBlock.Type.Identifier != blockType.Identifier &&
-                            ReplaceableBlocks.Contains(existingBlock.Type.Identifier);
-
-        if (blockType is null || blockType.Identifier == "minecraft:air")
-        {
-            heldItem.OnUseOnBlock(new ItemUseOnBlockDetails(
-                player,
-                transaction.HotBarSlot,
-                clickedPosition,
-                clickedFace,
-                transaction.Position,
-                transaction.ClickedPosition));
-
-            SendBlockUpdate(player, placePosition, existingBlock.NetworkId);
-            return;
-        }
-
-        if (!placingBlock && existingBlock.Type.Identifier == blockType.Identifier)
-        {
-            if (player.Gamemode != Gamemode.Creative)
-            {
-                SendBlockUpdate(player, placePosition, existingBlock.NetworkId);
-            }
-
-            return;
-        }
-
-        if (!placingBlock && !ReplaceableBlocks.Contains(existingBlock.Type.Identifier))
-        {
-            SendBlockUpdate(player, placePosition, existingBlock.NetworkId);
-            return;
-        }
-
-        if (!placingBlock)
-        {
-            Orion.Block.Block? blockEntity =
-                player.Dimension.GetBlock(clickedPosition.X, clickedPosition.Y, clickedPosition.Z);
-
-            if (blockEntity is not null)
-            {
-                blockEntity.OnInteract(new BlockInteractDetails(
-                    player,
-                    clickedPosition,
-                    clickedFace,
-                    transaction.ClickedPosition));
-
-                SendBlockUpdate(player, clickedPosition, clickedBlock.NetworkId);
-                return;
-            }
-        }
-
-        Server? server = player.Dimension.World?.Server as Server;
-        if (server is not null)
-        {
-            PlayerPlaceBlockSignal signal = new(player, placePosition, clickedFace);
-            server.Emit(signal);
-            if (!signal.Emit())
-            {
-                SendBlockUpdate(player, placePosition, existingBlock.NetworkId);
-                ItemStack? rollbackItem = inventory.Container.GetItem(transaction.HotBarSlot);
-                if (rollbackItem is not null)
-                {
-                    inventory.Container.SetItem(transaction.HotBarSlot, rollbackItem.Clone());
-                }
-                inventory.Container.UpdateSlot(transaction.HotBarSlot);
-                inventory.Container.Update();
-                inventory.SyncToPlayer(player);
-                return;
-            }
-        }
-
-        Orion.Block.BlockPermutation placedPermutation = blockType.Permutations.Count > 0
-            ? blockType.Permutations[0]
-            : blockType.GetPermutation();
-
-        player.Dimension.SetGameplayPermutation(placePosition.X, placePosition.Y, placePosition.Z, placedPermutation);
-
-        Orion.Block.Block? placedBlock =
-            player.Dimension.GetBlock(placePosition.X, placePosition.Y, placePosition.Z);
-
-        placedBlock?.OnPlace(new BlockPlaceDetails(
-            player,
-            placePosition,
-            clickedFace,
-            transaction.ClickedPosition));
-
-        if (placedBlock is not null && placedBlock.Permutation.NetworkId != placedPermutation.NetworkId)
-        {
-            placedPermutation = placedBlock.Permutation;
-            player.Dimension.SetGameplayPermutation(placePosition.X, placePosition.Y, placePosition.Z, placedPermutation);
-        }
-
-        UpdateBlockPacket placedBlockUpdate = new()
-        {
-            Position = placePosition,
-            NetworkBlockId = placedPermutation.NetworkId,
-            Flags = PlaceBlockUpdateFlags,
-            Layer = UpdateBlockLayerType.Normal
-        };
-
-        // Creative clients already predict placement locally; a server UpdateBlock to the placer
-        // can overwrite that prediction and make the block vanish until the next click.
-        if (player.Gamemode != Gamemode.Creative)
-        {
-            SendBlockUpdate(player, placePosition, placedPermutation.NetworkId);
-        }
-
-        player.Dimension.Broadcast(
-            placedBlockUpdate,
-            new BroadcastOptions { Except = [player] });
-
-        player.Dimension.Broadcast(new LevelSoundEventPacket
-        {
-            Event = LevelSoundEvent.Place,
-            Position = new Vec3f
-            {
-                X = placePosition.X + 0.5f,
-                Y = placePosition.Y + 0.5f,
-                Z = placePosition.Z + 0.5f
-            },
-            Data = placedPermutation.NetworkId,
-            ActorIdentifier = string.Empty,
-            BabyMob = false,
-            DisableRelativeVolume = false,
-            UniqueActorId = 0,
-            FireAtPosition = new Optional<Vec3f> { HasValue = false, Value = default }
-        });
-
-        heldItem.OnPlace(new ItemPlaceDetails(
-            player,
-            transaction.HotBarSlot,
-            clickedPosition,
-            clickedFace,
-            transaction.Position,
-            transaction.ClickedPosition));
-
-        if (player.Gamemode != Gamemode.Survival)
-        {
-            return;
-        }
-
-        heldItem.DecrementStack();
-
-        if (heldItem.StackSize == 0)
-        {
-            inventory.Container.ClearSlot(inventory.SelectedSlot);
-        }
-        else
-        {
-            inventory.Container.UpdateSlot(inventory.SelectedSlot);
-        }
     }
 
     private static void HandleUseItemOnEntity(
         global::Orion.Player.Player player,
-        EntityInventoryTrait inventory,
+        IPlayerInventoryAccess inventory,
         UseItemOnEntityInventoryTransactionData transaction)
     {
         if (player.Dimension is null)
@@ -625,59 +288,28 @@ public static class InventoryTransaction
                         transaction.ClickedPosition));
                 }
 
-                if (!ReferenceEquals(target, player))
+                if (!ReferenceEquals(target, player)
+                    && target.IsAlive
+                    && PluginHost.Services.TryGet(out IEntityHealthService? health)
+                    && health is not null)
                 {
-                    EntityHealthTrait? health = target.GetTrait<EntityHealthTrait>();
-                    if (health is not null && target.IsAlive)
-                    {
-                        health.ApplyDamage(1f, player, ActorDamageCause.EntityAttack);
-                    }
+                    _ = health.TryApplyDamage(target, 1f, player, ActorDamageCause.EntityAttack);
                 }
                 break;
         }
     }
 
-    private static ItemStack? GetHeldItem(EntityInventoryTrait inventory, int hotBarSlot)
+    private static ItemStack? GetHeldItem(IPlayerInventoryAccess inventory, int hotBarSlot)
     {
         if (hotBarSlot is < 0 or >= 9)
         {
             hotBarSlot = 0;
         }
 
-        inventory.SetHeldItem(hotBarSlot);
+        inventory.SetHeldSlot(hotBarSlot);
 
         ItemStack? heldItem = inventory.GetHeldItem();
         return heldItem is null || heldItem.StackSize == 0 ? null : heldItem;
-    }
-
-    private static void SendBlockUpdate(global::Orion.Player.Player player, BlockPos position, int networkId)
-    {
-        player.Send(new UpdateBlockPacket
-        {
-            Position = position,
-            NetworkBlockId = networkId,
-            Flags = PlaceBlockUpdateFlags,
-            Layer = UpdateBlockLayerType.Normal
-        });
-    }
-
-    private static BlockPos GetPlacedBlockPosition(BlockPos position, int face)
-    {
-        return face switch
-        {
-            0 => new BlockPos { X = position.X, Y = position.Y - 1, Z = position.Z },
-            1 => new BlockPos { X = position.X, Y = position.Y + 1, Z = position.Z },
-            2 => new BlockPos { X = position.X, Y = position.Y, Z = position.Z - 1 },
-            3 => new BlockPos { X = position.X, Y = position.Y, Z = position.Z + 1 },
-            4 => new BlockPos { X = position.X - 1, Y = position.Y, Z = position.Z },
-            5 => new BlockPos { X = position.X + 1, Y = position.Y, Z = position.Z },
-            _ => position
-        };
-    }
-
-    private static bool IsEmptyPosition(BlockPos position)
-    {
-        return position.X == 0 && position.Y == 0 && position.Z == 0;
     }
 
     private static bool FindBlockFromView(global::Orion.Player.Player player, float pitchDegrees, float yawDegrees, out BlockPos blockPosition, out int face)
@@ -756,13 +388,3 @@ public static class InventoryTransaction
         return false;
     }
 }
-
-
-
-
-
-
-
-
-
-

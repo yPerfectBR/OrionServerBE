@@ -1,16 +1,16 @@
 # Teleport (client ↔ server)
 
-This document describes Orion’s teleport flow (e.g. `/tp`), how Bedrock server-authoritative movement treats `MovePlayer`, and why chunk streaming must wait until the client has “arrived” at the destination.
+Current Orion teleport flow (e.g. `/tp`), Bedrock server-authoritative movement, chunk streaming, and area-threading interaction.
 
-Related: [Chunk streaming](chunk-streaming.md).
+Related: [Chunk streaming](chunk-streaming.md) · [Area threading](area-threading.md).
 
-## Problems this flow fixes
+## Problem this flow solves
 
-A long `/tp` (e.g. `0,0` → `1000,1000`) crosses **areas** (area threading) and moves the chunk view center. Three failures showed up together:
+A long `/tp` (e.g. `0,0` → `1000,1000`) crosses **areas** and moves the chunk view center. Historical failures this flow avoids:
 
-1. **Area shortcut** — `/tp` sometimes only enqueued an area transfer and **skipped** `Player.Teleport()`, so the client never got `MovePlayer` or a chunk reload.
-2. **Wrong `MovePlayer` tick** — under server-auth movement, the client ignores teleports whose `Tick` is not the **PlayerInputTick** (last `PlayerAuthInput`). Using the world tick leaves the client at `(0,…)` while the server is already at `(1000,…)`.
-3. **`LevelChunk` race** — the server sent destination chunks **before** the client applied `MovePlayer`. Still at spawn, the client **discards** out-of-radius chunks. The server marked `loaded=1089/1089` and **never resent** → permanent void at the destination.
+1. Area transfer without `Player.Teleport()` (no client `MovePlayer` / chunks).
+2. `MovePlayer.Tick` set to the world tick instead of **PlayerInputTick** (client ignores the teleport).
+3. Destination `LevelChunk` before the client applies `MovePlayer` (chunks discarded; server marked `loaded` and never resent).
 
 ## Sequence (same dimension)
 
@@ -26,20 +26,15 @@ sequenceDiagram
 
     Cmd->>P: Teleport(destination)
     P->>P: Position = destination
-    P->>Trait: OnTeleport (clear view, hold, publisher)
+    P->>Trait: OnTeleport (soft or full reload)
     P->>C: MovePlayer(Teleport, Tick=inputTick)
     P->>Auth: OnServerTeleport (grace)
     P->>Area: TryAfterTeleport(previousPosition)
     alt area changed
-        Area->>Area: Transferring
-        Sess-->>Trait: pause chunk ticks
-        Area->>P: ResyncAfterRegionHandoff(crossWorker?)
-        alt cross-worker
-            P->>C: MovePlayer(Teleport)
-            P->>Trait: ForceReloadViewDistance
-        else same-worker
-            P->>Trait: AfterRegionHandoff
-        end
+        Area->>Area: Transferring (ownership)
+        Sess-->>Trait: pause mover chunk ticks
+        Area->>P: ResyncAfterRegionHandoff
+        P->>Trait: AfterRegionHandoff (publisher/presence)
     end
     loop rejected AuthInput (still at origin)
         C->>Auth: old position
@@ -47,113 +42,90 @@ sequenceDiagram
     end
     C->>Auth: AuthInput near destination
     Auth->>Trait: NotifyClientAtTeleportDestination
-    Trait->>Trait: release hold
+    Trait->>Trait: release hold (if full reload)
     Sess->>Trait: SendChunks / LevelChunk
     Trait->>C: LevelChunk + publisher
 ```
 
-### Server steps
+### Server step-by-step
 
 1. **`Player.Teleport`**
-   - Sets `Position` **before** any area transfer.
-   - Fires trait `OnTeleport` (chunk trait clears the old view and arms the **hold**).
-   - Sends `MovePlayer` with `Tick = GetLastInputTick()` (not the world tick).
+   - Updates `Position` **before** any area transfer.
+   - Fires `OnTeleport` on traits.
+   - Sends `MovePlayer` with `Tick = GetLastInputTick()` (not world tick).
    - On dimension-type change (or force): also `ChangeDimension`.
-   - Opens movement grace (`OnServerTeleport`), then calls `AreaBorderTransfer.TryAfterTeleport(server, player, previousPosition)`.
+   - Opens grace (`OnServerTeleport`) then `AreaBorderTransfer.TryAfterTeleport(previousPosition)`.
 
 2. **`PlayerChunkRenderingTrait.OnTeleport`**
-   - Force-unloads old client chunks (empty `LevelChunk`).
-   - Clears `_loadedChunks` / requests / ready.
-   - Sends `NetworkChunkPublisherUpdate` at the **new** center.
-   - Sets `_awaitingTeleportChunkSync` and `_teleportHoldTicks` (up to ~20 session ticks, or until the client syncs).
+   - **Full reload** if `ForceFullChunkReload` (dimension change) **or** destination chunk is not in `_loadedChunks`: client unload, clear loaded/requests, new publisher, hold until client syncs.
+   - **Soft** if destination is already rendered (e.g. Y-only `/tp`, or new area still in view): keep columns; retarget streaming / presence only.
 
-3. **Area transfer** (`TryAfterTeleport`)
-   - Compares area of the **previous** position vs area of the **current** position (already at destination).
-   - Same area: `same-area` log only.
-   - Different: `BeginTransfer` → session `Transferring` → `CrossAreaTransferHandler` completes and schedules `ResyncAfterRegionHandoff` on the session thread.
+3. **Area transfer** (`TryAfterTeleport` / `TryAfterMove`)
+   - Compares previous-position area vs current.
+   - If different: `BeginTransfer` → session `Transferring` → `CrossAreaTransferHandler` (prepare on source worker, complete on target) → `ResyncAfterRegionHandoff` on the session thread.
 
 4. **While `Transferring`**
-   - `SessionWorker` **skips** session-tick traits (chunks) so streaming does not run mid-handoff.
+   - `SessionWorker` skips session-tick traits **for the transferring player** (chunks) so streaming does not run mid-handoff.
 
-5. **`ResyncAfterRegionHandoff`** (TEMP soft)
-   - Same-worker **and** cross-worker: `AfterRegionHandoff()` only — no `MovePlayer` teleport and no `ForceReloadViewDistance`.
-   - Flag: `Player.SoftCrossWorkerRegionHandoff` (`true` = soft). Legacy hard path remains in code but disabled.
+5. **`ResyncAfterRegionHandoff`**
+   - Always soft: `AfterRegionHandoff()` only (publisher + presence + visible entities).
+   - Worker/thread switch is **server ownership only** — no second `MovePlayer` and no `ForceReloadViewDistance`.
 
-5b. **Spectator visibility** (TEMP)
-   - During the prepare→complete gap the player is absent from `GetEntities()`; without a guard, peers sent `RemoveActor` then `AddPlayer` (flicker).
-   - Flag: `AreaBorderTransfer.PreserveSpectatorVisibilityAcrossAreaTransfer` (`true`):
-     - do not despawn for peers while the runtimeId is in-flight;
-     - still broadcast `MoveActorDelta` on the border step (before the transfer early-return).
-   - To revert: set the flag to `false`.
-
-Chunk streaming on `Teleport` is also conditional:
-
-- **Full reload** (unload all + hold): dimension change, or destination chunk not already in `_loadedChunks`.
-- **Soft** (keep columns): destination already rendered (e.g. Y-only `/tp`, or area change with view still valid).
-- TEMP: changing threading area alone does **not** force a reload.
-
-6. **Hold release**
-   - Preferred: first **accepted** `PlayerAuthInput` (client near server) → `NotifyClientAtTeleportDestination`.
+6. **Hold release** (full reload)
+   - Preferred: first accepted `PlayerAuthInput` near destination → `NotifyClientAtTeleportDestination`.
    - Fallback: hold timeout.
    - Only then does the scan send destination `LevelChunk`s.
+
+## Peer visibility (border)
+
+On the border-crossing step:
+
+- The mover’s `MoveActorDelta` is **still broadcast** to peers (before the transfer early-return).
+- During prepare→complete the runtimeId is **in-flight**; peers **do not** `RemoveActor` merely because the entity briefly left `GetEntities()`.
+- Spectators therefore do not see a remove→add flicker when crossing threading areas.
 
 ## Client contract (movement)
 
 | Packet / field | Role |
 |----------------|------|
 | `MovePlayer` `Mode=Teleport` (or `Reset` on dim change) | Absolute authoritative position. |
-| `MovePlayer.Tick` | Must be the **last `PlayerAuthInput` tick**, not the world tick. |
-| `StartGame.PlayerMovementSettings.RewindHistorySize` | Must be > 0 (Orion uses `100`) so the client accepts corrections / teleports with rewind. |
-| `CorrectPlayerMovePrediction` | Sent when AuthInput is too far from the server (common for a few ticks after `/tp`). |
-| Grace (`OnServerTeleport`) | Short window while the client applies MovePlayer. |
-
-It is expected that the server HUD already shows the destination while AuthInput still reports the origin. The chunk hold exists for that window.
+| `MovePlayer.Tick` | Last `PlayerAuthInput` tick, not world tick. |
+| `StartGame.PlayerMovementSettings.RewindHistorySize` | > 0 (Orion uses `100`) so corrections / teleports with rewind are accepted. |
+| `CorrectPlayerMovePrediction` | When AuthInput is too far from server (common right after `/tp`). |
+| Grace (`OnServerTeleport`) | A few ticks waiting for the client to apply MovePlayer. |
 
 ## Client contract (chunks)
 
-See [chunk-streaming.md](chunk-streaming.md) for Chebyshev vs circle radius.
+See [chunk-streaming.md](chunk-streaming.md).
 
-Extra rule after teleport:
-
-> **Do not send destination `LevelChunk`s until the client is (or is forced to be) at the destination.**  
-> Chunks received outside the client radius are discarded; if the server marks them `loaded`, terrain never comes back.
-
-`ForceReloadViewDistance` after a cross-worker handoff force-unloads and clears `_loadedChunks` in case anything was sent too early.
+After teleport (full reload): hold until the client is at the destination (or timeout) before marking/sending new `LevelChunk`s.
 
 ## Main files
 
 | File | Role |
 |------|------|
-| `Commands/List/Operator/Teleport.cs` | Always calls `player.Teleport` (no area-only shortcut). |
-| `Player/Player.cs` | Orchestrates position, packets, grace, and handoff. |
-| `Player/Traits/PlayerChunkRenderingTrait.cs` | Hold, publisher, ForceReload, streaming. |
-| `Network/Handlers/PlayerAuthInput.cs` | Validation, grace, `GetLastInputTick`, catch-up notify. |
-| `Network/Handlers/ResourcePackClientResponse.cs` | `RewindHistorySize` in StartGame. |
-| `Scheduling/AreaBorderTransfer.cs` | `TryAfterTeleport(previousPosition)`. |
-| `Scheduling/CrossAreaTransferHandler.cs` | Completes handoff → `ResyncAfterRegionHandoff`. |
-| `Scheduling/SessionWorker.cs` | Pauses chunk ticks while `Transferring`. |
+| `Player/Player.cs` | `Teleport`, `ResyncAfterRegionHandoff`. |
+| `Player/Traits/PlayerChunkRenderingTrait.cs` | Soft/full `OnTeleport`, hold, `AfterRegionHandoff`, visibility. |
+| `Network/Handlers/PlayerAuthInput.cs` | Movement accept, grace, `MoveActorDelta`, border. |
+| `Scheduling/AreaBorderTransfer.cs` | `TryAfterMove` / `TryAfterTeleport`. |
+| `Scheduling/CrossAreaTransferHandler.cs` | Prepare/complete + in-flight + resync. |
+| `Scheduling/SessionWorker.cs` | Pause chunk ticks while `Transferring`. |
 
 ## Useful logs
-
-`[Teleport…]` prefixes:
 
 | Prefix | Meaning |
 |--------|---------|
 | `[Teleport] begin/end` | Enter/leave `Player.Teleport`. |
-| `[Teleport:Chunks] OnTeleport` | View cleared + hold armed. |
-| `[Teleport:Chunks] clientCaughtUp` / `teleportHold released` | Safe to send `LevelChunk`. |
-| `[Teleport:Chunks] SendChunks` | Terrain packets leaving (after hold). |
-| `[Teleport:Area] …` | Area / worker handoff. |
-| `[Teleport:Move] rejected` | Client still at old position (normal for a few ticks). |
-| `[Teleport:Session] pausing…` | Session worker holding stream during transfer. |
+| `[Teleport:Chunks] OnTeleport` | Soft vs full reload. |
+| `[Teleport:Chunks] clientCaughtUp` / `teleportHold released` | Safe to send `LevelChunk` (full reload). |
+| `[Teleport:Move] rejected` | Client still at origin (normal for a few ticks). |
 
-On the tip HUD, `hold=N` in `FormatDebugHudLine()` means streaming is still waiting for the client.
+Area handoff is quiet at Info; failures: `[Area:Transfer] abort` / Warn. Debug: `AreaSchedulerDebug`.
 
 ## Checklist when changing this flow
 
 1. `/tp` always goes through `Player.Teleport` (position + `MovePlayer` + chunks).
-2. `MovePlayer.Tick` = PlayerInputTick; `RewindHistorySize` > 0.
-3. Area transfer **after** position/packets; `TryAfterTeleport` uses **previous** vs **current** position.
-4. No destination `LevelChunk` while `_awaitingTeleportChunkSync` (unless intentional timeout).
-5. Cross-worker handoff: `ForceReloadViewDistance` that **clears** `_loadedChunks`.
-6. Test: spawn → far `/tp` (other area) → another `/tp` same area → solid terrain (no void) and `clientCaughtUp` before `SendChunks`.
+2. `MovePlayer.Tick` = last input tick.
+3. Full reload arms hold before destination LevelChunks.
+4. Area handoff: server ownership + `AfterRegionHandoff` — no second teleport just for a thread switch.
+5. Peers: border `MoveActorDelta` + no `RemoveActor` while in-flight.

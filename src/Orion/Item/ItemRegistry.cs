@@ -89,7 +89,7 @@ public static class ItemRegistry
             LogCategory.Orion,
             "Creative inventory: Construction / Equipment / Items have no items. " +
             "Bedrock may show an empty creative menu. See docs/pt_br/first-run.md or docs/en_us/first-run.md " +
-            "(enable Plugins and build plugins/MinimalInventoryItems, or call CuratedItemCatalog.RegisterCreativeTabEntries).");
+            "(enable Plugins and build plugins/orion:creative-fillers, or call CuratedItemCatalog.RegisterCreativeTabEntries).");
     }
 
     public static ItemStack? TryGetCreativeItem(uint creativeItemNetworkId)

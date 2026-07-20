@@ -1,4 +1,5 @@
 using System.Reflection;
+using System.Runtime.Loader;
 using McMaster.NETCore.Plugins;
 using Orion.Config;
 using Orion.PluginContracts;
@@ -20,6 +21,9 @@ namespace Orion.Plugins;
 /// <summary>
 /// Orchestrates plugin discovery and lifecycle. Assemblies are loaded <b>only</b> via McMaster
 /// (<see cref="PluginLoader"/>) — never <c>Assembly.LoadFrom</c> or a custom ALC.
+/// Already-loaded plugin assemblies are exposed to later plugins via
+/// <see cref="AssemblyLoadContext.Default"/> resolving so hard-deps (e.g. block_containers → containers)
+/// share type identity under <c>PreferSharedTypes</c>.
 /// </summary>
 public static class PluginHost
 {
@@ -31,6 +35,7 @@ public static class PluginHost
     private static bool _loadAttempted;
     private static bool _enabled;
     private static bool _worldInitialized;
+    private static bool _pluginAssemblyResolvingHooked;
     private static Server? _server;
     private static ServerEventBus? _rootEventBus;
     private static ContentRegistriesCore? _registries;
@@ -109,6 +114,16 @@ public static class PluginHost
         }
     }
 
+    /// <summary>Live server after <see cref="EnableAll"/>; used by packet-owning plugins.</summary>
+    public static bool TryGetServer(out Server? server)
+    {
+        lock (Sync)
+        {
+            server = _server;
+            return server is not null;
+        }
+    }
+
     /// <summary>Conflict diagnostics and loaded manifests (created on first ensure).</summary>
     public static IPluginDiagnostics Diagnostics
     {
@@ -142,21 +157,21 @@ public static class PluginHost
 
             if (!config.Plugins.Enabled)
             {
-                Log.Info(LogCategory.System, "Plugins disabled (Plugins.Enabled=false). Skipping plugin load.");
+                Log.Info(LogCategory.Plugins, "Plugins disabled (Plugins.Enabled=false). Skipping plugin load.");
                 return;
             }
 
             string directory = ResolvePluginsDirectory(config.Plugins.Directory);
             if (!Directory.Exists(directory))
             {
-                Log.Warn(LogCategory.System, "Plugins enabled but directory not found: {0}", directory);
+                Log.Warn(LogCategory.Plugins, "Plugins enabled but directory not found: {0}", directory);
                 return;
             }
 
             List<PluginManifest> discovered = DiscoverManifests(directory);
             if (discovered.Count == 0)
             {
-                Log.Info(LogCategory.System, "No plugins found under {0} (need plugins/*/plugin.json)", directory);
+                Log.Info(LogCategory.Plugins, "No plugins found under {0} (need plugins/*/plugin.json)", directory);
                 return;
             }
 
@@ -324,7 +339,7 @@ public static class PluginHost
                 catch (Exception exception)
                 {
                     Log.Error(
-                        LogCategory.System,
+                        LogCategory.Plugins,
                         "Plugin '{0}' OnDisable failed: {1}",
                         entry.Manifest.Id,
                         exception.Message);
@@ -357,7 +372,7 @@ public static class PluginHost
             EnsureServicesUnlocked();
             EnsureMessengerUnlocked();
             EnsurePacketsUnlocked();
-            Loaded.Add(new LoadedPlugin(manifest, plugin, Loader: null));
+            Loaded.Add(new LoadedPlugin(manifest, plugin, Loader: null, Assembly: null));
         }
     }
 
@@ -483,7 +498,7 @@ public static class PluginHost
                 tracking,
                 registries.ForPlugin(entry.Manifest.Id),
                 packets));
-            Log.Info(LogCategory.System, "Enabled plugin '{0}' v{1}", entry.Manifest.Id, entry.Manifest.Version);
+            Log.Info(LogCategory.Plugins, "Enabled plugin '{0}' v{1}", entry.Manifest.Id, entry.Manifest.Version);
         }
 
         _enabled = true;
@@ -491,6 +506,8 @@ public static class PluginHost
 
     static void LoadOneWithMcMaster(PluginManifest manifest, Type[] sharedTypes)
     {
+        EnsurePluginAssemblyResolvingUnlocked();
+
         PluginLoader loader = PluginLoader.CreateFromAssemblyFile(
             manifest.AssemblyPath,
             config =>
@@ -523,21 +540,60 @@ public static class PluginHost
         if (!string.Equals(plugin.Id, manifest.Id, StringComparison.Ordinal))
         {
             Log.Warn(
-                LogCategory.System,
+                LogCategory.Plugins,
                 "Plugin id mismatch: manifest '{0}' vs IOrionPlugin.Id '{1}' — using manifest id.",
                 manifest.Id,
                 plugin.Id);
         }
 
         ContentRegistriesCore registries = EnsureRegistriesUnlocked();
+        // Register before Load so RegisterFromAssembly / trait reflection can resolve hard-deps.
+        Loaded.Add(new LoadedPlugin(manifest, plugin, loader, assembly));
         plugin.Load(new PluginLoadContext(manifest, registries.ForPlugin(manifest.Id)));
-        Loaded.Add(new LoadedPlugin(manifest, plugin, loader));
         Log.Info(
-            LogCategory.System,
+            LogCategory.Plugins,
             "Loaded plugin '{0}' v{1} via McMaster from {2}",
             manifest.Id,
             manifest.Version,
             manifest.AssemblyPath);
+    }
+
+    /// <summary>
+    /// Lets later plugins resolve assemblies already loaded by earlier plugins (hard deps)
+    /// through McMaster's PreferSharedTypes → default ALC path.
+    /// </summary>
+    static void EnsurePluginAssemblyResolvingUnlocked()
+    {
+        if (_pluginAssemblyResolvingHooked)
+        {
+            return;
+        }
+
+        AssemblyLoadContext.Default.Resolving += ResolveLoadedPluginAssembly;
+        _pluginAssemblyResolvingHooked = true;
+    }
+
+    static Assembly? ResolveLoadedPluginAssembly(AssemblyLoadContext _, AssemblyName name)
+    {
+        // May run re-entrantly while LoadConfigured holds Sync (PreferSharedTypes → default ALC).
+        // Do not lock here. Loaded is only mutated on the load thread under Sync.
+        foreach (LoadedPlugin entry in Loaded)
+        {
+            if (entry.Assembly is null)
+            {
+                continue;
+            }
+
+            if (string.Equals(
+                    entry.Assembly.GetName().Name,
+                    name.Name,
+                    StringComparison.OrdinalIgnoreCase))
+            {
+                return entry.Assembly;
+            }
+        }
+
+        return null;
     }
 
     static List<PluginManifest> DiscoverManifests(string pluginsRoot)
@@ -567,11 +623,16 @@ public static class PluginHost
         return Path.GetFullPath(Path.Combine(Directory.GetCurrentDirectory(), configured));
     }
 
-    private sealed class LoadedPlugin(PluginManifest Manifest, IOrionPlugin Plugin, PluginLoader? Loader)
+    private sealed class LoadedPlugin(
+        PluginManifest Manifest,
+        IOrionPlugin Plugin,
+        PluginLoader? Loader,
+        Assembly? Assembly)
     {
         public PluginManifest Manifest { get; } = Manifest;
         public IOrionPlugin Plugin { get; } = Plugin;
         public PluginLoader? Loader { get; } = Loader;
+        public Assembly? Assembly { get; } = Assembly;
         public TrackingEventBus? EventBus { get; set; }
         public TrackingPluginMessenger? Messenger { get; set; }
     }

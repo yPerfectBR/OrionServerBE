@@ -3,17 +3,20 @@
 **Status:** `spec`  
 **Language twin:** [`../../pt_br/plugins/08-ai-implementation-checklist.md`](../../pt_br/plugins/08-ai-implementation-checklist.md)
 
-This document is the **implementation order** for coding agents and humans. Each phase below maps to docs `01`–`07`. Do not skip dependency order. Do not edit architecture intent without updating the twin language docs.
+This document is the **implementation order** for coding agents and humans for **platform phases 01–07**. Each phase below maps to those docs. Do not skip dependency order. Do not edit architecture intent without updating the twin language docs.
+
+**SDK / deep plugins (NuGet Orion.Api):** see [09 — SDK overview](09-sdk-overview.md) and the ordered checklist [18 — AI SDK checklist](18-sdk-ai-implementation-checklist.md). Do not mix temporary monorepo-only authoring into the SDK train.
 
 ## Global rules for implementers
 
 1. Keep `Plugins.Enabled` default **`false`**.
-2. Plugins reference **`Orion.PluginContracts`**, not the Orion monolith.
+2. Plugins reference **`Orion.PluginContracts`** (and, for the SDK train, **`Orion.Api` / `Orion.Gameplay.Api`**), not the Orion **implementation** assembly.
 3. **McMaster is the only loader** — no `Assembly.LoadFrom` / hand-rolled ALC.
 4. Type/API names in code must match these specs (same identifiers in PT/EN docs).
 5. Add/extend tests under `tests/` for each phase’s acceptance list.
 6. Update phase doc **Status** from `spec` → `implemented` when acceptance tests pass.
 7. Managed publish only for plugin-capable builds (no Native AOT + dynamic plugins).
+8. For deep gameplay / NuGet SDK work, follow [18](18-sdk-ai-implementation-checklist.md) after 01–07 are done.
 
 ---
 

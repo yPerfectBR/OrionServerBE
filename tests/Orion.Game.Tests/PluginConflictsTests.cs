@@ -112,9 +112,16 @@ public sealed class PluginConflictsTests
             {
                 Id = "demo",
                 Version = new Version(1, 0, 0),
-                ApiVersion = new Version(0, 1, 0),
                 Main = "demo",
-                SoftDepend = ["optional.mod"],
+                SoftDepend =
+                [
+                    new PluginSoftDependency
+                    {
+                        Id = "optional:mod",
+                        MinVersion = new Version(1, 0, 0),
+                        MaxVersion = new Version(99, 0, 0)
+                    }
+                ],
                 Provides = ["demo:api"]
             });
 
@@ -132,7 +139,7 @@ public sealed class PluginConflictsTests
         Assert.Contains("Conflicts", message);
         Assert.Contains("WARN", message);
         Assert.Contains("registry.item", message);
-        Assert.Contains("softdepend: optional.mod", message);
+        Assert.Contains("softdepend: optional:mod", message);
         Assert.Contains("provides: demo:api", message);
     }
 

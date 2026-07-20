@@ -38,11 +38,10 @@ public static class BroadcastService
             PlayerChunkRenderingTrait.InvalidateVisibleEntity(dimension, takeItem.ItemEntityRuntimeId, resolved.Except);
         }
 
-        List<PlayerSession> candidates = resolved.Center.HasValue
-            ? GetSessionsInRadius(dimension, server, resolved.Center.Value, resolved.Radius)
-            : [.. server.Sessions.Values];
-
-        int sentCount = 0;
+        // Always enumerate live sessions. The spatial index is an optimization that can miss
+        // players not yet indexed (or dropped from the chunk map), which breaks multiplayer FX
+        // like block-crack LevelEvents while the breaker still sees their own copy.
+        List<PlayerSession> candidates = GetSessionsInRadius(dimension, server, resolved.Center, resolved.Radius);
 
         foreach (PlayerSession session in candidates)
         {
@@ -70,29 +69,31 @@ public static class BroadcastService
                 }
             }
 
+            // Clone LevelEvent per recipient so concurrent session workers never share one instance.
+            DataPacket outbound = packet is LevelEventPacket levelEvent
+                ? levelEvent with { }
+                : packet;
+
             if (server.ConnectionCoordinator is Scheduling.ConnectionCoordinator coordinator && coordinator.IsActive)
             {
-                coordinator.EnqueueViewDelta(session, packet);
+                coordinator.EnqueueViewDelta(session, outbound);
             }
             else
             {
-                SessionSendCoordinator.Send(session, packet);
+                SessionSendCoordinator.Send(session, outbound);
             }
-
-            sentCount++;
         }
-
     }
 
     static List<PlayerSession> GetSessionsInRadius(
         Dimension dimension,
         global::Orion.Server server,
-        Vec3f center,
+        Vec3f? center,
         float radius)
     {
-        if (dimension.GetSpatialIndex().SessionCount > 0)
+        if (!center.HasValue)
         {
-            return dimension.GetSpatialIndex().GetSessionsInRadius(center, radius);
+            return [.. server.Sessions.Values];
         }
 
         float radiusSquared = radius * radius;
@@ -105,9 +106,9 @@ public static class BroadcastService
             }
 
             Vec3f position = player.Position;
-            float dx = position.X - center.X;
-            float dy = position.Y - center.Y;
-            float dz = position.Z - center.Z;
+            float dx = position.X - center.Value.X;
+            float dy = position.Y - center.Value.Y;
+            float dz = position.Z - center.Value.Z;
             float distanceSquared = (dx * dx) + (dy * dy) + (dz * dz);
             if (distanceSquared <= radiusSquared)
             {

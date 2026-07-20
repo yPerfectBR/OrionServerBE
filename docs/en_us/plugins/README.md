@@ -1,8 +1,8 @@
 # Orion plugin architecture
 
-**Status:** Phases 1–6 `implemented` (McMaster + events + registries + services + packet hooks). Later phases remain `spec`.
+**Status:** Phases 1–7 `implemented` (McMaster + events + registries + services + packet hooks + conflicts). SDK train (09–18) remains `spec`.
 
-This hub describes how Orion becomes a **minimal Bedrock engine** whose gameplay surface grows through **third-party C# plugins**, loaded **exclusively** with **McMaster.NETCore.Plugins**, isolated by assembly load context, and coordinated through contracts, events, registries, services, messaging, and (later) packet hooks.
+This hub describes how Orion becomes a **minimal Bedrock engine** whose gameplay surface grows through **third-party C# plugins**, loaded **exclusively** with **McMaster.NETCore.Plugins**, isolated by assembly load context, and coordinated through contracts, events, registries, services, messaging, and packet hooks. Deep gameplay without cloning the monorepo is specified in the **SDK series** ([09](09-sdk-overview.md)–[18](18-sdk-ai-implementation-checklist.md)).
 
 Portuguese: [`../../pt_br/plugins/README.md`](../../pt_br/plugins/README.md)
 
@@ -11,8 +11,8 @@ Portuguese: [`../../pt_br/plugins/README.md`](../../pt_br/plugins/README.md)
 | Topic | Decision |
 |-------|----------|
 | Loader | **Exclusive** [McMaster.NETCore.Plugins](https://github.com/natemcmaster/DotNetCorePlugins) 2.x — no `Assembly.LoadFrom`, custom ALC, or DLL scan without McMaster |
-| Contracts | Thin `Orion.PluginContracts` assembly — plugins do **not** reference the Orion monolith |
-| Inter-plugin | Services registry (Bukkit-style) + namespaced message bus (`plugin:channel`) |
+| Contracts | `Orion.PluginContracts` + published **`Orion.Api` / `Orion.Gameplay.Api`** (SDK) — plugins do **not** reference the Orion implementation assembly |
+| Inter-plugin | Services registry (Bukkit-style) + namespaced message bus (`plugin:channel`) + optional `Foo.Api` packages |
 | Conflicts | Priorities, cancel/replace, registry ownership, `provides` / `softdepend` — no magical merge |
 | Packet hooks | Yes — dedicated phase (Endstone / PocketMine style escape hatch) |
 | Runtime | **Managed** host when plugins are enabled (not Native AOT) |
@@ -52,15 +52,30 @@ flowchart TB
 |-------|-----|------|-------------|
 | 0 | [00 — Vision / minimal engine](00-vision-minimal-engine.md) | What stays in core vs plugins | `spec` |
 | 1 | [01 — Loader & contracts (McMaster)](01-loader-contracts-mcmaster.md) | Isolation, shared types, layout | `implemented` |
-| 2 | [02 — Lifecycle & manifest](02-lifecycle-manifest.md) | Load / Enable / WorldInitialize; `plugin.json` | `implemented` |
+| 2 | [02 — Lifecycle & manifest](02-lifecycle-manifest.md) | Load / Enable / WorldInitialize; `plugin.json` lifecycle | `implemented` (deps → [19](19-manifest-v2.md)) |
 | 3 | [03 — Events & priorities](03-events-priorities.md) | Expose typed bus to plugins | `implemented` |
 | 4 | [04 — Registries & content](04-registries-content.md) | Items, blocks, commands, creative tabs | `implemented` |
 | 5 | [05 — Services & messaging](05-services-messaging.md) | Soft integration without hard load deps | `implemented` |
 | 6 | [06 — Packet hooks](06-packet-hooks.md) | Low-level receive/send interception | `implemented` |
 | 7 | [07 — Conflicts & compatibility](07-conflicts-compatibility.md) | Tooling when plugins collide | `implemented` |
-| — | [08 — AI implementation checklist](08-ai-implementation-checklist.md) | PR order, APIs, acceptance tests | `spec` |
+| — | [08 — AI implementation checklist](08-ai-implementation-checklist.md) | Platform PR order (phases 1–7) | `spec` |
+| 9 | [09 — SDK overview](09-sdk-overview.md) | Final NuGet SDK architecture for deep plugins | `spec` |
+| 10 | [10 — Packages & versioning](10-sdk-packages-versioning.md) | NuGet layout, semver, SharedAssemblies | `spec` |
+| 11 | [11 — Orion.Api surface](11-sdk-orion-api-surface.md) | IServer / IWorld / IDimension / IPlayer / block / item / container | `spec` |
+| 12 | [12 — Registries & traits](12-sdk-registries-traits.md) | Rich registrations + trait registries | `spec` |
+| 13 | [13 — Events & signals](13-sdk-events-signals.md) | Final signal catalog in Orion.Api.Events | `spec` |
+| 14 | [14 — Gameplay services](14-sdk-gameplay-services.md) | Orion.Gameplay.Api + provides + packet ownership | `spec` |
+| 15 | [15 — Protocol escape](15-sdk-protocol-escape.md) | Helpers vs Protocol PackageReference | `spec` |
+| 16 | [16 — External plugin guide](16-sdk-external-plugin-guide.md) | Template + walkthroughs | `spec` |
+| 17 | [17 — Vanilla dogfood](17-sdk-vanilla-dogfood.md) | First-party plugins on same SDK | `spec` |
+| 18 | [18 — AI SDK checklist](18-sdk-ai-implementation-checklist.md) | Implementation order for SDK train | `spec` |
+| 19 | [19 — Manifest v2](19-manifest-v2.md) | Object deps, SemVer ranges, fatal validation | `implemented` |
+| 20 | [20 — Plugin developer guide](20-plugin-developer-guide.md) | Authoring, troubleshooting, best practices | `implemented` |
+| 21 | [21 — Plugin repo layout](21-plugin-repo-layout.md) | `orion:*` folders, `src/`, AssemblyName | `implemented` |
 
-**Implemented (PR 1–7):** McMaster, lifecycle, registries, events, services/messenger, `IPacketPipeline`, conflict diagnostics (`ConflictMode` / `/plugins`). See [first-run](../first-run.md).
+**Implemented (1–7):** McMaster, lifecycle, registries, events, services/messenger, `IPacketPipeline`, conflict diagnostics. See [first-run](../first-run.md).
+
+**Next (SDK):** start at [09 — SDK overview](09-sdk-overview.md); implement via [18](18-sdk-ai-implementation-checklist.md).
 
 ## Glossary
 
@@ -68,9 +83,9 @@ flowchart TB
 |------|---------|
 | **Core / engine** | Networking, world/chunk persistence, sessions, scheduling, protocol codecs, minimal curated content |
 | **Plugin** | Published C# assembly under `plugins/<Id>/` implementing `IOrionPlugin` |
-| **Contracts** | `Orion.PluginContracts` — stable types shared across ALC boundaries |
-| **Hard depend** | Manifest `depend` — boot fails if missing |
-| **Soft depend** | Manifest `softdepend` — reorder only; discover at runtime via Services / Messenger |
+| **Contracts / SDK** | `Orion.PluginContracts` + `Orion.Api` + `Orion.Gameplay.Api` — stable types shared across ALC boundaries |
+| **Hard depend** | Manifest `depend` object — boot fails if missing or version out of range ([19](19-manifest-v2.md)) |
+| **Soft depend** | Manifest `softdepend` object — reorder only when target exists |
 | **Provides** | Manifest claim that this plugin supplies a named capability API |
 | **Registry ownership** | At most one plugin “owns” a given registry key (e.g. identifier or PacketId) |
 | **Escape hatch** | Packet hooks when no high-level event/API exists yet |

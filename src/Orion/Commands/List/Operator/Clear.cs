@@ -2,10 +2,11 @@ namespace Orion.Commands.List.Operator;
 
 using Orion.Commands;
 using Orion;
+using Orion.Containers;
 using Orion.Entity;
-using Orion.Entity.Traits;
+using Orion.Gameplay;
+using Orion.Plugins;
 using Player = global::Orion.Player.Player;
-
 
 public class ClearCommand : Command
 {
@@ -42,22 +43,32 @@ public class ClearCommand : Command
 
     private static CommandResult ClearEntityInventory(Entity entity)
     {
-        var inventory = entity.GetTrait<EntityInventoryTrait>();
-
-        if (inventory == null)
-            return CommandResult.Empty(true);
-
-        var size = inventory.Container.Storage?.Sum(item => item?.StackSize ?? 0) ?? 0;
-        inventory.Clear();
-
-        if (entity is Player player)
+        if (entity is not Player player)
         {
-            player.SendMessage("§7Your inventory has been cleared.");
-            return CommandResult.Message($"§7Cleared §a{size} §7items from §a{player.Username}'s inventory", true);
+            return CommandResult.Message("§cOnly players have clearable inventories.", false);
         }
 
-        var name = entity.FormatIdentifier();
-        return CommandResult.Message($"§7Cleared §a{size} §7items from §a{name}'s inventory", true);
+        if (!PluginHost.Services.TryGet(out IPlayerInventoryService? inventory) || inventory is null)
+        {
+            return CommandResult.Message("§cInventory plugin is not loaded.", false);
+        }
+
+        if (!inventory.TryGetAccess(player, out IPlayerInventoryAccess? access) || access is null)
+        {
+            return CommandResult.Empty(true);
+        }
+
+        int size = 0;
+        IContainer container = access.Container;
+        for (int i = 0; i < container.GetSize(); i++)
+        {
+            size += container.GetItem(i)?.StackSize ?? 0;
+        }
+
+        _ = inventory.TryClear(player);
+
+        player.SendMessage("§7Your inventory has been cleared.");
+        return CommandResult.Message($"§7Cleared §a{size} §7items from §a{player.Username}'s inventory", true);
     }
 }
 

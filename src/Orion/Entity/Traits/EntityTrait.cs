@@ -69,7 +69,7 @@ public abstract class EntityTrait : Trait
         return true;
     }
 
-    public virtual void OnContainerUpdate(Orion.Containers.Container container)
+    public virtual void OnContainerUpdate(Orion.Containers.IContainer container)
     {
     }
 

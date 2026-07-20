@@ -1,40 +1,51 @@
 # First run (OrionServer)
 
-O Orion sobe com um menu criativo **mínimo**: só Nature a partir de `src/Protocol/Data/orion/items.json` (ex.: grass, dirt, bedrock). Construction, Equipment e Items ficam vazias até um plugin registrar fillers.
+Orion inicia com menu criativo **mínimo**: só blocos Nature de `src/Protocol/Data/orion/items.json`. Construction, Equipment e Items ficam vazios até um plugin registrar fillers.
 
 ## Menu criativo vazio
 
-O Bedrock costuma mostrar o inventário criativo **inteiro** vazio quando essas outras abas não têm itens — mesmo com Nature correta. É limitação da UI do cliente, não falha do pacote de Nature.
+O Bedrock pode mostrar o inventário criativo **inteiro** vazio quando as outras abas não têm itens — mesmo com Nature correto. É limitação da UI do cliente.
 
-No boot, se essas abas ainda estiverem vazias, o Orion registra um aviso apontando para cá.
-
-## Correção recomendada (plugin de exemplo)
-
-1. Compile o sample (gera `plugins/MinimalInventoryItems/MinimalInventoryItems.dll` ao lado de `plugin.json`):
+## Correção recomendada (plugin sample)
 
 ```bash
-dotnet build plugins/MinimalInventoryItems/MinimalInventoryItems.csproj
+dotnet build plugins/orion:creative-fillers/OrionCreativeFillers.csproj
 ```
 
-2. Ative em `config/server.json` (o padrão é **desligado**):
+Ative em `config/server.json`:
 
 ```json
-"Plugins": {
-  "Enabled": true,
-  "Directory": "plugins"
-}
+"Plugins": { "Enabled": true, "Directory": "plugins" }
 ```
 
-3. Reinicie. O host carrega o plugin **somente via McMaster** (pasta com `plugin.json`). O sample registra:
+## Vida / fome (attributes)
 
-- Construction → pedregulho  
-- Equipment → espada de madeira  
-- Items → stick  
+```bash
+dotnet build plugins/orion:attributes/OrionAttributes.csproj
+```
 
-**Nota:** host com plugins = **managed** (.NET), não Native AOT.
+Com plugins ativos: `provides: orion:attributes`, `orion:health`, `orion:hunger`. Consuma via `IAttributesApi` / `IEntityHealthService` / `IPlayerHungerService`. Prefira carregar com `orion:inventory` (softdepend).
 
-## Fillers próprios
+## Inventário, containers, building e mining
 
-No `IOrionPlugin.Load(IPluginLoadContext)`, use `context.Registries.CreativeTabs.AddEntry(pluginId, category, identifier)` **antes** do init do catálogo (o boot do servidor já ordena isso). Não coloque Nature (categoria 2) aí — edite `orion/items.json`.
+```bash
+dotnet build plugins/orion:containers/OrionContainers.csproj
+dotnet build plugins/orion:inventory/OrionInventory.csproj
+dotnet build plugins/orion:block-containers/OrionBlockContainers.csproj
+dotnet build plugins/orion:building/OrionBuilding.csproj
+dotnet build plugins/orion:mining/OrionMining.csproj
+```
 
-Mais: [creative-inventory.md](creative-inventory.md) · [plugins/README.md](plugins/README.md).
+Ordem de carga: manifest v2 ([plugins/19-manifest-v2.md](plugins/19-manifest-v2.md)).
+
+- `orion:containers` — runtime de grades (`provides: orion:containers`)
+- `orion:inventory` — inventário/ISR (`depend: orion:containers`, `provides: orion:inventory`)
+- `orion:block-containers` — baú/barril
+- `orion:building` / `orion:mining` — place e mineração (softdepend inventory)
+- API: `IInventoryApi` / `IPlayerInventoryService`
+
+Ver [plugins/20-plugin-developer-guide.md](plugins/20-plugin-developer-guide.md).
+
+## Plugins externos (SDK)
+
+[plugins/09-sdk-overview.md](plugins/09-sdk-overview.md) · [plugins/18-sdk-ai-implementation-checklist.md](plugins/18-sdk-ai-implementation-checklist.md)
