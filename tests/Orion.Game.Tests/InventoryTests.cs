@@ -1,6 +1,7 @@
 using Orion.Containers;
-using Orion.Entity.Traits;
 using Orion.Item;
+using OrionContainers;
+using OrionInventory;
 
 namespace Orion.Game.Tests;
 
