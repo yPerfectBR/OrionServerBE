@@ -6,8 +6,5 @@
 .idea/
 worlds/
 config/
-plugins/**/*.dll
-plugins/**/*.pdb
-plugins/**/*.deps.json
-plugins/**/*.xml
-plugins/**/*.runtimeconfig.json
+plugins/
+resource_packs/
