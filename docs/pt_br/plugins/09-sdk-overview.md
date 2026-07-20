@@ -159,7 +159,7 @@ Superfície completa: [11](11-sdk-orion-api-surface.md), [14](14-sdk-gameplay-se
 
 ## 12. Status
 
-`spec`
+`spec` — **auditoria jul/2026:** parcialmente adiantado (manifest v2 [19] implementado; APIs neutras `I*Api`; IVT removido; plugins externalizados em `Plugins-Orion/`). **Pendente:** projetos `Orion.Api` / `Orion.Gameplay.Api`, validação `api` no boot, NuGet pack, plugins sem `ProjectReference` a `Orion.csproj`.
 
 ## Ordem de leitura
 
