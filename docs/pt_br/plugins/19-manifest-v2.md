@@ -46,7 +46,7 @@ Definir **`plugin.json` v2**: ids com namespace (`prefixo:produto`), dependênci
 
 ### 3.1 `id` e pasta
 
-- Formato: `prefixo:produto`, segmentos `[a-z_]+`, cada um ≤ 18 caracteres.
+- Formato: `prefixo:produto` — prefixo `[a-z0-9_]{1,18}`, produto `[a-z0-9_-]{1,18}` (hífen permitido no produto, ex. `orion:block-containers`).
 - Pasta em `plugins/` **deve ser igual** ao `id`.
 - Regex da pasta: `^[a-z0-9:-]{1,25}$`.
 
