@@ -49,10 +49,22 @@ jobs:
 
       - name: Prepare plugin mirror for Game.Tests
         run: |
+          printf '%s\n' \
+            '<?xml version="1.0" encoding="utf-8"?>' \
+            '<configuration>' \
+            '  <packageSources>' \
+            '    <clear />' \
+            '    <add key="nuget.org" value="https://api.nuget.org/v3/index.json" />' \
+            '  </packageSources>' \
+            '</configuration>' \
+            > "$GITHUB_WORKSPACE/Plugins-Orion/nuget.config"
           bash tests/Orion.Game.Tests/sync-vanilla-plugins.sh \
             "$GITHUB_WORKSPACE/Plugins-Orion" \
             "$HOME/.cache/orion-vanilla-plugins-src" \
             "$PWD"
+          dotnet restore "$HOME/.cache/orion-vanilla-plugins-src/orion-containers/OrionContainers.csproj"
+          dotnet restore "$HOME/.cache/orion-vanilla-plugins-src/orion-inventory/OrionInventory.csproj"
+          dotnet restore tests/Orion.Game.Tests/Orion.Game.Tests.csproj
 
       - name: Build
         run: |
