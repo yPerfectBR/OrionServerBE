@@ -50,8 +50,8 @@ jobs:
       - name: Seed config for build
         run: |
           mkdir -p config
-          cp assets/first-run/server.json config/server.json
-          cp assets/first-run/permissions.json config/permissions.json
+          cp assets/ci/server.json config/server.json
+          cp assets/ci/permissions.json config/permissions.json
 
       - name: Restore
         run: dotnet restore OrionServerBE.slnx
