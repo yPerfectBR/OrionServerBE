@@ -1,4 +1,5 @@
 using System.Reflection;
+using System.Runtime.Loader;
 using McMaster.NETCore.Plugins;
 using Orion.Config;
 using Orion.PluginContracts;
@@ -20,6 +21,9 @@ namespace Orion.Plugins;
 /// <summary>
 /// Orchestrates plugin discovery and lifecycle. Assemblies are loaded <b>only</b> via McMaster
 /// (<see cref="PluginLoader"/>) — never <c>Assembly.LoadFrom</c> or a custom ALC.
+/// Already-loaded plugin assemblies are exposed to later plugins via
+/// <see cref="AssemblyLoadContext.Default"/> resolving so hard-deps (e.g. block_containers → containers)
+/// share type identity under <c>PreferSharedTypes</c>.
 /// </summary>
 public static class PluginHost
 {
@@ -31,6 +35,7 @@ public static class PluginHost
     private static bool _loadAttempted;
     private static bool _enabled;
     private static bool _worldInitialized;
+    private static bool _pluginAssemblyResolvingHooked;
     private static Server? _server;
     private static ServerEventBus? _rootEventBus;
     private static ContentRegistriesCore? _registries;
@@ -367,7 +372,7 @@ public static class PluginHost
             EnsureServicesUnlocked();
             EnsureMessengerUnlocked();
             EnsurePacketsUnlocked();
-            Loaded.Add(new LoadedPlugin(manifest, plugin, Loader: null));
+            Loaded.Add(new LoadedPlugin(manifest, plugin, Loader: null, Assembly: null));
         }
     }
 
@@ -501,6 +506,8 @@ public static class PluginHost
 
     static void LoadOneWithMcMaster(PluginManifest manifest, Type[] sharedTypes)
     {
+        EnsurePluginAssemblyResolvingUnlocked();
+
         PluginLoader loader = PluginLoader.CreateFromAssemblyFile(
             manifest.AssemblyPath,
             config =>
@@ -540,14 +547,53 @@ public static class PluginHost
         }
 
         ContentRegistriesCore registries = EnsureRegistriesUnlocked();
+        // Register before Load so RegisterFromAssembly / trait reflection can resolve hard-deps.
+        Loaded.Add(new LoadedPlugin(manifest, plugin, loader, assembly));
         plugin.Load(new PluginLoadContext(manifest, registries.ForPlugin(manifest.Id)));
-        Loaded.Add(new LoadedPlugin(manifest, plugin, loader));
         Log.Info(
             LogCategory.Plugins,
             "Loaded plugin '{0}' v{1} via McMaster from {2}",
             manifest.Id,
             manifest.Version,
             manifest.AssemblyPath);
+    }
+
+    /// <summary>
+    /// Lets later plugins resolve assemblies already loaded by earlier plugins (hard deps)
+    /// through McMaster's PreferSharedTypes → default ALC path.
+    /// </summary>
+    static void EnsurePluginAssemblyResolvingUnlocked()
+    {
+        if (_pluginAssemblyResolvingHooked)
+        {
+            return;
+        }
+
+        AssemblyLoadContext.Default.Resolving += ResolveLoadedPluginAssembly;
+        _pluginAssemblyResolvingHooked = true;
+    }
+
+    static Assembly? ResolveLoadedPluginAssembly(AssemblyLoadContext _, AssemblyName name)
+    {
+        // May run re-entrantly while LoadConfigured holds Sync (PreferSharedTypes → default ALC).
+        // Do not lock here. Loaded is only mutated on the load thread under Sync.
+        foreach (LoadedPlugin entry in Loaded)
+        {
+            if (entry.Assembly is null)
+            {
+                continue;
+            }
+
+            if (string.Equals(
+                    entry.Assembly.GetName().Name,
+                    name.Name,
+                    StringComparison.OrdinalIgnoreCase))
+            {
+                return entry.Assembly;
+            }
+        }
+
+        return null;
     }
 
     static List<PluginManifest> DiscoverManifests(string pluginsRoot)
@@ -577,11 +623,16 @@ public static class PluginHost
         return Path.GetFullPath(Path.Combine(Directory.GetCurrentDirectory(), configured));
     }
 
-    private sealed class LoadedPlugin(PluginManifest Manifest, IOrionPlugin Plugin, PluginLoader? Loader)
+    private sealed class LoadedPlugin(
+        PluginManifest Manifest,
+        IOrionPlugin Plugin,
+        PluginLoader? Loader,
+        Assembly? Assembly)
     {
         public PluginManifest Manifest { get; } = Manifest;
         public IOrionPlugin Plugin { get; } = Plugin;
         public PluginLoader? Loader { get; } = Loader;
+        public Assembly? Assembly { get; } = Assembly;
         public TrackingEventBus? EventBus { get; set; }
         public TrackingPluginMessenger? Messenger { get; set; }
     }
