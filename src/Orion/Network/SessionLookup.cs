@@ -6,7 +6,7 @@ using Orion.Player;
 /// <summary>
 /// Resolves online player entities from sessions for network handlers.
 /// </summary>
-internal static class SessionLookup
+public static class SessionLookup
 {
     public static bool TryGetPlayer(Server server, NetworkConnection connection, out Player player)
     {
