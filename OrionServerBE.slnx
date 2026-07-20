@@ -1,6 +1,5 @@
 <Solution>
   <Folder Name="/plugins/">
-    <Project Path="plugins/MinimalInventoryItems/MinimalInventoryItems.csproj" />
   </Folder>
   <Project Path="src/Config/Config.csproj" />
   <Project Path="src/Compression/Compression.csproj" />
