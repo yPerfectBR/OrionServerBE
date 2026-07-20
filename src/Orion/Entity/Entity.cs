@@ -294,7 +294,7 @@ public class Entity : IAreaStoredEntity, IAreaEntity
         }
     }
 
-    public void OnContainerUpdate(Orion.Containers.Container container)
+    public void OnContainerUpdate(Orion.Containers.IContainer container)
     {
         for (int i = 0; i < _traits.Count; i++)
         {
