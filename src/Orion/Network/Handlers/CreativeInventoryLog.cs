@@ -9,7 +9,7 @@ using Orion.Protocol.Types;
 using Orion.RakNet;
 using Log = Orion.Logger.Logger;
 
-internal static class CreativeInventoryLog
+public static class CreativeInventoryLog
 {
     // Diagnostics for creative catalog / ISR — leave off unless debugging inventory.
     private static readonly bool Enabled = false;
