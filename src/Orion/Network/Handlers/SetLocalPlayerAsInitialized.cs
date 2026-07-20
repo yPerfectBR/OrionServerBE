@@ -63,7 +63,7 @@ public static class SetLocalPlayerAsInitialized
             inventory.EnableHud(player);
         }
 
-        if (PluginHost.Services.TryGet(out IVanillaAttributesApi? attributes) && attributes is not null)
+        if (PluginHost.Services.TryGet(out IAttributesApi? attributes) && attributes is not null)
         {
             attributes.EnableHud(player);
         }
