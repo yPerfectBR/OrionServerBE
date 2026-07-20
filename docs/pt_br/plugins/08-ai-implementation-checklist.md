@@ -3,16 +3,19 @@
 **Status:** `spec`  
 **Twin:** [`../../en_us/plugins/08-ai-implementation-checklist.md`](../../en_us/plugins/08-ai-implementation-checklist.md)
 
-Ordem de implementação para agentes e humanos. Cada fase mapeia aos docs `01`–`07`. Não pular dependências. Nomes de tipos/APIs iguais nos twins EN/PT.
+Ordem de implementação para agentes e humanos das **fases de plataforma 01–07**. Não pular dependências. Nomes de tipos/APIs iguais nos twins EN/PT.
+
+**SDK / plugins deep (NuGet Orion.Api):** ver [09 — Visão SDK](09-sdk-overview.md) e o checklist ordenado [18 — Checklist IA SDK](18-sdk-ai-implementation-checklist.md). Não misturar autoria temporária só-monorepo no train do SDK.
 
 ## Regras globais
 
 1. `Plugins.Enabled` default **`false`**.
-2. Plugins referenciam **`Orion.PluginContracts`**, não o monolito Orion.
+2. Plugins referenciam **`Orion.PluginContracts`** (e, no train SDK, **`Orion.Api` / `Orion.Gameplay.Api`**), não o assembly de **implementação** Orion.
 3. **Loader exclusivo McMaster** — proibido `Assembly.LoadFrom` / ALC caseiro.
 4. Testes em `tests/` por fase.
 5. Atualizar Status `spec` → `implemented` nos **dois** idiomas quando a aceitação passar.
 6. Publish managed para builds com plugins (sem Native AOT + plugins dinâmicos).
+7. Para gameplay profundo / NuGet SDK, seguir [18](18-sdk-ai-implementation-checklist.md) depois de 01–07.
 
 ---
 
