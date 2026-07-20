@@ -46,7 +46,7 @@ public sealed class PluginDiagnostics : IPluginDiagnostics
         }
 
         Log.Warn(
-            LogCategory.System,
+            LogCategory.Plugins,
             "Plugin conflict [{0}] {1}: {2} > {3} — {4}",
             conflict.Kind,
             conflict.Key,
