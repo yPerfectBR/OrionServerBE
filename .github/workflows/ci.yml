@@ -18,53 +18,17 @@ jobs:
         with:
           path: OrionServerBE
 
-      - name: Checkout orion-containers
-        uses: actions/checkout@v4
-        with:
-          repository: OrionBedrock/orion-containers
-          ref: main
-          path: Plugins-Orion/orion-containers
-
-      - name: Checkout orion-inventory
-        uses: actions/checkout@v4
-        with:
-          repository: OrionBedrock/orion-inventory
-          ref: main
-          path: Plugins-Orion/orion-inventory
-
       - name: Setup .NET
         uses: actions/setup-dotnet@v4
         with:
           dotnet-version: "10.0.x"
 
-      # /config is gitignored locally; seed fixtures that match Logger.Tests expectations.
+      # /config is gitignored locally; seed fixtures via first-run bootstrap.
       - name: Seed config for build
-        run: |
-          mkdir -p config
-          cp assets/ci/server.json config/server.json
-          cp assets/ci/permissions.json config/permissions.json
+        run: bash scripts/first-run.sh -y
 
       - name: Restore
         run: dotnet restore OrionServerBE.slnx
-
-      - name: Prepare plugin mirror for Game.Tests
-        run: |
-          printf '%s\n' \
-            '<?xml version="1.0" encoding="utf-8"?>' \
-            '<configuration>' \
-            '  <packageSources>' \
-            '    <clear />' \
-            '    <add key="nuget.org" value="https://api.nuget.org/v3/index.json" />' \
-            '  </packageSources>' \
-            '</configuration>' \
-            > "$GITHUB_WORKSPACE/Plugins-Orion/nuget.config"
-          bash tests/Orion.Game.Tests/sync-vanilla-plugins.sh \
-            "$GITHUB_WORKSPACE/Plugins-Orion" \
-            "$HOME/.cache/orion-vanilla-plugins-src" \
-            "$PWD"
-          dotnet restore "$HOME/.cache/orion-vanilla-plugins-src/orion-containers/OrionContainers.csproj"
-          dotnet restore "$HOME/.cache/orion-vanilla-plugins-src/orion-inventory/OrionInventory.csproj"
-          dotnet restore tests/Orion.Game.Tests/Orion.Game.Tests.csproj
 
       - name: Build
         run: |
@@ -95,3 +59,6 @@ jobs:
           do
             dotnet test "$proj" -c Release --no-build --verbosity normal
           done
+
+      - name: Smoke boot server (no plugins)
+        run: bash scripts/ci-smoke-server.sh
