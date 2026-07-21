@@ -2,7 +2,8 @@
 # OrionServerBE — first-run bootstrap: check toolchain, optional install, create local dirs/config.
 set -euo pipefail
 
-ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 DOTNET_CHANNEL="10.0"
 DOTNET_INSTALL_DIR="${DOTNET_INSTALL_DIR:-$HOME/.dotnet}"
 REQUIRED_SDK_MAJOR=10
@@ -214,14 +215,14 @@ create_layout() {
   mkdir -p "$ROOT/config" "$ROOT/plugins" "$ROOT/resource_packs" "$ROOT/worlds" "$ROOT/logs"
 
   if [[ ! -f "$ROOT/config/permissions.json" ]]; then
-    cp "$ROOT/assets/first-run/permissions.json" "$ROOT/config/permissions.json"
+    cp "$SCRIPT_DIR/fixtures/permissions.json" "$ROOT/config/permissions.json"
     ok "config/permissions.json criado (operators vazio)"
   else
     info "config/permissions.json já existe — mantido"
   fi
 
   if [[ ! -f "$ROOT/config/server.json" ]]; then
-    cp "$ROOT/assets/first-run/server.json" "$ROOT/config/server.json"
+    cp "$SCRIPT_DIR/fixtures/server.json" "$ROOT/config/server.json"
     ok "config/server.json criado (sem pregen / threadingAreas)"
   else
     info "config/server.json já existe — mantido"

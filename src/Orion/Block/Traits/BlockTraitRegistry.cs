@@ -1,6 +1,7 @@
 namespace Orion.Block.Traits;
 
 using System.Reflection;
+using Orion.Api.Traits;
 
 
 public static class BlockTraitRegistry
@@ -9,11 +10,11 @@ public static class BlockTraitRegistry
 
     public static IReadOnlyDictionary<string, Type> RegisteredTraits => Traits;
 
-    public static void RegisterFromAssembly(Assembly assembly)
+    internal static void RegisterFromAssembly(Assembly assembly)
     {
         foreach (Type type in assembly.GetTypes())
         {
-            if (type.IsAbstract || !typeof(BlockTrait).IsAssignableFrom(type))
+            if (type.IsAbstract || !typeof(BlockTraitBase).IsAssignableFrom(type))
             {
                 continue;
             }
@@ -22,11 +23,11 @@ public static class BlockTraitRegistry
         }
     }
 
-    public static void Register(Type traitType)
+    internal static void Register(Type traitType)
     {
-        if (!typeof(BlockTrait).IsAssignableFrom(traitType))
+        if (!typeof(BlockTraitBase).IsAssignableFrom(traitType))
         {
-            throw new ArgumentException($"{traitType.FullName} is not a BlockTrait.", nameof(traitType));
+            throw new ArgumentException($"{traitType.FullName} is not a BlockTraitBase.", nameof(traitType));
         }
 
         if (traitType.IsAbstract)

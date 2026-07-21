@@ -2,6 +2,10 @@ using System.Reflection;
 using System.Runtime.Loader;
 using McMaster.NETCore.Plugins;
 using Orion.Config;
+using Orion.Api;
+using Orion.Api.Traits;
+using Orion.Api.Events;
+using Orion.Gameplay;
 using Orion.PluginContracts;
 using Orion.PluginContracts.Diagnostics;
 using Orion.PluginContracts.Events;
@@ -29,7 +33,6 @@ public static class PluginHost
 {
     private static readonly object Sync = new();
     private static readonly List<LoadedPlugin> Loaded = [];
-    private static readonly StubOrionServer ServerStub = new();
     private static readonly StubOrionWorld WorldStub = new();
 
     private static bool _loadAttempted;
@@ -188,6 +191,11 @@ public static class PluginHost
                 typeof(ICancellable),
                 typeof(EventPriority),
                 typeof(ServerEvent),
+                typeof(PlayerPlaceBlockSignal),
+                typeof(PlayerBreakBlockSignal),
+                typeof(PlayerFoodEatSignal),
+                typeof(EntityHurtSignal),
+                typeof(ServerStartSignal),
                 typeof(IContentRegistries),
                 typeof(IItemRegistry),
                 typeof(IBlockRegistry),
@@ -208,7 +216,23 @@ public static class PluginHost
                 typeof(PacketReceiveContext),
                 typeof(PacketSendContext),
                 typeof(IPlayerConnection),
-                typeof(IOrionServer)
+                typeof(IServer),
+                typeof(IPlayer),
+                typeof(IEntity),
+                typeof(GameplayApi),
+                typeof(IInventoryApi),
+                typeof(IPlayerInventoryService),
+                typeof(IBuildingApi),
+                typeof(IMiningApi),
+                typeof(IAttributesApi),
+                typeof(BlockTraitBase),
+                typeof(ItemTraitBase),
+                typeof(EntityTraitBase),
+                typeof(PlayerTraitBase),
+                typeof(IBlockTraitRegistry),
+                typeof(IItemTraitRegistry),
+                typeof(IEntityTraitRegistry),
+                typeof(IPlayerTraitRegistry)
             ];
 
             foreach (PluginManifest manifest in ordered)
@@ -329,7 +353,7 @@ public static class PluginHost
                     IPluginMessenger pluginMessenger = (IPluginMessenger?)entry.Messenger ?? messenger;
                     entry.Plugin.OnDisable(new PluginContext(
                         entry.Manifest,
-                        ServerStub,
+                        RequireServer(),
                         services,
                         pluginMessenger,
                         events,
@@ -460,6 +484,10 @@ public static class PluginHost
         return _packets;
     }
 
+    static IServer RequireServer() =>
+        _server ?? throw new InvalidOperationException(
+            "PluginHost has no Server bound. Call EnableAll(Server) before enabling or disabling plugins.");
+
     static void EnableAllUnlocked()
     {
         if (_enabled)
@@ -492,7 +520,7 @@ public static class PluginHost
             entry.Messenger = trackingMessenger;
             entry.Plugin.OnEnable(new PluginContext(
                 entry.Manifest,
-                ServerStub,
+                RequireServer(),
                 services,
                 trackingMessenger,
                 tracking,
