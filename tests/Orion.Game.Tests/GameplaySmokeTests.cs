@@ -1,10 +1,17 @@
 using Orion.Block;
 using Orion.Item;
+using Orion.Protocol.Registry;
 
 namespace Orion.Game.Tests;
 
+[Collection("ItemCatalog")]
 public sealed class GameplaySmokeTests
 {
+    public GameplaySmokeTests()
+    {
+        MinimalContentFixtures.RegisterAll();
+    }
+
     [Fact]
     public void BlockDropHelper_ReturnsMatchingItemForGrassBlock()
     {

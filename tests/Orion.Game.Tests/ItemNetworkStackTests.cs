@@ -5,8 +5,14 @@ using Orion.Protocol.Types;
 
 namespace Orion.Game.Tests;
 
+[Collection("ItemCatalog")]
 public sealed class ItemNetworkStackTests
 {
+    public ItemNetworkStackTests()
+    {
+        MinimalContentFixtures.RegisterAll();
+    }
+
     [Fact]
     public void Dirt_ToNetworkStack_UsesCuratedNetworkIdAndBlockHash()
     {
@@ -38,11 +44,14 @@ public sealed class ItemNetworkStackTests
     {
         ItemRegistry.EnsureLoaded();
 
-        ItemStack? grass = ItemType.GetCreativeItem(1);
-        ItemStack? dirt = ItemType.GetCreativeItem(2);
+        ItemStack? cobble = ItemType.GetCreativeItem(1);
+        ItemStack? grass = ItemType.GetCreativeItem(2);
+        ItemStack? dirt = ItemType.GetCreativeItem(3);
 
+        Assert.NotNull(cobble);
         Assert.NotNull(grass);
         Assert.NotNull(dirt);
+        Assert.Equal("minecraft:cobblestone", cobble!.Identifier);
         Assert.Equal("minecraft:grass_block", grass!.Identifier);
         Assert.Equal("minecraft:dirt", dirt!.Identifier);
     }
