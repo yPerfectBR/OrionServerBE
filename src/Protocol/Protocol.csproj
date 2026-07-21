@@ -5,7 +5,7 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <RootNamespace>Orion.$(MSBuildProjectName.Replace(" ", "_"))</RootNamespace>
-    <Version>0.1.0</Version>
+    <Version>0.1.2</Version>
     <PackageId>Orion.Protocol</PackageId>
     <Authors>OrionBedrock</Authors>
     <Company>OrionBedrock</Company>
