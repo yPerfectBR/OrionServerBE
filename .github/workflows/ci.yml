@@ -22,14 +22,14 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: OrionBedrock/orion-containers
-          ref: ${{ github.head_ref || github.ref_name }}
+          ref: main
           path: Plugins-Orion/orion-containers
 
       - name: Checkout orion-inventory
         uses: actions/checkout@v4
         with:
           repository: OrionBedrock/orion-inventory
-          ref: ${{ github.head_ref || github.ref_name }}
+          ref: main
           path: Plugins-Orion/orion-inventory
 
       - name: Setup .NET
@@ -46,6 +46,13 @@ jobs:
 
       - name: Restore
         run: dotnet restore OrionServerBE.slnx
+
+      - name: Prepare plugin mirror for Game.Tests
+        run: |
+          bash tests/Orion.Game.Tests/sync-vanilla-plugins.sh \
+            "$GITHUB_WORKSPACE/Plugins-Orion" \
+            "$HOME/.cache/orion-vanilla-plugins-src" \
+            "$PWD"
 
       - name: Build
         run: |
