@@ -34,8 +34,7 @@ public static class ItemRegistry
 
             _giveableIdentifiers = new HashSet<string>(StringComparer.Ordinal);
             IReadOnlyCollection<string> allowlist = CuratedItemCatalog.GetAllowlistedIdentifiers();
-            bool restrictGive = allowlist.Count > 0;
-
+            // Orion allowlist is authoritative even when empty (empty core => nothing giveable).
             foreach (string identifier in CuratedItemCatalog.GetRegisteredIdentifiers())
             {
                 if (!CuratedItemCatalog.TryGetByIdentifier(identifier, out CuratedItem curated))
@@ -43,19 +42,14 @@ public static class ItemRegistry
                     continue;
                 }
 
-                if (!restrictGive || allowlist.Contains(identifier))
-                {
-                    _giveableIdentifiers.Add(identifier);
-                }
-
-                if (ItemType.Get(identifier) is not null)
+                if (!allowlist.Contains(identifier))
                 {
                     continue;
                 }
 
-                // Only materialize ItemType for allowlisted / fallback curated entries to keep
-                // server item space aligned with Orion policy (vanilla palette stays on the wire).
-                if (restrictGive && !allowlist.Contains(identifier))
+                _giveableIdentifiers.Add(identifier);
+
+                if (ItemType.Get(identifier) is not null)
                 {
                     continue;
                 }
@@ -79,6 +73,17 @@ public static class ItemRegistry
         }
     }
 
+    internal static void ResetForTests()
+    {
+        lock (LoadLock)
+        {
+            _loaded = false;
+            _creativeItems = null;
+            _giveableIdentifiers = new HashSet<string>(StringComparer.Ordinal);
+            ItemType.ResetForTests();
+        }
+    }
+
     static void WarnIfCreativeTabsSparse()
     {
         if (!CuratedItemCatalog.NonNatureCreativeTabsEmpty)
@@ -90,7 +95,7 @@ public static class ItemRegistry
             LogCategory.Orion,
             "Creative inventory: Construction / Equipment / Items have no items. " +
             "Bedrock may show an empty creative menu. See docs/pt_br/first-run.md or docs/en_us/first-run.md " +
-            "(enable Plugins and build plugins/orion:creative-fillers, or call CuratedItemCatalog.RegisterCreativeTabEntries).");
+            "(enable Plugins and build plugins/orion:minimal-items, or call CuratedItemCatalog.RegisterCreativeTabEntries).");
     }
 
     public static ItemStack? TryGetCreativeItem(uint creativeItemNetworkId)

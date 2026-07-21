@@ -57,6 +57,12 @@ public sealed class ItemType : Orion.Api.Items.IItemType
         return Registry.TryGetValue(identifier, out ItemType? type) ? type : null;
     }
 
+    internal static void ResetForTests()
+    {
+        Registry.Clear();
+        NetworkRegistry.Clear();
+    }
+
     public static ItemType GetOrAir(string identifier)
     {
         return Get(identifier) ?? Get("minecraft:air") ?? new ItemType("minecraft:air", 0, 64, [], true, 1);
