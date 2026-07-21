@@ -1,15 +1,15 @@
 # First run (OrionServer)
 
-Orion inicia com menu criativo **mínimo**: só blocos Nature de `src/Protocol/Data/orion/items.json`. Construction, Equipment e Items ficam vazios até um plugin registrar fillers.
+Orion inicia com menu criativo **vazio** e **sem** blocos nativos de conteúdo. Nature, Construction, Equipment e Items ficam vazios até um plugin registrar (tipicamente `orion:minimal-items`).
 
 ## Menu criativo vazio
 
-O Bedrock pode mostrar o inventário criativo **inteiro** vazio quando as outras abas não têm itens — mesmo com Nature correto. É limitação da UI do cliente.
+O Bedrock pode mostrar o inventário criativo **inteiro** vazio quando Construction / Equipment / Items não têm itens. É limitação da UI do cliente.
 
-## Correção recomendada (plugin sample)
+## Correção recomendada (`orion:minimal-items`)
 
 ```bash
-dotnet build plugins/orion:creative-fillers/OrionCreativeFillers.csproj
+dotnet build plugins/orion:minimal-items/OrionMinimalItems.csproj
 ```
 
 Ative em `config/server.json`:
@@ -17,6 +17,8 @@ Ative em `config/server.json`:
 ```json
 "Plugins": { "Enabled": true, "Directory": "plugins" }
 ```
+
+O plugin registra os seis blocos Bedrock, Nature (grass/dirt/bedrock) e fillers nas outras abas.
 
 ## Vida / fome (attributes)
 

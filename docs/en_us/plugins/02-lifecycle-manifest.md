@@ -29,7 +29,7 @@ Define a deterministic plugin lifecycle and a **`plugin.json`** manifest so the 
   "depend": [],
   "softdepend": [],
   "loadbefore": [],
-  "provides": ["orion:creative-tab-fillers"]
+  "provides": ["orion:minimal-items", "orion:creative-tab-fillers"]
 }
 ```
 

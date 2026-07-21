@@ -12,7 +12,7 @@ public sealed partial class PluginManifest : IPluginManifest
         PropertyNameCaseInsensitive = true
     };
 
-    // Hyphens/underscores allowed so ids like orion:block_containers / orion:creative-fillers validate.
+    // Hyphens/underscores allowed so ids like orion:block_containers / orion:minimal-items validate.
     [GeneratedRegex(@"^[a-z0-9_]{1,18}:[a-z0-9_-]{1,18}$", RegexOptions.CultureInvariant)]
     private static partial Regex PluginIdRegex();
 

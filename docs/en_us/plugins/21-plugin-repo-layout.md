@@ -60,7 +60,7 @@ Folder names contain `:` (required by spec). MSBuild on Linux mishandles `obj/` 
 | VanillaAttributes | `orion:attributes` | `orion.attributes.dll` |
 | VanillaBuilding | `orion:building` | `orion.building.dll` |
 | VanillaMining | `orion:mining` | `orion.mining.dll` |
-| MinimalInventoryItems | `orion:creative-fillers` | `orion.creative-fillers.dll` |
+| MinimalItems | `orion:minimal-items` | `orion.minimal-items.dll` |
 
 ## 7. Migration checklist
 

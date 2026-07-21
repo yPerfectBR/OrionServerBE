@@ -23,7 +23,7 @@ Order respects hard depends already in manifests:
 4. **orion:building** — softdepend inventory  
 5. **orion:mining** — softdepend inventory  
 6. **orion:block-containers** — `depend: orion:containers, orion:inventory`  
-7. **orion:creative-fillers** — contracts only (verify)
+7. **orion:minimal-items** — contracts + blocks/Nature/fillers (verify)
 
 Each step: switch csproj → fix usings → build → load smoke test.
 

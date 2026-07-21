@@ -37,7 +37,7 @@ Only then treat [24](24-entity-mechanics-plugins.md)–[29](29-worldgen-superfla
  → 25 block mechanics plugins
  → 26 item mechanics plugins
  → 27 player mechanics plugins
- → 28 minimal-blocks (+ items)
+ → 28 minimal-items
  → 29 superflat plugin + remove builtin
  → 30 first-run void + docs + build-plugins order
  → 17 dogfood: zero Orion.csproj refs on first-party
