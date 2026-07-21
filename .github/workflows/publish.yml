@@ -1,12 +1,18 @@
 name: Publish NuGet
 
-# Auto-publish PluginContracts when exposed contracts change on main.
-# Version: optional override (must be > latest on nuget.org), else patch +0.0.1.
+# Auto-publish SDK packages (PluginContracts, Orion.Api, Orion.Gameplay.Api, Orion.Protocol) on main.
+# Version: optional override (must be > latest on nuget.org), else patch +0.0.1 on the highest SDK version.
 on:
   push:
     branches: [main]
     paths:
       - "src/PluginContracts/**"
+      - "src/Orion.Api/**"
+      - "src/Orion.Gameplay.Api/**"
+      - "src/Protocol/**"
+      - "src/Binary/**"
+      - "src/Config/**"
+      - "src/Compression/**"
   workflow_dispatch:
     inputs:
       version:
@@ -30,20 +36,6 @@ jobs:
         with:
           path: OrionServerBE
 
-      - name: Checkout orion-containers
-        uses: actions/checkout@v4
-        with:
-          repository: OrionBedrock/orion-containers
-          ref: main
-          path: Plugins-Orion/orion:containers
-
-      - name: Checkout orion-inventory
-        uses: actions/checkout@v4
-        with:
-          repository: OrionBedrock/orion-inventory
-          ref: main
-          path: Plugins-Orion/orion:inventory
-
       - name: Setup .NET
         uses: actions/setup-dotnet@v4
         with:
@@ -59,18 +51,44 @@ jobs:
         run: dotnet restore OrionServerBE.slnx
 
       - name: Build
-        run: dotnet build OrionServerBE.slnx -c Release --no-restore
+        run: |
+          set -euo pipefail
+          for proj in \
+            src/PluginContracts/PluginContracts.csproj \
+            src/Orion.Api/Orion.Api.csproj \
+            src/Orion.Gameplay.Api/Orion.Gameplay.Api.csproj \
+            src/Protocol/Protocol.csproj \
+            src/Orion/Orion.csproj \
+            src/Server/Server.csproj \
+            tests/Orion.Protocol.Tests/Orion.Protocol.Tests.csproj \
+            tests/Orion.Logger.Tests/Orion.Logger.Tests.csproj \
+            tests/Orion.World.Tests/Orion.World.Tests.csproj
+          do
+            dotnet build "$proj" -c Release --no-restore
+          done
 
       - name: Test
-        run: dotnet test OrionServerBE.slnx -c Release --no-build --verbosity normal
+        run: |
+          set -euo pipefail
+          for proj in \
+            tests/Orion.Protocol.Tests/Orion.Protocol.Tests.csproj \
+            tests/Orion.Logger.Tests/Orion.Logger.Tests.csproj \
+            tests/Orion.World.Tests/Orion.World.Tests.csproj
+          do
+            dotnet test "$proj" -c Release --no-build --verbosity normal
+          done
 
   publish:
-    # Trusted Publishing + NUGET_USER exist only on OrionBedrock (not forks).
     if: github.repository_owner == 'OrionBedrock'
     needs: build-test
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: OrionServerBE
     steps:
       - uses: actions/checkout@v4
+        with:
+          path: OrionServerBE
 
       - name: Setup .NET
         uses: actions/setup-dotnet@v4
@@ -79,18 +97,17 @@ jobs:
 
       - name: Resolve version
         id: ver
+        working-directory: OrionServerBE
         env:
-          PACKAGE_ID: Orion.PluginContracts
           VERSION_OVERRIDE: ${{ github.event.inputs.version }}
           CSPROJ: src/PluginContracts/PluginContracts.csproj
         run: |
           set -euo pipefail
-          ID_LOWER=$(echo "$PACKAGE_ID" | tr '[:upper:]' '[:lower:]')
-          CURRENT=""
-          if INDEX=$(curl -fsSL "https://api.nuget.org/v3-flatcontainer/${ID_LOWER}/index.json" 2>/dev/null); then
-            CURRENT=$(echo "$INDEX" | jq -r '.versions[-1] // empty')
-          fi
-          echo "Latest on nuget.org: ${CURRENT:-<none>}"
+          SDK_PACKAGES="Orion.PluginContracts Orion.Api Orion.Gameplay.Api Orion.Protocol"
+
+          version_gt() {
+            [ "$(printf '%s\n%s\n' "$2" "$1" | sort -V | tail -1)" = "$1" ] && [ "$1" != "$2" ]
+          }
 
           bump_patch() {
             local v="$1"
@@ -100,10 +117,17 @@ jobs:
             echo "${major}.${minor}.$((patch + 1))"
           }
 
-          version_gt() {
-            # true if $1 > $2 (semver x.y.z)
-            [ "$(printf '%s\n%s\n' "$2" "$1" | sort -V | tail -1)" = "$1" ] && [ "$1" != "$2" ]
-          }
+          CURRENT=""
+          for PKG in $SDK_PACKAGES; do
+            ID_LOWER=$(echo "$PKG" | tr '[:upper:]' '[:lower:]')
+            if INDEX=$(curl -fsSL "https://api.nuget.org/v3-flatcontainer/${ID_LOWER}/index.json" 2>/dev/null); then
+              V=$(echo "$INDEX" | jq -r '.versions[-1] // empty')
+              if [ -n "$V" ] && { [ -z "$CURRENT" ] || version_gt "$V" "$CURRENT"; }; then
+                CURRENT="$V"
+              fi
+            fi
+          done
+          echo "Latest SDK version on nuget.org: ${CURRENT:-<none>}"
 
           if [ -n "${VERSION_OVERRIDE}" ]; then
             if [ -n "$CURRENT" ] && ! version_gt "$VERSION_OVERRIDE" "$CURRENT"; then
@@ -114,7 +138,7 @@ jobs:
             echo "Using override version: $VER"
           elif [ -z "$CURRENT" ]; then
             VER=$(grep -oP '(?<=<Version>)[^<]+' "$CSPROJ" | head -1)
-            echo "No nuget.org version; using csproj: $VER"
+            echo "No nuget.org SDK version; using csproj: $VER"
           else
             VER=$(bump_patch "$CURRENT")
             echo "Auto-bump patch: $CURRENT -> $VER"
@@ -123,14 +147,24 @@ jobs:
           echo "version=${VER}" >> "$GITHUB_OUTPUT"
           echo "Resolved package version: $VER"
 
-      - name: Pack PluginContracts
+      - name: Pack SDK packages
+        working-directory: OrionServerBE
         run: |
           mkdir -p artifacts/nuget
-          dotnet pack src/PluginContracts/PluginContracts.csproj \
-            -c Release \
-            -o artifacts/nuget \
-            -p:Version=${{ steps.ver.outputs.version }} \
-            -p:PackageVersion=${{ steps.ver.outputs.version }}
+          VER="${{ steps.ver.outputs.version }}"
+          for proj in \
+            src/PluginContracts/PluginContracts.csproj \
+            src/Orion.Api/Orion.Api.csproj \
+            src/Orion.Gameplay.Api/Orion.Gameplay.Api.csproj \
+            src/Protocol/Protocol.csproj
+          do
+            dotnet pack "$proj" \
+              -c Release \
+              -o artifacts/nuget \
+              -p:Version="$VER" \
+              -p:PackageVersion="$VER"
+          done
+          ls -la artifacts/nuget/
 
       - name: NuGet login (OIDC)
         uses: NuGet/login@v1
@@ -139,6 +173,7 @@ jobs:
           user: ${{ secrets.NUGET_USER }}
 
       - name: Push to nuget.org
+        working-directory: OrionServerBE
         run: |
           dotnet nuget push artifacts/nuget/*.nupkg \
             --api-key "${{ steps.login.outputs.NUGET_API_KEY }}" \

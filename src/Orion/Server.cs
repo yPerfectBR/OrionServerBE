@@ -1,9 +1,10 @@
 using System.Collections.Concurrent;
+using Orion.Api;
 using Orion.Commands;
 using Orion.Config;
-using Orion.Events;
 using Orion.Network;
 using Orion.Player;
+using Orion.Plugins.Api;
 using Orion.Plugins.Network;
 using Orion.Protocol.Packets;
 using Orion.RakNet;
@@ -12,7 +13,7 @@ using WorldInstance = Orion.World.World;
 
 namespace Orion;
 
-public sealed class Server
+public sealed class Server : IServer
 {
     private readonly INetworkScheduler _scheduler;
     private readonly IAreaScheduler _areaScheduler;
@@ -42,6 +43,40 @@ public sealed class Server
     public PacketPipeline PacketPipeline { get; set; } = new();
 
     public double Tps { get; private set; } = 20.0;
+
+    public IReadOnlyCollection<IPlayer> OnlinePlayers
+    {
+        get
+        {
+            List<IPlayer> players = [];
+            foreach (PlayerSession session in Sessions.Values)
+            {
+                if (session.ActiveEntity is { } player)
+                {
+                    players.Add(player);
+                }
+            }
+
+            return players;
+        }
+    }
+
+    public IWorld? DefaultWorld => World is null ? null : WorldApi.For(World);
+
+    public IWorld? GetWorld(string name)
+    {
+        if (World is null)
+        {
+            return null;
+        }
+
+        return string.Equals(World.Name, name, StringComparison.OrdinalIgnoreCase)
+            ? WorldApi.For(World)
+            : null;
+    }
+
+    public IReadOnlyCollection<IWorld> Worlds =>
+        World is null ? [] : [WorldApi.For(World)];
 
     public Server(ServerProperties? properties = null)
     {
@@ -267,6 +302,30 @@ public sealed class Server
                 break;
             case PlayerOpenContainerSignal openCtr:
                 openCtr.SetCancelled(cancelled);
+                break;
+            case PlayerInteractEntitySignal interact:
+                interact.SetCancelled(cancelled);
+                break;
+            case PlayerItemUseSignal itemUse:
+                itemUse.SetCancelled(cancelled);
+                break;
+            case PlayerItemUseCompleteSignal itemUseComplete:
+                itemUseComplete.SetCancelled(cancelled);
+                break;
+            case PlayerDropItemSignal drop:
+                drop.SetCancelled(cancelled);
+                break;
+            case PlayerPickupItemSignal pickup:
+                pickup.SetCancelled(cancelled);
+                break;
+            case PlayerFoodEatSignal foodEat:
+                foodEat.SetCancelled(cancelled);
+                break;
+            case PlayerGamemodeChangeSignal gamemode:
+                gamemode.SetCancelled(cancelled);
+                break;
+            case BlockExplodeSignal explode:
+                explode.SetCancelled(cancelled);
                 break;
             case EntityHurtSignal hurt:
                 hurt.SetCancelled(cancelled);

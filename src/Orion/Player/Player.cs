@@ -9,7 +9,7 @@ using Orion.Config;
 using Log = Orion.Logger.Logger;
 
 using Orion.RakNet;
-using Orion.Containers;
+using Orion.Api.Containers;
 using Orion.Protocol.Types;
 using Orion.Protocol.Nbt;
 using Orion.World;
@@ -20,8 +20,22 @@ using Orion.Gameplay;
 using Orion.Plugins;
 using Orion.Entity.Traits.Types;
 using Orion.Player.Traits;
+using Orion.Api;
+using Orion.Api.Items;
+using Orion.Api.Network;
+using Orion.Plugins.Api;
+using ApiGamemode = Orion.Api.Gamemode;
+using ApiHudVisibility = Orion.Api.HudVisibility;
+using ApiHudElement = Orion.Api.HudElement;
+using ApiVec3f = Orion.Api.Math.Vec3f;
+using ProtocolGamemode = Orion.Protocol.Enums.Gamemode;
+using ProtocolHudVisibility = Orion.Protocol.Enums.HudVisibility;
+using ProtocolHudElement = Orion.Protocol.Enums.HudElement;
+using CoreContainer = Orion.Api.Containers.IContainer;
+using EntitySpawnOptions = Orion.Entity.Traits.Types.EntitySpawnOptions;
+using BroadcastOptions = Orion.World.BroadcastOptions;
 
-public sealed class Player : global::Orion.Entity.Entity, IAreaEntity, IPlayerWithSession
+public sealed class Player : global::Orion.Entity.Entity, IAreaEntity, IPlayerWithSession, IPlayer
 {
         Vec3f IAreaEntity.Position => Position;
 
@@ -32,7 +46,7 @@ public readonly string Username;
     private byte[]? _skin;
     public PlayerAbilities Abilities { get; } = new();
     public HashSet<string> Permissions { get; } = new(StringComparer.OrdinalIgnoreCase);
-    public Gamemode Gamemode { get; private set; } = Gamemode.Survival;
+    public ProtocolGamemode Gamemode { get; private set; } = ProtocolGamemode.Survival;
     public bool IsOperator { get; private set; }
     public bool Spawned { get; private set; }
     public float Pitch;
@@ -42,7 +56,7 @@ public readonly string Username;
     public BlockPos? LastActionBlockPosition { get; set; }
     public BlockPos? LastActionResultPosition { get; set; }
     public int LastActionFace { get; set; }
-    public Dictionary<int, IContainer> openedContainers = [];
+    public Dictionary<int, CoreContainer> openedContainers = [];
 
     /// <summary>Null for NPCs and fake players.</summary>
     public PlayerSession? Session { get; internal set; }
@@ -78,12 +92,12 @@ public readonly string Username;
         Flags.SetActorFlag(ActorFlag.AlwaysShowName, true);
     }
 
-    public Gamemode GetGamemode()
+    public ProtocolGamemode GetGamemode()
     {
         return Gamemode;
     }
 
-    public void SetGamemode(Gamemode gamemode)
+    public void SetGamemode(ProtocolGamemode gamemode)
     {
         Gamemode = gamemode;
 
@@ -107,7 +121,7 @@ public readonly string Username;
         }
     }
 
-    public void LoadGamemode(Gamemode gamemode)
+    public void LoadGamemode(ProtocolGamemode gamemode)
     {
         Gamemode = gamemode;
         Abilities.SetGamemode(gamemode);
@@ -191,7 +205,7 @@ public readonly string Username;
 
         if (root.Get<IntTag>("gamemode") is { } gamemodeTag)
         {
-            LoadGamemode((Gamemode)gamemodeTag.Value);
+            LoadGamemode((ProtocolGamemode)gamemodeTag.Value);
         }
 
         IsOperator = (root.Get<ByteTag>("isOp")?.Value ?? 0) != 0;
@@ -225,7 +239,7 @@ public readonly string Username;
     /// <summary>
     /// Show or hide HUD elements for this client (Bedrock SetHud /hud).
     /// </summary>
-    public void SetHud(HudVisibility visibility, params HudElement[] elements)
+    public void SetHud(ProtocolHudVisibility visibility, params ProtocolHudElement[] elements)
     {
         if (elements.Length == 0 || Session is null)
         {
@@ -544,21 +558,21 @@ public readonly string Username;
         GetTrait<PlayerChunkRenderingTrait>()?.AfterRegionHandoff();
     }
 
-    public void RegisterOpenContainer(int windowId, IContainer container)
+    public void RegisterOpenContainer(int windowId, CoreContainer container)
     {
         openedContainers[windowId] = container;
     }
 
-    public bool TryGetOpenContainer(int windowId, out IContainer? container)
+    public bool TryGetOpenContainer(int windowId, out CoreContainer? container)
     {
         return openedContainers.TryGetValue(windowId, out container);
     }
 
-    public IContainer? GetContainer(FullContainerName name)
+    public CoreContainer? GetContainer(FullContainerName name)
     {
         if (PluginHost.Services.TryGet(out IPlayerInventoryService? inventory) && inventory is not null)
         {
-            return inventory.ResolveContainer(this, name);
+        return inventory.ResolveContainer(this, new ContainerNameWire(name)) as CoreContainer;
         }
 
         return null;
@@ -633,7 +647,7 @@ public readonly string Username;
     {
         ItemInstance heldItem = new();
         Item.ItemStack? held = PluginHost.Services.TryGet(out IPlayerInventoryService? invSvc) && invSvc is not null
-            ? invSvc.GetHeldItem(this)
+            ? invSvc.GetHeldItem(this) as Item.ItemStack
             : null;
         if (held is not null)
         {
@@ -674,6 +688,46 @@ public readonly string Username;
     {
         Session?.SendMessage(message);
     }
+
+    ApiGamemode IPlayer.Gamemode => (ApiGamemode)(int)Gamemode;
+
+    string IPlayer.Username => Username;
+
+    string IPlayer.Xuid => Xuid;
+
+    Guid IPlayer.Uuid => Uuid;
+
+    void IPlayer.SetGamemode(ApiGamemode gamemode) =>
+        SetGamemode((ProtocolGamemode)(int)gamemode);
+
+    void IPlayer.Teleport(ApiVec3f position, IDimension? dimension, bool forceDimensionChange)
+    {
+        Dimension? target = DimensionApi.TryUnwrap(dimension);
+        Teleport(new Vec3f(position.X, position.Y, position.Z), target, forceDimensionChange);
+    }
+
+    void IPlayer.Send(params IOutboundPacket[] packets) =>
+        Send(OutboundPacketAdapter.ToDataPackets(packets));
+
+    void IPlayer.SetHud(ApiHudVisibility visibility, params ApiHudElement[] elements) =>
+        SetHud((ProtocolHudVisibility)(int)visibility, Array.ConvertAll(elements, static e => (ProtocolHudElement)(int)e));
+
+    bool IPlayer.DropItem(IItemStack item) =>
+        item is Item.ItemStack stack && DropItem(stack);
+
+    IReadOnlyDictionary<int, Orion.Api.Containers.IContainer> IPlayer.OpenedContainers => openedContainers;
+
+    void IPlayer.RegisterOpenContainer(int windowId, Orion.Api.Containers.IContainer container) =>
+        RegisterOpenContainer(windowId, container);
+
+    bool IPlayer.TryGetOpenContainer(int windowId, out Orion.Api.Containers.IContainer? container) =>
+        TryGetOpenContainer(windowId, out container);
+
+    void IPlayer.UnregisterOpenContainer(int windowId) =>
+        openedContainers.Remove(windowId);
+
+    void IPlayer.FlushPendingClientSync(bool force) =>
+        FlushClientWorldStateSyncIfPending(force: force);
 
 }
 

@@ -1,6 +1,7 @@
 namespace Orion.Item.Traits;
 
 using System.Reflection;
+using Orion.Api.Traits;
 
 
 public static class ItemTraitRegistry
@@ -9,11 +10,11 @@ public static class ItemTraitRegistry
 
     public static IReadOnlyDictionary<string, Type> RegisteredTraits => Traits;
 
-    public static void RegisterFromAssembly(Assembly assembly)
+    internal static void RegisterFromAssembly(Assembly assembly)
     {
         foreach (Type type in assembly.GetTypes())
         {
-            if (type.IsAbstract || !typeof(ItemTrait).IsAssignableFrom(type))
+            if (type.IsAbstract || !typeof(ItemTraitBase).IsAssignableFrom(type))
             {
                 continue;
             }
@@ -22,11 +23,11 @@ public static class ItemTraitRegistry
         }
     }
 
-    public static void Register(Type traitType)
+    internal static void Register(Type traitType)
     {
-        if (!typeof(ItemTrait).IsAssignableFrom(traitType))
+        if (!typeof(ItemTraitBase).IsAssignableFrom(traitType))
         {
-            throw new ArgumentException($"{traitType.FullName} is not an ItemTrait.", nameof(traitType));
+            throw new ArgumentException($"{traitType.FullName} is not an ItemTraitBase.", nameof(traitType));
         }
 
         if (traitType.IsAbstract)

@@ -1,7 +1,7 @@
 namespace Orion.Network.Handlers;
 
 using Orion;
-using Orion.Events;
+using Orion.Api.Events;
 using Orion.Gameplay;
 using Orion.Item.Traits.Types;
 using Orion.Plugins;
@@ -48,8 +48,7 @@ public static class Interact
                 return;
             }
 
-            var heldItem = inventoryService.GetHeldItem(player);
-            if (heldItem is null || player.Dimension is null)
+            if (inventoryService.GetHeldItem(player) is not global::Orion.Item.ItemStack heldItem || player.Dimension is null)
             {
                 return;
             }
