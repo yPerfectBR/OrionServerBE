@@ -1,3 +1,5 @@
+using Orion.Api.Math;
+
 namespace Orion.Api.Items;
 
 public interface IItemType
@@ -5,6 +7,7 @@ public interface IItemType
     string Identifier { get; }
     int NetworkId { get; }
     int MaxStackSize { get; }
+    IReadOnlyList<string> Tags { get; }
 }
 
 public interface IItemStack
@@ -19,6 +22,9 @@ public interface IItemStack
     void Decrement(int amount = 1);
     bool CanStackWith(IItemStack other);
     IItemStack Clone(int? count = null);
+
+    /// <summary>Triggers host item traits after breaking a block (durability / tool hooks).</summary>
+    void NotifyBrokeBlock(IPlayer player, BlockPos blockPosition, int blockFace = 0, int hotBarSlot = 0);
 }
 
 /// <summary>Host-registered factory for creating item stacks without referencing Orion.dll.</summary>
