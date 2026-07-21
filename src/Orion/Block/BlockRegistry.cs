@@ -85,6 +85,8 @@ public static class BlockRegistry
         {
             _loaded = false;
             PendingPluginBlocks.Clear();
+            BlockPermutation.Permutations.Clear();
+            BlockType.ResetForTests();
         }
     }
 
@@ -136,14 +138,12 @@ public static class BlockRegistry
         type.RegisterPermutation(permutation);
     }
 
+    /// <summary>
+    /// Host ships no native block content. Register blocks from plugins (e.g. orion:minimal-items)
+    /// via <see cref="RegisterPluginBlock"/> before <see cref="EnsureLoaded"/>.
+    /// </summary>
     static void RegisterFromBedrockStates()
     {
-        RegisterBlock("minecraft:air", BedrockBlockStates.Air, air: true, solid: false, hardness: 0f);
-        RegisterBlock("minecraft:structure_void", BedrockBlockStates.StructureVoid, solid: false, hardness: 0f);
-        RegisterBlock("minecraft:bedrock", BedrockBlockStates.Bedrock, hardness: -1f);
-        RegisterBlock("minecraft:dirt", BedrockBlockStates.Dirt, hardness: 0.5f);
-        RegisterBlock("minecraft:grass_block", BedrockBlockStates.GrassBlock, hardness: 0.6f);
-        RegisterBlock("minecraft:barrier", BedrockBlockStates.Barrier, solid: false, hardness: -1f);
     }
 
     private readonly record struct PendingBlockRegistration(
