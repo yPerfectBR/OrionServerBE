@@ -1,5 +1,6 @@
 using Orion.Block;
 using Orion.Commands;
+using Orion.Api.Worldgen;
 using Orion.PluginContracts;
 using Orion.PluginContracts.Registry;
 using Orion.Plugins;
@@ -7,8 +8,6 @@ using Orion.Plugins.Registry;
 using Orion.Protocol.Packets;
 using Orion.Protocol.Registry;
 using Orion.World.Generation;
-using Orion.World.Chunk;
-using Orion.Protocol.Enums;
 
 namespace Orion.Game.Tests;
 
@@ -104,13 +103,13 @@ public sealed class ContentRegistriesTests
     [Fact]
     public void Generators_Register_ResolvesInFactory()
     {
-        PluginHost.Registries.ForPlugin("gen").Generators.Register("testflat", typeof(TestFlatGenerator));
+        PluginHost.Registries.ForPlugin("gen").Generators.Register("testflat", typeof(TestFlatWorldGenerator));
         Generator generator = GeneratorFactory.Create("testflat");
-        Assert.IsType<TestFlatGenerator>(generator);
+        Assert.Equal("testflat", generator.Identifier);
 
         PluginHost.NotifyWorldBootstrapped();
         Assert.Throws<InvalidOperationException>(() =>
-            PluginHost.Registries.ForPlugin("gen2").Generators.Register("other", typeof(TestFlatGenerator)));
+            PluginHost.Registries.ForPlugin("gen2").Generators.Register("other", typeof(TestFlatWorldGenerator)));
     }
 
     [Fact]
@@ -164,11 +163,11 @@ public sealed class ContentRegistriesTests
         }
     }
 
-    sealed class TestFlatGenerator : Generator
+    sealed class TestFlatWorldGenerator : WorldGeneratorBase
     {
         public override string Identifier => "testflat";
 
-        public override Chunk Generate(DimensionType dimensionType, int x, int z) =>
-            new(x, z, dimensionType);
+        public override void Generate(IChunkGenerationContext context, int chunkX, int chunkZ) =>
+            context.MarkClean();
     }
 }
