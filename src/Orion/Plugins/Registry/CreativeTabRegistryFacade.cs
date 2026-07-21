@@ -16,16 +16,6 @@ internal sealed class CreativeTabRegistryFacade(ContentRegistriesCore core) : IC
         ArgumentException.ThrowIfNullOrWhiteSpace(identifier);
         core.ThrowIfCreativeFrozen();
 
-        if (category == 2)
-        {
-            Log.Warn(
-                LogCategory.Plugins,
-                "CreativeTabs: category 2 (Nature) is reserved for core; plugin '{0}' entry '{1}' rejected.",
-                pluginId,
-                identifier);
-            return;
-        }
-
         if (category is < 1 or > 4)
         {
             Log.Warn(

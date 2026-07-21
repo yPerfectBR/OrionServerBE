@@ -97,8 +97,8 @@ public static class CuratedItemCatalog
 
     /// <summary>
     /// Registers creative-tab fillers from a C# plugin. Must be called before the catalog
-    /// initializes (load plugins before <see cref="EnsureInitialized"/>). Category 2 (Nature)
-    /// is reserved for Orion world blocks and is ignored.
+    /// initializes (load plugins before <see cref="EnsureInitialized"/>).
+    /// Categories: 1 Construction, 2 Nature, 3 Equipment, 4 Items.
     /// </summary>
     public static void RegisterCreativeTabEntries(string pluginId, params (int Category, string Identifier)[] entries)
     {
@@ -121,7 +121,7 @@ public static class CuratedItemCatalog
 
             foreach ((int category, string identifier) in entries)
             {
-                if (category is < 1 or > 4 || category == 2 || string.IsNullOrWhiteSpace(identifier))
+                if (category is < 1 or > 4 || string.IsNullOrWhiteSpace(identifier))
                 {
                     continue;
                 }
@@ -461,8 +461,8 @@ public static class CuratedItemCatalog
 
     /// <summary>
     /// Bedrock creative UI needs at least one item in each used category tab or the inventory
-    /// can render empty. Orion world blocks live in Nature; other tabs come from C# plugins
-    /// via <see cref="RegisterCreativeTabEntries"/> (see sample MinimalInventoryItems).
+    /// can render empty. Nature defaults come from <c>orion/items.json</c> (may be empty);
+    /// all tabs can also be filled by plugins via <see cref="RegisterCreativeTabEntries"/>.
     /// </summary>
     private static CreativeContentPacket BuildCreativePacket(
         List<CuratedItem> natureItems,
@@ -525,6 +525,11 @@ public static class CuratedItemCatalog
         }
 
         foreach (CuratedItem item in natureItems)
+        {
+            AddEntry(item, 1);
+        }
+
+        foreach ((int category, CuratedItem item) in pluginTabItems.Where(e => e.Category == 2))
         {
             AddEntry(item, 1);
         }

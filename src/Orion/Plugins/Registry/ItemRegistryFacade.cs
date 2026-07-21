@@ -26,7 +26,7 @@ internal sealed class ItemRegistryFacade(ContentRegistriesCore core) : IItemRegi
         {
             // Ownership already claimed above; add tab entry without re-claiming.
             core.ThrowIfCreativeFrozen();
-            if (category is >= 1 and <= 4 && category != 2)
+            if (category is >= 1 and <= 4)
             {
                 CuratedItemCatalog.RegisterCreativeTabEntries(pluginId, (category, registration.Identifier));
             }
