@@ -1,6 +1,6 @@
 # Phase 29 — Worldgen: Superflat plugin and void in core
 
-**Status:** `implemented`  
+**Status:** `spec`  
 **Language twin:** [`../../pt_br/plugins/29-worldgen-superflat-plugin.md`](../../pt_br/plugins/29-worldgen-superflat-plugin.md)  
 **Depends on:** [22](22-vanilla-extraction-overview.md), [23](23-extraction-sdk-prerequisites.md)  
 **Follow-up:** [28](28-minimal-content-and-empty-core.md) (`orion:minimal-items` — implemented)
@@ -47,7 +47,7 @@ _ => new VoidGenerator()
 
 - [x] Without plugin: `Create("superflat")` → `VoidGenerator`.
 - [x] With Api registration: layers match previous behavior.
-- [x] `depend` `orion:minimal-items`.
+- [ ] `depend` `orion:minimal-items` (after plugin ships).
 - [x] Plugin CI: PackageReferenceTests + smoke boot.
 
 ## 6. Status
