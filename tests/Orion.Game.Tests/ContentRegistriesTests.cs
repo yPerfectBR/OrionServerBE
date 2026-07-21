@@ -25,10 +25,13 @@ public sealed class ContentRegistriesTests
     [Fact]
     public void CreativeTabs_ViaFacade_MatchesDirectCatalogRegistration()
     {
-        IContentRegistries registries = PluginHost.Registries.ForPlugin("orion:creative-fillers");
-        registries.CreativeTabs.AddEntry("orion:creative-fillers", 1, "minecraft:cobblestone");
-        registries.CreativeTabs.AddEntry("orion:creative-fillers", 3, "minecraft:wooden_sword");
-        registries.CreativeTabs.AddEntry("orion:creative-fillers", 4, "minecraft:stick");
+        IContentRegistries registries = PluginHost.Registries.ForPlugin("orion:minimal-items");
+        registries.CreativeTabs.AddEntry("orion:minimal-items", 2, "minecraft:grass_block");
+        registries.CreativeTabs.AddEntry("orion:minimal-items", 2, "minecraft:dirt");
+        registries.CreativeTabs.AddEntry("orion:minimal-items", 2, "minecraft:bedrock");
+        registries.CreativeTabs.AddEntry("orion:minimal-items", 1, "minecraft:cobblestone");
+        registries.CreativeTabs.AddEntry("orion:minimal-items", 3, "minecraft:wooden_sword");
+        registries.CreativeTabs.AddEntry("orion:minimal-items", 4, "minecraft:stick");
 
         byte[] payload = CuratedItemCatalog.GetCreativeContentPayload();
         int offset = 0;
@@ -37,20 +40,20 @@ public sealed class ContentRegistriesTests
         packet.Deserialize(reader);
 
         Assert.Equal(6, packet.Items.Count);
-        Assert.Contains("orion:creative-fillers", CuratedItemCatalog.GetLoadedCreativePlugins());
+        Assert.Contains("orion:minimal-items", CuratedItemCatalog.GetLoadedCreativePlugins());
         Assert.False(CuratedItemCatalog.NonNatureCreativeTabsEmpty);
     }
 
     [Fact]
-    public void CreativeTabs_NatureCategory_Rejected()
+    public void CreativeTabs_NatureCategory_Accepted()
     {
-        IContentRegistries registries = PluginHost.Registries.ForPlugin("p1");
-        registries.CreativeTabs.AddEntry("p1", 2, "minecraft:cobblestone");
+        IContentRegistries registries = PluginHost.Registries.ForPlugin("orion:minimal-items");
+        registries.CreativeTabs.AddEntry("orion:minimal-items", 2, "minecraft:dirt");
 
         _ = CuratedItemCatalog.GetCreativeContentPayload();
-        Assert.DoesNotContain(
+        Assert.Contains(
             CuratedItemCatalog.GetCreativeMenuItems(),
-            i => i.Identifier == "minecraft:cobblestone");
+            i => i.Identifier == "minecraft:dirt");
     }
 
     [Fact]
