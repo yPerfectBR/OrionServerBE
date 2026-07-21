@@ -27,14 +27,13 @@ Spawn Y em void: ajustar documentação (ex. manter `[0, -57, 0]` ou elevar — 
 
 Ordem lógica de load (manifest deps fazem o resto):
 
-1. `orion:minimal-blocks` (+ `orion:minimal-items` se separado)
+1. `orion:minimal-items` (blocos + Nature + fillers de exemplo)
 2. `orion:entity-attributes` → `orion:attributes`
-3. `orion:entity-gravity` / `collision` / `movement` (e air-supply, equipment conforme necessidade)
+3. `orion:entity-gravity` / `collision` / `movement` (e air-supply, equipment conforme necessário)
 4. `orion:player-chunk-rendering` (**obrigatório** para jogar)
 5. `orion:containers` → `orion:inventory` → `orion:block_containers`
 6. `orion:building` / `orion:mining` (opt-in)
-7. `orion:creative-fillers` (opt-in)
-8. `orion:superflat` **somente** se a config usar `generator: superflat`
+7. `orion:superflat` **somente** se o config usa `generator: superflat`
 
 Para terreno jogável hoje: instalar `orion:superflat`, definir `"generator": "superflat"` na dimensão, e apagar `worlds/default` para regenerar chunks. First-run/CI permanecem em `void`.
 
@@ -58,7 +57,7 @@ Sem `Co-authored-by`.
 - [ ] `first-run.sh` produz `generator: void`.
 - [ ] CI fixtures usam void (Logger.Tests / Game.Tests ainda passam — ajustar fixtures se dependiam de camadas superflat).
 - [ ] Doc first-run lista plugins e como ativar superflat.
-- [ ] Boot void + minimal-blocks + chunk-rendering permite join.
+- [ ] Boot void + minimal-items + chunk-rendering permite join.
 
 ## 8. Status
 

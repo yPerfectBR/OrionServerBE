@@ -2,32 +2,32 @@
 
 ## Modelo Orion
 
-- **ItemRegistry**: palette vanilla completa (`item_types.json`) — o cliente substitui a tabela de itens por esse pacote.
-- **CreativeContent**: menu curado — blocos do mundo em **Nature** (`orion/items.json`); outras abas só via `ICreativeTabRegistry.AddEntry` (tipicamente em `IOrionPlugin.Load`).
+- **ItemRegistry**: paleta vanilla completa (`item_types.json`) — o cliente substitui a tabela de itens com este pacote.
+- **CreativeContent**: menu curado — vazio por padrão (`orion/items.json` é `[]`); todas as abas via `ICreativeTabRegistry.AddEntry` (tipicamente em `IOrionPlugin.Load`, ex. `orion:minimal-items`).
 
 ## Requisito mínimo do cliente
 
-O menu criativo do Bedrock indexa itens por **categoria** (Construction, Nature, Equipment, Items).
+A UI criativa do Bedrock indexa entradas por **categoria** (Construction, Nature, Equipment, Items).
 
-Se Construction / Equipment / Items estiverem vazias, o cliente frequentemente mostra o inventário **inteiro vazio**, mesmo com Nature correta.
+Se Construction / Equipment / Items estiverem vazias, o cliente muitas vezes mostra o inventário **inteiro** vazio mesmo com Nature correto.
 
-| Aba | Origem padrão | Conteúdo |
-|-----|---------------|----------|
-| Construction | (vazio) / plugin opt-in | ex.: pedregulho |
-| Nature | `orion/items.json` | blocos ativos do servidor |
-| Equipment | (vazio) / plugin opt-in | ex.: espada de madeira |
-| Items | (vazio) / plugin opt-in | ex.: stick |
+| Aba | Fonte padrão | Conteúdo |
+|-----|--------------|----------|
+| Construction | (vazio) / `orion:minimal-items` | ex. cobblestone |
+| Nature | (vazio) / `orion:minimal-items` | ex. grass, dirt, bedrock |
+| Equipment | (vazio) / `orion:minimal-items` | ex. wooden sword |
+| Items | (vazio) / `orion:minimal-items` | ex. stick |
 
-O Orion **não** carrega plugins por padrão. Sem fillers, o boot emite um aviso apontando para [first-run.md](first-run.md).
+Orion **não** carrega plugins por padrão. Sem fillers, o boot registra um warning apontando para [first-run.md](first-run.md).
 
-## Plugin de exemplo `MinimalInventoryItems`
+## Plugin sample `orion:minimal-items`
 
-Pasta: [`plugins/MinimalInventoryItems/`](../../plugins/MinimalInventoryItems/).
+Repo: [OrionBedrock/orion-minimal-items](https://github.com/OrionBedrock/orion-minimal-items).
 
-É um assembly C# que implementa `IOrionPlugin` e registra os três fillers no `Load()`. Ative com `Plugins.Enabled: true` após compilar o projeto.
+Assembly C# com `IOrionPlugin` que registra os seis blocos do host, Nature e três fillers em `Load()`. Ative com `Plugins.Enabled: true` após o build.
 
-Roadmap de arquitetura (McMaster, eventos, registries, packet hooks, …): [plugins/README.md](plugins/README.md).
+Roadmap de arquitetura: [plugins/README.md](plugins/README.md).
 
-## Adicionar blocos do mundo
+## Adicionando entradas criativas
 
-Edite `src/Protocol/Data/orion/items.json` (`creative: true` por padrão). Rebuild / reinicie o servidor.
+Chame `CreativeTabs.AddEntry(pluginId, category, identifier)` em `Load` (categorias 1–4). Os identifiers precisam existir na paleta vanilla.

@@ -3,7 +3,7 @@
 **Status:** `implemented`  
 **Language twin:** [`../../en_us/plugins/29-worldgen-superflat-plugin.md`](../../en_us/plugins/29-worldgen-superflat-plugin.md)  
 **Depende de:** [22](22-vanilla-extraction-overview.md), [23](23-extraction-sdk-prerequisites.md)  
-**Follow-up:** [28](28-minimal-content-and-empty-core.md) (`orion:minimal-blocks` — deferred)
+**Follow-up:** [28](28-minimal-content-and-empty-core.md) (`orion:minimal-items` — implemented)
 
 ## 1. Goal
 
@@ -16,7 +16,6 @@
 
 - Geradores terrain avançados / biomes.
 - Pregen paralelo obrigatório.
-- Criar `orion:minimal-blocks` nesta fase (ids `minecraft:bedrock|dirt|grass_block` resolvidos pela tabela estática do host).
 
 ## 3. Plugin
 
@@ -26,7 +25,7 @@
 | PackageId | `Orion.Plugins.Superflat` |
 | Repo | `OrionBedrock/orion-superflat` |
 | provides | `orion:superflat` |
-| depend | `[]` (minimal-blocks deferred) |
+| depend | `["orion:minimal-items"]` |
 | API | `WorldGeneratorBase` + `IChunkGenerationContext` |
 
 Camadas (baseY −64): bedrock → 3× dirt → grass_block.
@@ -48,7 +47,7 @@ _ => new VoidGenerator()
 
 - [x] Sem plugin: `Create("superflat")` → `VoidGenerator`.
 - [x] Com registro Api: camadas iguais ao comportamento antigo.
-- [ ] `depend` minimal-blocks — deferred (fase 28).
+- [x] `depend` `orion:minimal-items`.
 - [x] Plugin CI: PackageReferenceTests + smoke boot.
 
 ## 6. Status
