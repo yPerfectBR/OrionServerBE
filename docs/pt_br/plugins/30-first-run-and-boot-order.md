@@ -36,6 +36,8 @@ Ordem lógica de load (manifest deps fazem o resto):
 7. `orion:creative-fillers` (opt-in)
 8. `orion:superflat` **somente** se a config usar `generator: superflat`
 
+Para terreno jogável hoje: instalar `orion:superflat`, definir `"generator": "superflat"` na dimensão, e apagar `worlds/default` para regenerar chunks. First-run/CI permanecem em `void`.
+
 Void puro: itens 1–5 (e traits entity necessários ao player/item) bastam para entrar num mundo vazio.
 
 ## 5. `build-plugins.sh` / deploy
