@@ -59,7 +59,8 @@ jobs:
             src/Server/Server.csproj \
             tests/Orion.Protocol.Tests/Orion.Protocol.Tests.csproj \
             tests/Orion.Logger.Tests/Orion.Logger.Tests.csproj \
-            tests/Orion.World.Tests/Orion.World.Tests.csproj
+            tests/Orion.World.Tests/Orion.World.Tests.csproj \
+            tests/Orion.Game.Tests/Orion.Game.Tests.csproj
           do
             dotnet build "$proj" -c Release --no-restore
           done
@@ -70,7 +71,8 @@ jobs:
           for proj in \
             tests/Orion.Protocol.Tests/Orion.Protocol.Tests.csproj \
             tests/Orion.Logger.Tests/Orion.Logger.Tests.csproj \
-            tests/Orion.World.Tests/Orion.World.Tests.csproj
+            tests/Orion.World.Tests/Orion.World.Tests.csproj \
+            tests/Orion.Game.Tests/Orion.Game.Tests.csproj
           do
             dotnet test "$proj" -c Release --no-build --verbosity normal
           done
