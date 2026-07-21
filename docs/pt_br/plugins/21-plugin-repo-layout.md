@@ -55,7 +55,7 @@ Target pós-build copia a DLL ao lado de `plugin.json`.
 | VanillaAttributes | `orion:attributes` | `orion.attributes.dll` |
 | VanillaBuilding | `orion:building` | `orion.building.dll` |
 | VanillaMining | `orion:mining` | `orion.mining.dll` |
-| MinimalInventoryItems | `orion:creative-fillers` | `orion.creative-fillers.dll` |
+| MinimalItems | `orion:minimal-items` | `orion.minimal-items.dll` |
 
 ## 7. Checklist de migração
 

@@ -57,7 +57,7 @@ flowchart TB
 
 | Fact | Implication |
 |------|-------------|
-| 6 blocks in `BlockRegistry.RegisterFromBedrockStates` | Move all to `orion:minimal-blocks` |
+| 6 blocks in `BlockRegistry.RegisterFromBedrockStates` | Move all to `orion:minimal-items` |
 | Entity/Block/Item/Player traits in Orion assembly | Extract to plugins 24–27 |
 | `orion:attributes` already owns health/hunger + `EntityHurtSignal` | Do not create a parallel `orion:entity-damage` |
 | First-party plugins still `ProjectReference` `Orion.csproj` | Blocked until SDK 11–12 + dogfood 17 |
@@ -93,9 +93,9 @@ flowchart TB
 | Direction / Facing / Cardinal | `orion:block-direction`, `orion:block-facing`, `orion:block-cardinal` |
 | Item durability / debug | `orion:item-durability`, `orion:item-debug` |
 | Player chunk / debug | `orion:player-chunk-rendering`, `orion:player-debug` |
-| 6 blocks + items | `orion:minimal-blocks` (+ `orion:minimal-items` or creative-fillers extension) |
-| SuperFlat | `orion:superflat` (`depend` minimal-blocks) |
-| Already shipped | containers, inventory, block_containers, attributes, building, mining, creative-fillers |
+| 6 blocks + items | `orion:minimal-items` |
+| SuperFlat | `orion:superflat` (`depend` minimal-items) |
+| Already shipped | containers, inventory, block_containers, attributes, building, mining, minimal-items, superflat |
 
 ### Dependency graph (summary)
 
@@ -109,7 +109,7 @@ flowchart LR
   air[entity-air-supply]
   equip[entity-equipment]
   itemEnt[item-entity]
-  minB[minimal-blocks]
+  minB[minimal-items]
   flat[superflat]
 
   mov -.-> grav
@@ -126,7 +126,7 @@ flowchart LR
 2. **Compile** only against NuGet/SDK: `Orion.PluginContracts`, `Orion.Api`, `Orion.Gameplay.Api` (+ `Foo.Api` if any).
 3. **Repo template** matches current plugins: `Plugins-Orion/orion:<id>/`, plugin.json v2, `Directory.Build.props`, `PackageId` `Orion.Plugins.*`, CI/publish workflows (paths + auto-bump), Trusted Publishing only on `OrionBedrock`.
 4. **Commits:** Conventional Commits, granular, **no** `Co-authored-by`; prefer separate PRs `feat(plugins): …` vs `refactor(orion): remove … from core`.
-5. **`air`:** registered by `orion:minimal-blocks` **before** world init (load priority + generators `depend` minimal-blocks). No permanent content stub in core.
+5. **`air`:** registered by `orion:minimal-items` **before** world init (load priority + generators `depend` minimal-items). No permanent content stub in core.
 6. **Damage:** ownership stays on `orion:attributes` (`IEntityHealthService`, hurt/die signals).
 
 ## 8. Mandatory template per new plugin

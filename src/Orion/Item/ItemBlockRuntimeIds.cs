@@ -19,15 +19,9 @@ public static class ItemBlockRuntimeIds
             return curated.BlockStateHash;
         }
 
-        return type.Identifier switch
-        {
-            "minecraft:air" => BedrockBlockStates.Air,
-            "minecraft:grass_block" => BedrockBlockStates.GrassBlock,
-            "minecraft:dirt" => BedrockBlockStates.Dirt,
-            "minecraft:bedrock" => BedrockBlockStates.Bedrock,
-            "minecraft:barrier" => BedrockBlockStates.Barrier,
-            "minecraft:structure_void" => BedrockBlockStates.StructureVoid,
-            _ => 0
-        };
+        // Protocol air fallback when no block/item content plugins are loaded.
+        return string.Equals(type.Identifier, "minecraft:air", StringComparison.Ordinal)
+            ? BedrockBlockStates.Air
+            : 0;
     }
 }

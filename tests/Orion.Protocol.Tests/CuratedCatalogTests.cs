@@ -32,7 +32,7 @@ public sealed class CuratedCatalogTests
     }
 
     [Fact]
-    public void CreativeContent_DefaultsToNatureOnly_WithoutPlugins()
+    public void CreativeContent_DefaultsToEmpty_WithoutPlugins()
     {
         byte[] payload = CuratedItemCatalog.GetCreativeContentPayload();
 
@@ -49,15 +49,8 @@ public sealed class CuratedCatalogTests
         Assert.All(packet.Groups, g => Assert.Equal(string.Empty, g.Name));
         Assert.All(packet.Groups, g => Assert.Equal(0, g.Icon.NetworkId));
 
-        Assert.Equal(3, packet.Items.Count);
-        Assert.Equal(
-            new[] { 2, 3, 7 },
-            packet.Items.Select(i => i.ItemInstance.NetworkId).ToArray());
-        Assert.All(packet.Items, i => Assert.Equal(1u, i.GroupIndex));
-
-        Assert.Equal(
-            ["minecraft:grass_block", "minecraft:dirt", "minecraft:bedrock"],
-            CuratedItemCatalog.GetCreativeMenuItems().Select(i => i.Identifier).ToArray());
+        Assert.Empty(packet.Items);
+        Assert.Empty(CuratedItemCatalog.GetCreativeMenuItems());
         Assert.Empty(CuratedItemCatalog.GetLoadedCreativePlugins());
         Assert.True(CuratedItemCatalog.NonNatureCreativeTabsEmpty);
     }
@@ -66,7 +59,10 @@ public sealed class CuratedCatalogTests
     public void CreativeContent_IncludesRegisteredPluginTabItems()
     {
         CuratedItemCatalog.RegisterCreativeTabEntries(
-            "MinimalInventoryItems",
+            "orion:minimal-items",
+            (2, "minecraft:grass_block"),
+            (2, "minecraft:dirt"),
+            (2, "minecraft:bedrock"),
             (1, "minecraft:cobblestone"),
             (3, "minecraft:wooden_sword"),
             (4, "minecraft:stick"));
@@ -96,26 +92,28 @@ public sealed class CuratedCatalogTests
                 "minecraft:stick"
             ],
             CuratedItemCatalog.GetCreativeMenuItems().Select(i => i.Identifier).ToArray());
-        Assert.Contains("MinimalInventoryItems", CuratedItemCatalog.GetLoadedCreativePlugins());
+        Assert.Contains("orion:minimal-items", CuratedItemCatalog.GetLoadedCreativePlugins());
         Assert.False(CuratedItemCatalog.NonNatureCreativeTabsEmpty);
     }
 
     [Fact]
-    public void Allowlist_MatchesOrionItemsJson_WithoutPlugins()
+    public void Allowlist_EmptyWithoutPlugins()
     {
         CuratedItemCatalog.GetItemRegistryPayload();
         IReadOnlyCollection<string> allowlist = CuratedItemCatalog.GetAllowlistedIdentifiers();
 
-        Assert.Equal(5, allowlist.Count);
-        Assert.Contains("minecraft:grass_block", allowlist);
-        Assert.Contains("minecraft:barrier", allowlist);
-        Assert.DoesNotContain("minecraft:cobblestone", allowlist);
-        Assert.DoesNotContain("minecraft:diamond", allowlist);
+        Assert.Empty(allowlist);
     }
 
     [Fact]
-    public void CreativeContent_GrassDirtBedrockHaveCorrectBlockHashes()
+    public void CreativeContent_GrassDirtBedrockHaveCorrectBlockHashes_WithPluginEntries()
     {
+        CuratedItemCatalog.RegisterCreativeTabEntries(
+            "orion:minimal-items",
+            (2, "minecraft:grass_block"),
+            (2, "minecraft:dirt"),
+            (2, "minecraft:bedrock"));
+
         byte[] payload = CuratedItemCatalog.GetCreativeContentPayload();
 
         int offset = 0;
@@ -138,6 +136,10 @@ public sealed class CuratedCatalogTests
     [Fact]
     public void CreativeContent_ItemDescriptorsIncludeEmptyUserDataTrailer()
     {
+        CuratedItemCatalog.RegisterCreativeTabEntries(
+            "orion:minimal-items",
+            (2, "minecraft:grass_block"));
+
         byte[] payload = CuratedItemCatalog.GetCreativeContentPayload();
 
         int offset = 0;

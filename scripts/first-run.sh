@@ -250,7 +250,7 @@ use os plugins oficiais publicados na organização OrionBedrock:
 
 Repositórios recomendados:
   • orion-containers, orion-inventory, orion-block-containers
-  • orion-attributes, orion-building, orion-mining, orion-creative-fillers
+  • orion-attributes, orion-building, orion-mining, orion-minimal-items
 
 Clone os repos individuais e compile com dotnet build, ou use o repositório
 local Plugins-Orion com build-plugins.sh para copiar as DLLs para plugins/.

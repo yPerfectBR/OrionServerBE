@@ -46,6 +46,11 @@ public sealed class BlockType : Orion.Api.Blocks.IBlockType
         return Registry.TryGetValue(identifier, out BlockType? type) ? type : null;
     }
 
+    internal static void ResetForTests()
+    {
+        Registry.Clear();
+    }
+
     public static BlockType GetOrAir(string identifier)
     {
         return Get(identifier) ?? Get("minecraft:air") ?? new BlockType("minecraft:air");

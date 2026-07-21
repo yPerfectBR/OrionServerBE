@@ -1,23 +1,23 @@
 # Fase 28 — Conteúdo mínimo e core vazio
 
-**Status:** `spec`  
+**Status:** `implemented`  
 **Language twin:** [`../../en_us/plugins/28-minimal-content-and-empty-core.md`](../../en_us/plugins/28-minimal-content-and-empty-core.md)  
-**Depende de:** [22](22-vanilla-extraction-overview.md), [23](23-extraction-sdk-prerequisites.md), [25](25-block-mechanics-plugins.md)  
-**Pré-req código:** `RegisterPluginBlock` / item facades estáveis; freeze de catálogo após `Load`
+**Depends on:** [22](22-vanilla-extraction-overview.md), [23](23-extraction-sdk-prerequisites.md), [25](25-block-mechanics-plugins.md)  
+**Code prerequisite:** `RegisterPluginBlock` / facades de itens estáveis; freeze do catálogo após `Load`
 
-## 1. Goal
+## 1. Objetivo
 
 1. Remover **todos** os registers nativos de [`BlockRegistry.RegisterFromBedrockStates`](../../../src/Orion/Block/BlockRegistry.cs) (6 blocos).
-2. Publicar plugin(s) de conteúdo mínimo que re-registrem esses blocos (e itens / runtime ids associados).
-3. Garantir load order: **`air` (e demais) registrados antes do world init**; generators `depend` este conteúdo.
+2. Embarcar plugin(s) de conteúdo mínimo que re-registrem esses blocos (e itens / runtime ids relacionados).
+3. Garantir ordem de load: **`air` (e o resto) registrados antes do world init**; generators `depend` desse conteúdo.
 
-## 2. Non-goals
+## 2. Não-objetivos
 
 - Paleta vanilla completa.
-- Manter stub permanente de `air` no core (proibido no estado final — ver §4).
+- Stub permanente de `air` no core (proibido no estado final — ver §4).
 - Superflat (fase [29](29-worldgen-superflat-plugin.md)).
 
-## 3. Conteúdo a migrar
+## 3. Conteúdo migrado
 
 | Identifier | Notas |
 |------------|--------|
@@ -26,50 +26,31 @@
 | `minecraft:bedrock` | hardness -1 |
 | `minecraft:dirt` | |
 | `minecraft:grass_block` | |
-| `minecraft:barrier` | não-sólido |
+| `minecraft:barrier` | non-solid |
 
-Também: entradas correlatas em `ItemBlockRuntimeIds` / drops (`BlockDropHelper`) / creative Nature se ainda houver allowlist hardcoded — limpar core e mover para plugin.
+Também: Nature saiu de `orion/items.json`; allowlist de barrier/structure_void; fillers de Construction / Equipment / Items (ex-`creative-fillers`).
 
-## 4. Plugins
+## 4. Plugin (entregue)
 
 | id | PackageId | Repo | provides | depend | Papel |
 |----|-----------|------|----------|--------|-------|
-| `orion:minimal-blocks` | `Orion.Plugins.MinimalBlocks` | `orion-minimal-blocks` | `orion:minimal-blocks` | — (load cedo) | Registra os 6 blocos em `Load` |
-| `orion:minimal-items` | `Orion.Plugins.MinimalItems` | `orion-minimal-items` | `orion:minimal-items` | **minimal-blocks** | Itens/block runtime ids / drops mínimos |
+| `orion:minimal-items` | `Orion.Plugins.MinimalItems` | `orion-minimal-items` | `orion:minimal-items`, `orion:creative-tab-fillers` | — | Seis blocos + Nature + fillers |
 
-**Alternativa aceitável:** um único `orion:minimal-blocks` que também registra itens (menos repos). Preferência doc: **dois plugins** se o footprint de itens crescer; senão um mono-plugin na primeira entrega.
+**Escolha de entrega:** mono-plugin (renomeado de `orion:creative-fillers`). Separar em `minimal-blocks` + `minimal-items` depois se o footprint de itens crescer.
 
-**creative-fillers:** continua preenchendo tabs; pode `softdepend` minimal-items. Não substitui o registro de blocos.
+### Política de `air`
 
-### Política `air`
-
-1. `orion:minimal-blocks` registra `air` no `plugin.Load` (antes do bootstrap de mundo).
-2. Qualquer generator (incl. void builtin / superflat plugin) declara `depend` `orion:minimal-blocks` **ou** o first-run garante o plugin na pasta e o host documenta fail-fast se `air` ausente no freeze.
-3. Core **não** chama `RegisterBlock` para conteúdo.
+1. `orion:minimal-items` registra `air` no `plugin.Load` (antes do bootstrap de mundo).
+2. `orion:superflat` declara `depend` `orion:minimal-items`.
+3. Core **não** faz `RegisterBlock` de conteúdo. `RegisterFromBedrockStates` é no-op.
 
 ## 5. Mudanças no core
 
-- Esvaziar `RegisterFromBedrockStates` (método removido ou no-op documentado).
-- Remover hashes hardcoded de conteúdo da allowlist Nature se existirem.
-- Testes que assumiam dirt/grass nativos passam a carregar o plugin (ou fixtures de teste registram blocos).
+- `RegisterFromBedrockStates` vazio.
+- `orion/items.json` vazio; Nature (categoria 2) aceita de plugins.
+- Allowlist de `/give` é autoritativa mesmo vazia.
+- Testes usam `MinimalContentFixtures` quando McMaster não carrega.
 
-## 6. Commits (exemplo)
+## 6. Status
 
-1. `feat(plugins): add orion:minimal-blocks with six bedrock hashes`
-2. `feat(plugins): add orion:minimal-items runtime id map`
-3. `refactor(orion): remove RegisterFromBedrockStates native content`
-4. `test: catalog empty without minimal-blocks; air present with plugin`
-5. `docs(first-run): note minimal-blocks requirement` (completo na 30)
-
-Sem `Co-authored-by`.
-
-## 7. Acceptance tests
-
-- [ ] Sem plugins: zero blocos de conteúdo (ou só o que a Api definir como impossível — preferir zero + fail claro).
-- [ ] Com `minimal-blocks`: 6 ids resolvem; air presente antes do primeiro chunk.
-- [ ] `orion:superflat` (fase 29) não compila/boot sem minimal-blocks.
-- [ ] NuGet/CI template [22](22-vanilla-extraction-overview.md) §8.
-
-## 8. Status
-
-`spec`
+`implemented`

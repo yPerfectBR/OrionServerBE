@@ -41,7 +41,7 @@ public interface IBlockRegistry
 
 public interface ICreativeTabRegistry
 {
-    /// <summary>Category: 1 Construction, 3 Equipment, 4 Items. Category 2 Nature reserved for core curated world blocks.</summary>
+    /// <summary>Category: 1 Construction, 2 Nature, 3 Equipment, 4 Items.</summary>
     void AddEntry(string pluginId, int category, string identifier);
 }
 
@@ -96,7 +96,7 @@ public interface IWorldInitContext
 ## 4. Boot / runtime sequence
 
 1. `Load`: plugins may enqueue creative/item registrations into a **pending buffer**.
-2. Catalog / `ItemRegistry.EnsureLoaded` consumes buffer + core `orion/items.json`.
+2. Catalog / `ItemRegistry.EnsureLoaded` consumes buffer + optional core `orion/items.json` (may be empty) + plugin tab entries.
 3. World created / pregen.
 4. `OnWorldInitialize`: block/item palette extensions for that world; recipes later.
 5. Join sends ItemRegistry + CreativeContent payloads already built (no mid-session resend — Bedrock crash risk).

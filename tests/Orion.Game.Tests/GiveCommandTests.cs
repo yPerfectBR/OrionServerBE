@@ -1,6 +1,7 @@
 using Orion.Commands;
 using Orion.Commands.List.Operator;
 using Orion.Item;
+using Orion.Block;
 using Orion.Protocol.Enums;
 using Orion.Protocol.Packets;
 using Orion.Protocol.Registry;
@@ -9,8 +10,14 @@ using ProtocolCommandParameter = Orion.Protocol.Types.CommandParameter;
 
 namespace Orion.Game.Tests;
 
+[Collection("ItemCatalog")]
 public sealed class GiveCommandTests
 {
+    public GiveCommandTests()
+    {
+        MinimalContentFixtures.RegisterAll();
+    }
+
     [Fact]
     public void ItemEnum_Options_OnlyIncludeRegisteredGiveableItems()
     {
@@ -53,29 +60,36 @@ public sealed class GiveCommandTests
 
         Assert.Single(packet.DynamicEnums);
         Assert.Equal("Item", packet.DynamicEnums[0].Type);
-        Assert.Equal(5, packet.DynamicEnums[0].Values.Count);
+        // Nature (3) + barrier + structure_void + cobble + sword + stick = 8
+        Assert.Equal(8, packet.DynamicEnums[0].Values.Count);
         Assert.Contains("grass_block", packet.DynamicEnums[0].Values);
         Assert.Contains("dirt", packet.DynamicEnums[0].Values);
-        Assert.DoesNotContain("cobblestone", packet.DynamicEnums[0].Values);
+        Assert.Contains("cobblestone", packet.DynamicEnums[0].Values);
         Assert.DoesNotContain("diamond", packet.DynamicEnums[0].Values);
         Assert.DoesNotContain(packet.Enums, commandEnum => commandEnum.Type == "Item");
     }
 
     [Fact]
-    public void ItemRegistry_CreativeItems_IncludeOnlyCreativeFlaggedItems()
+    public void ItemRegistry_CreativeItems_IncludeMinimalItemsPluginMenu()
     {
         ItemRegistry.EnsureLoaded();
 
-        // CreativeItemNetworkId is 1-based (protocol): grass, dirt, bedrock (Nature only by default).
+        // CreativeItemNetworkId is 1-based: cobble, grass, dirt, bedrock, sword, stick
         Assert.NotNull(ItemType.GetCreativeItem(1));
-        Assert.NotNull(ItemType.GetCreativeItem(2));
-        Assert.NotNull(ItemType.GetCreativeItem(3));
+        Assert.NotNull(ItemType.GetCreativeItem(6));
         Assert.Null(ItemType.GetCreativeItem(0));
-        Assert.Null(ItemType.GetCreativeItem(4));
+        Assert.Null(ItemType.GetCreativeItem(7));
         Assert.Null(ItemType.GetCreativeItem(999));
 
         Assert.Equal(
-            ["minecraft:grass_block", "minecraft:dirt", "minecraft:bedrock"],
+            [
+                "minecraft:cobblestone",
+                "minecraft:grass_block",
+                "minecraft:dirt",
+                "minecraft:bedrock",
+                "minecraft:wooden_sword",
+                "minecraft:stick"
+            ],
             CuratedItemCatalog.GetCreativeMenuItems().Select(i => i.Identifier).ToArray());
     }
 }

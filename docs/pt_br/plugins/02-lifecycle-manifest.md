@@ -27,7 +27,7 @@ Definir um lifecycle determinístico e um manifest **`plugin.json`** para ordena
   "depend": [],
   "softdepend": [],
   "loadbefore": [],
-  "provides": ["orion:creative-tab-fillers"]
+  "provides": ["orion:minimal-items", "orion:creative-tab-fillers"]
 }
 ```
 

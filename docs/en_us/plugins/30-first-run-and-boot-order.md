@@ -27,14 +27,13 @@ Spawn Y in void: adjust docs (keep `[0, -57, 0]` or raise — implementation pic
 
 Logical load order (manifest deps do the rest):
 
-1. `orion:minimal-blocks` (+ `orion:minimal-items` if split)
+1. `orion:minimal-items` (blocks + Nature + sample fillers)
 2. `orion:entity-attributes` → `orion:attributes`
 3. `orion:entity-gravity` / `collision` / `movement` (and air-supply, equipment as needed)
 4. `orion:player-chunk-rendering` (**required** to play)
 5. `orion:containers` → `orion:inventory` → `orion:block_containers`
 6. `orion:building` / `orion:mining` (opt-in)
-7. `orion:creative-fillers` (opt-in)
-8. `orion:superflat` **only** if config uses `generator: superflat`
+7. `orion:superflat` **only** if config uses `generator: superflat`
 
 Pure void: items 1–5 (plus entity traits needed for player/item) are enough to join an empty world.
 
@@ -56,7 +55,7 @@ No `Co-authored-by`.
 - [ ] `first-run.sh` produces `generator: void`.
 - [ ] CI fixtures use void (Logger/Game tests still pass — adjust if they assumed superflat layers).
 - [ ] First-run doc lists plugins and how to enable superflat.
-- [ ] Void boot + minimal-blocks + chunk-rendering allows join.
+- [ ] Void boot + minimal-items + chunk-rendering allows join.
 
 ## 8. Status
 

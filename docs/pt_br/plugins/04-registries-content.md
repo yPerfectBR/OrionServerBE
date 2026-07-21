@@ -59,7 +59,7 @@ public interface IWorldInitContext
 ## 4. Sequência
 
 1. `Load`: enqueue no buffer.
-2. Catálogo consome buffer + `orion/items.json`.
+2. Catálogo consome buffer + `orion/items.json` opcional (pode ser vazio) + entradas de plugins.
 3. Mundo / pregen.
 4. `OnWorldInitialize`: extensões de palette.
 5. Join envia payloads já congelados (sem resend mid-session).

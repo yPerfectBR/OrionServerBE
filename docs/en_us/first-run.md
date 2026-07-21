@@ -1,19 +1,19 @@
 # First run (OrionServer)
 
-Orion starts with a **minimal** creative menu: only Nature blocks from `src/Protocol/Data/orion/items.json` (e.g. grass, dirt, bedrock). Construction, Equipment, and Items stay empty unless a plugin registers fillers.
+Orion starts with an **empty** creative menu and **no** native content blocks. Nature, Construction, Equipment, and Items stay empty until a plugin registers them (typically `orion:minimal-items`).
 
 ## Empty creative menu
 
-Bedrock often shows the **entire** creative inventory as empty when those other tabs have no items — even if Nature is correct. That is a client UI constraint, not a missing Nature packet.
+Bedrock often shows the **entire** creative inventory as empty when Construction / Equipment / Items have no items. That is a client UI constraint.
 
 On boot, if those tabs are still empty, Orion logs a warning pointing here.
 
-## Recommended fix (sample plugin)
+## Recommended fix (`orion:minimal-items`)
 
-1. Build the sample (emits `plugins/orion:creative-fillers/orion.creative-fillers.dll` next to `plugin.json`):
+1. Build the plugin (emits `plugins/orion:minimal-items/orion.minimal-items.dll` next to `plugin.json`):
 
 ```bash
-dotnet build plugins/orion:creative-fillers/OrionCreativeFillers.csproj
+dotnet build plugins/orion:minimal-items/OrionMinimalItems.csproj
 ```
 
 2. Opt in via `config/server.json` (default is **disabled**):
@@ -25,8 +25,10 @@ dotnet build plugins/orion:creative-fillers/OrionCreativeFillers.csproj
 }
 ```
 
-3. Restart. The host loads the plugin **only via McMaster** (folder with `plugin.json`). The sample registers:
+3. Restart. The host loads the plugin **only via McMaster** (folder with `plugin.json`). The plugin registers:
 
+- Six Bedrock blocks (`air`, `structure_void`, `bedrock`, `dirt`, `grass_block`, `barrier`)
+- Nature → grass, dirt, bedrock  
 - Construction → cobblestone  
 - Equipment → wooden sword  
 - Items → stick  
@@ -66,7 +68,7 @@ Load order is resolved from manifest v2 ([plugins/19-manifest-v2.md](plugins/19-
 
 ## Custom fillers
 
-In `IOrionPlugin.Load(IPluginLoadContext)`, call `context.Registries.CreativeTabs.AddEntry(pluginId, category, identifier)` **before** catalog init (server boot already orders this). Do not put Nature (category 2) entries there — edit `orion/items.json`.
+In `IOrionPlugin.Load(IPluginLoadContext)`, call `context.Registries.CreativeTabs.AddEntry(pluginId, category, identifier)` **before** catalog init (server boot already orders this). Categories: 1 Construction, 2 Nature, 3 Equipment, 4 Items. Identifiers must exist in the vanilla item palette.
 
 See: [creative-inventory.md](creative-inventory.md) · [plugins/README.md](plugins/README.md) · [plugins/20-plugin-developer-guide.md](plugins/20-plugin-developer-guide.md).
 
