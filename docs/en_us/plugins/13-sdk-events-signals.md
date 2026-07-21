@@ -108,7 +108,7 @@ public void OnEnable(IPluginContext context)
 | Move/delete `src/Orion/Events/**` public signals | Implementation emits Api types |
 | `SignalEventMap.cs` | Map new signals |
 | `ServerEvent` enum | Extend or diagnostics-only |
-| Emit call sites | Join, damage, VanillaInventory, Building, Mining, Attributes, ItemEntity collect, DropItem |
+| Emit call sites | Join, damage, VanillaInventory, Building, **Mining plugin** (`IServer.Emit`), Attributes, ItemEntity collect, DropItem |
 
 ## 8. Acceptance tests
 
