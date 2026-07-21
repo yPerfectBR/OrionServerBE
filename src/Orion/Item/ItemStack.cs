@@ -33,6 +33,24 @@ public sealed class ItemStack : Orion.Api.Items.IItemStack {
     Orion.Api.Items.IItemStack Orion.Api.Items.IItemStack.Clone(int? count) =>
         Clone(count is null ? null : (ushort)Math.Clamp(count.Value, 0, ushort.MaxValue));
 
+    void Orion.Api.Items.IItemStack.NotifyBrokeBlock(
+        Orion.Api.IPlayer player,
+        Orion.Api.Math.BlockPos blockPosition,
+        int blockFace,
+        int hotBarSlot)
+    {
+        if (player is not Orion.Player.Player hostPlayer)
+        {
+            throw new ArgumentException("Player must be a host player instance.", nameof(player));
+        }
+
+        OnBreakBlock(new ItemBreakBlockDetails(
+            hostPlayer,
+            hotBarSlot,
+            new BlockPos { X = blockPosition.X, Y = blockPosition.Y, Z = blockPosition.Z },
+            blockFace));
+    }
+
 
     public ItemStack(ItemType type, ushort stackSize = 1, uint metadata = 0, ItemInstanceUserData? extraData = null)
     {

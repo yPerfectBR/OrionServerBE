@@ -1,4 +1,5 @@
 using Orion.Api.Blocks;
+using Orion.Api.Events;
 using Orion.Api.Math;
 using Orion.Api.Network;
 
@@ -10,6 +11,9 @@ public interface IServer
     IWorld? DefaultWorld { get; }
     IWorld? GetWorld(string name);
     IReadOnlyCollection<IWorld> Worlds { get; }
+
+    /// <summary>Dispatches a signal to all subscribed plugin handlers (same bus as host Emit).</summary>
+    void Emit(ISignal signal);
 }
 
 public interface IWorld
