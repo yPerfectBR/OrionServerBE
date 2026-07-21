@@ -87,6 +87,7 @@ public sealed class ApiEventsTests
         public string Identifier => "test:food";
         public int NetworkId => 1;
         public int MaxStackSize => 64;
+        public IReadOnlyList<string> Tags { get; } = [];
     }
 
     sealed class StubFoodStack : IItemStack
@@ -102,5 +103,7 @@ public sealed class ApiEventsTests
         public bool CanStackWith(IItemStack other) =>
             other.Type.Identifier == Type.Identifier;
         public IItemStack Clone(int? count = null) => new StubFoodStack { Count = count ?? Count };
+        public void NotifyBrokeBlock(IPlayer player, BlockPos blockPosition, int blockFace = 0, int hotBarSlot = 0) =>
+            _ = (player, blockPosition, blockFace, hotBarSlot);
     }
 }

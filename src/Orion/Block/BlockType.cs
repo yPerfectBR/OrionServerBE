@@ -29,6 +29,7 @@ public sealed class BlockType : Orion.Api.Blocks.IBlockType
     public List<string> States { get; } = [];
     public List<string> Components { get; } = [];
     public List<string> Tags { get; } = [];
+    IReadOnlyList<string> Orion.Api.Blocks.IBlockType.Tags => Tags;
     public List<BlockPermutation> Permutations { get; } = [];
     public IReadOnlyDictionary<string, Type> Traits => _traits;
     private readonly Dictionary<string, Type> _traits = new(StringComparer.Ordinal);

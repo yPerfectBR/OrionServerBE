@@ -22,6 +22,18 @@ public sealed class Block : Orion.Api.Blocks.IBlock
     Orion.Api.Blocks.IBlockType Orion.Api.Blocks.IBlock.Type => Type;
     Orion.Api.Blocks.IBlockPermutation Orion.Api.Blocks.IBlock.Permutation => Permutation;
 
+    public void NotifyBroken(Orion.Api.IPlayer breaker, Orion.Api.Math.BlockPos blockPosition)
+    {
+        if (breaker is not Orion.Player.Player player)
+        {
+            throw new ArgumentException("Breaker must be a host player instance.", nameof(breaker));
+        }
+
+        OnBreak(new BlockBreakDetails(
+            player,
+            new BlockPos { X = blockPosition.X, Y = blockPosition.Y, Z = blockPosition.Z }));
+    }
+
     public Block(BlockType type, BlockPermutation permutation)
     {
         Type = type;

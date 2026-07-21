@@ -39,6 +39,7 @@ public static class BlockRegistry
             RegisterFromBedrockStates();
             FlushPendingPluginBlocks();
             BlockTraitRegistry.RegisterFromAssembly(Assembly.GetExecutingAssembly());
+            Orion.Api.Blocks.Blocks.SetFactory(new BlockFactory());
             _loaded = true;
         }
     }

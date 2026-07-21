@@ -173,6 +173,7 @@ public interface IBlock
 {
     IBlockType Type { get; }
     IBlockPermutation Permutation { get; }
+    void NotifyBroken(IPlayer breaker, BlockPos blockPosition);
 }
 ```
 
@@ -183,11 +184,13 @@ Factory helpers on Orion.Api:
 ```csharp
 public static class Blocks
 {
-    public static IBlockType? GetType(string identifier);
-    public static IBlock? Create(string identifier);
-    public static IBlock? Create(IBlockType type, IBlockPermutation? permutation = null);
+    public static IBlock Create(string identifier);
+    public static IBlock? TryCreate(string identifier);
+    public static IBlockPermutation? TryGetDefaultPermutation(string identifier);
 }
 ```
+
+`IServer.Emit(ISignal)` lets gameplay plugins (e.g. `orion:mining`) dispatch cancellable signals such as `PlayerBreakBlockSignal` without referencing Orion.dll internals.
 
 ### 4.5 Items
 
