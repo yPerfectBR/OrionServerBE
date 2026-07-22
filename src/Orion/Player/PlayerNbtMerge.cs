@@ -14,6 +14,8 @@ public static class PlayerNbtMerge
         CopyRootTag(source, target, "Inventory");
         CopyRootTag(source, target, "SelectedInventorySlot");
         ReplaceTraitById(target, source, InventoryTraitId);
+        ReplaceTraitById(target, source, "equipment");
+        // Legacy NBT may still store the old host type name.
         ReplaceTraitById(target, source, "Orion.Entity.Traits.EntityEquipmentTrait");
     }
 

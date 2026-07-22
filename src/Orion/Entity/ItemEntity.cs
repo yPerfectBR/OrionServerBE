@@ -9,6 +9,13 @@ using Orion.Scheduling;
 using Orion.World;
 using Player = Orion.Player.Player;
 
+// NOTE (Phase 24 vanilla extraction): kept in core on purpose. This class is tightly coupled to
+// internal-only types (ItemStack, raw protocol packets, Server.Sessions, Player.CollectItem,
+// Dimension.GetGameplayPermutation/RemoveEntity) with no Api-only equivalent surface today, and its
+// merge/pickup logic lives directly on this class rather than in a separate trait, so there is
+// nothing shaped like an EntityTraitBase to extract. See plugins/orion:item-entity's README for the
+// full rationale. Gravity/collision/movement for dropped items already come exclusively from the
+// orion:entity-gravity / orion:entity-collision / orion:entity-movement plugins.
 public sealed class ItemEntity : Entity
 {
     public ItemStack Item { get; }

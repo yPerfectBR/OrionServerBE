@@ -36,6 +36,27 @@ public interface IEntity
 
     /// <summary>Kills the entity (marks dead + pending despawn).</summary>
     void Kill(IEntity? killer = null, int? damageCause = null);
+
+    /// <summary>Reads a Bedrock actor flag by name (e.g. <c>Breathing</c>, <c>Sprinting</c>).</summary>
+    bool GetActorFlag(string flag);
+
+    /// <summary>Upserts a Bedrock actor flag by name (e.g. <c>Breathing</c>, <c>Sprinting</c>).</summary>
+    void SetActorFlag(string flag, bool value);
+
+    /// <summary>Whether the entity currently has the given status effect (e.g. <c>WaterBreathing</c>).</summary>
+    bool HasEffect(string effectName);
+
+    /// <summary>
+    /// Authoritative world-position write (e.g. server-side movement/physics plugins).
+    /// Default no-op unless the host overrides it.
+    /// </summary>
+    void SetPosition(Vec3f position) { }
+
+    /// <summary>
+    /// Notifies the entity that a physics/movement tick completed, driving host-side
+    /// follow-up behavior (e.g. item pickup/merge). No-op unless the host overrides it.
+    /// </summary>
+    void NotifyPhysicsTick(bool grounded) { }
 }
 
 public interface IPlayer : IEntity

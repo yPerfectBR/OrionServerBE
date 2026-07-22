@@ -32,6 +32,9 @@ public interface IDimension
     /// <summary>Bedrock difficulty ordinal: 0 Peaceful, 1 Easy, 2 Normal, 3 Hard.</summary>
     int Difficulty { get; }
 
+    /// <summary>Gamerule: whether entities in this dimension take drowning/suffocation damage.</summary>
+    bool DrowningDamage { get; }
+
     IBlock? GetBlock(int x, int y, int z, int layer = 0);
     void SetBlock(int x, int y, int z, IBlock block, int layer = 0, bool dirty = true);
     IBlockPermutation GetPermutation(int x, int y, int z, int layer = 0);

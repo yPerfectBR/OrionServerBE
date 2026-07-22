@@ -569,6 +569,40 @@ public class Entity : IAreaStoredEntity, IAreaEntity, IEntity
         Kill(new EntityDeathOptions(KillerSource: killerEntity, DamageCause: cause));
     }
 
+    bool IEntity.GetActorFlag(string flag)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(flag);
+        return Enum.TryParse(flag, ignoreCase: true, out ActorFlag parsed) && Flags.GetActorFlag(parsed);
+    }
+
+    void IEntity.SetActorFlag(string flag, bool value)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(flag);
+        if (!Enum.TryParse(flag, ignoreCase: true, out ActorFlag parsed))
+        {
+            throw new ArgumentException($"Unknown actor flag '{flag}'.", nameof(flag));
+        }
+
+        Flags.SetActorFlag(parsed, value);
+    }
+
+    bool IEntity.HasEffect(string effectName)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(effectName);
+        return Enum.TryParse(effectName, ignoreCase: true, out EffectType parsed) && HasEffect(parsed);
+    }
+
+    void IEntity.SetPosition(ApiVec3f position)
+    {
+        Position = new Vec3f(position.X, position.Y, position.Z);
+    }
+
+    void IEntity.NotifyPhysicsTick(bool grounded)
+    {
+        ulong tick = Dimension?.World is Tickable tickable ? tickable.TickValue : 0UL;
+        OnPhysicsTick(tick, grounded);
+    }
+
     static float TruncateAttribute(float value) => MathF.Truncate(value * 10000f) / 10000f;
 
     public Vec3f GetHeadLocation()

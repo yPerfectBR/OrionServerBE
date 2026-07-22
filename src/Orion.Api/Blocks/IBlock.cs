@@ -9,6 +9,9 @@ public interface IBlockType
     bool Solid { get; }
     bool Air { get; }
     IReadOnlyList<string> Tags { get; }
+
+    /// <summary>True for liquid blocks (water, lava). Defaults to <c>false</c> unless the host overrides it.</summary>
+    bool Liquid => false;
 }
 
 public interface IBlockPermutation

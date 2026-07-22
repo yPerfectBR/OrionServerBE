@@ -76,6 +76,8 @@ internal sealed class DimensionFacade(Dimension dimension) : IDimension
 
     public int Difficulty => (int)dimension.GetDifficulty();
 
+    public bool DrowningDamage => dimension.Gamerules.DrowningDamage;
+
     public IBlock? GetBlock(int x, int y, int z, int layer = 0) =>
         dimension.GetBlock(x, y, z, layer);
 
