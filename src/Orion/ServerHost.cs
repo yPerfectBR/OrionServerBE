@@ -77,6 +77,7 @@ public sealed class ServerHost : IDisposable
 
         foreach (DimensionConfig dimensionConfig in resolved.Settings.Dimensions)
         {
+            WorldBootstrapValidation.ValidateDimension(dimensionConfig);
             Generator generator = GeneratorFactory.Create(dimensionConfig.Generator);
             world.CreateDimension(
                 dimensionConfig.Identifier,

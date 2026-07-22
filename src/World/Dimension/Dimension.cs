@@ -9,7 +9,7 @@ using ChunkColumn = Orion.World.Chunk.Chunk;
 namespace Orion.World;
 
 /// <summary>
-/// Slim dimension with area-sharded chunk cache, provider I/O, and generator fallback.
+/// Slim dimension with area-sharded chunk cache, provider I/O, and world generator.
 /// </summary>
 public sealed class Dimension : IDisposable
 {

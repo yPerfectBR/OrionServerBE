@@ -66,6 +66,7 @@ public sealed class WorldHost : IDisposable
 
         foreach (DimensionConfig dimensionConfig in resolved.Settings.Dimensions)
         {
+            WorldBootstrapValidation.ValidateDimension(dimensionConfig);
             Generator generator = GeneratorFactory.Create(dimensionConfig.Generator);
             Dimension dimension = world.CreateDimension(
                 dimensionConfig.Identifier,
