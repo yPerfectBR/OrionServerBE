@@ -76,7 +76,7 @@ flowchart TB
 | 23 | [23 — Extraction SDK prerequisites](23-extraction-sdk-prerequisites.md) | Orion.Api / Gameplay.Api gaps | `spec` |
 | 24 | [24 — Entity mechanics](24-entity-mechanics-plugins.md) | Gravity, collision, movement, … | `implemented` |
 | 25 | [25 — Block mechanics](25-block-mechanics-plugins.md) | Direction / facing / cardinal | `implemented` |
-| 26 | [26 — Item mechanics](26-item-mechanics-plugins.md) | Durability / debug | `spec` |
+| 26 | [26 — Item mechanics](26-item-mechanics-plugins.md) | Durability / debug | `implemented` |
 | 27 | [27 — Player mechanics](27-player-mechanics-plugins.md) | Chunk rendering / debug | `spec` |
 | 28 | [28 — Minimal content](28-minimal-content-and-empty-core.md) | 6 blocks → plugin; empty core | `implemented` |
 | 29 | [29 — Superflat plugin](29-worldgen-superflat-plugin.md) | Superflat out of core; void builtin | `implemented` |

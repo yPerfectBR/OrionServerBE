@@ -75,6 +75,7 @@ chore(first-run): default generator to void
 - [x] Traits Entity/Block/Item/Player listados nas fases 24–27 não existem no Orion.dll.
   - Fase 24: traits de mecânica entity extraídos (`ItemEntity` permanece shell no core).
   - Fase 25: traits de orientação de bloco extraídos (`block-direction` / `cardinal` / `facing`).
+  - Fase 26: traits de item durability/debug extraídos (`item-durability` / `item-debug`).
 - [ ] Zero conteúdo em `RegisterFromBedrockStates`.
 - [x] `GeneratorFactory` sem builtin superflat; void default.
 - [x] First-run / `scripts/fixtures` com `generator: void`.
@@ -84,6 +85,7 @@ chore(first-run): default generator to void
 - [x] Docs pt_br + en_us com Status atualizado quando cada fase for `implemented`.
   - Fase 24 marcada `implemented`.
   - Fase 25 marcada `implemented`.
+  - Fase 26 marcada `implemented`.
 
 ## 8. Status
 

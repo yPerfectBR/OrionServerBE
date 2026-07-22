@@ -86,6 +86,17 @@ dotnet build plugins/orion:block-facing/OrionBlockFacing.csproj
 
 `block-cardinal` and `block-facing` softdepend `block-direction` (compile-time reference). Without them, blocks with those states keep the default permutation.
 
+## Item mechanics (phase 26)
+
+Core does **not** include item durability or item-debug traits. When tools need durability binding / debug hooks:
+
+```bash
+dotnet build plugins/orion:item-durability/OrionItemDurability.csproj
+dotnet build plugins/orion:item-debug/OrionItemDebug.csproj
+```
+
+`item-durability` binds via `minecraft:durability` (`ProcessDamage` stub). `item-debug` does not auto-bind to item types (opt-in).
+
 ## Inventory, containers, building, and mining
 
 Core does **not** include player inventory, chest/barrel, block place, or mining. Build:

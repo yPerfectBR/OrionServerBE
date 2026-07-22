@@ -1,6 +1,6 @@
 # Fase 26 — Plugins de mecânica de Item
 
-**Status:** `spec`  
+**Status:** `implemented`  
 **Language twin:** [`../../en_us/plugins/26-item-mechanics-plugins.md`](../../en_us/plugins/26-item-mechanics-plugins.md)  
 **Depende de:** [22](22-vanilla-extraction-overview.md), [23](23-extraction-sdk-prerequisites.md)  
 **Pré-req código:** `ItemTrait` + detail types + item trait registry em `Orion.Api`
@@ -56,10 +56,10 @@ Sem `Co-authored-by`.
 
 ## 7. Acceptance tests
 
-- [ ] Durability/debug só via plugins.
-- [ ] Item registry freeze ainda funciona com traits externos.
-- [ ] Template NuGet/CI conforme [22](22-vanilla-extraction-overview.md) §8.
+- [x] Durability/debug só via plugins.
+- [x] Item registry freeze ainda funciona com traits externos (`ItemTraitBase`).
+- [x] Template NuGet/CI conforme [22](22-vanilla-extraction-overview.md) §8 (Api **0.1.8** only).
 
 ## 8. Status
 
-`spec`
+`implemented` — `orion:item-durability` / `orion:item-debug`; detail types + hooks em `ItemTraitBase`; `TryGetDurability` em Orion.Api **0.1.8**; `ItemTypeDurabilityComponent` permanece no core.

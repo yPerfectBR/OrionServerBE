@@ -75,6 +75,7 @@ chore(first-run): default generator to void
 - [x] Entity/Block/Item/Player traits listed in 24–27 no longer live in Orion.dll.
   - Phase 24 entity mechanic traits extracted (ItemEntity class remains core shell).
   - Phase 25 block orientation traits extracted (`block-direction` / `cardinal` / `facing`).
+  - Phase 26 item durability/debug traits extracted (`item-durability` / `item-debug`).
 - [ ] No content in `RegisterFromBedrockStates`.
 - [x] `GeneratorFactory` without superflat builtin; void default.
 - [x] First-run / `scripts/fixtures` use `generator: void`.
@@ -84,6 +85,7 @@ chore(first-run): default generator to void
 - [x] pt_br + en_us docs Status updated when each phase becomes `implemented`.
   - Phase 24 marked `implemented`.
   - Phase 25 marked `implemented`.
+  - Phase 26 marked `implemented`.
 ## 8. Status
 
 `spec` — use this page as the runbook; check items off as PRs merge.
