@@ -15,12 +15,20 @@ public sealed class ApiWorldGeneratorTests
     }
 
     [Fact]
-    public void Create_UnknownOrSuperflatWithoutPlugin_ReturnsVoid()
+    public void Create_Void_ReturnsVoidGenerator()
     {
         GeneratorFactory.ResetForTests();
         Assert.IsType<VoidGenerator>(GeneratorFactory.Create("void"));
-        Assert.IsType<VoidGenerator>(GeneratorFactory.Create("superflat"));
-        Assert.IsType<VoidGenerator>(GeneratorFactory.Create("unknown-gen"));
+    }
+
+    [Fact]
+    public void Create_UnknownOrEmpty_Throws()
+    {
+        GeneratorFactory.ResetForTests();
+        Assert.Throws<InvalidOperationException>(() => GeneratorFactory.Create("superflat"));
+        Assert.Throws<InvalidOperationException>(() => GeneratorFactory.Create("unknown-gen"));
+        Assert.Throws<InvalidOperationException>(() => GeneratorFactory.Create(""));
+        Assert.Throws<InvalidOperationException>(() => GeneratorFactory.Create("   "));
     }
 
     [Fact]
