@@ -1,5 +1,6 @@
 using System.Collections.Concurrent;
 using System.Diagnostics;
+using Orion.Api.Traits;
 using Orion.Config;
 using Orion.Network;
 using Orion.Player;
@@ -114,7 +115,7 @@ public sealed class SessionWorker
                 continue;
             }
 
-            foreach (Entity.Traits.EntityTrait trait in player.GetTraits())
+            foreach (EntityTraitBase trait in player.GetTraits())
             {
                 if (trait is ISessionTickableTrait sessionTickable)
                 {
