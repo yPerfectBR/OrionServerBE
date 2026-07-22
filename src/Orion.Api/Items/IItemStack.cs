@@ -18,6 +18,9 @@ public interface IItemType
 
     /// <summary>Reads <c>minecraft:use_duration</c> ticks; returns false when absent.</summary>
     bool TryGetUseDurationTicks(out ulong ticks);
+
+    /// <summary>Reads <c>minecraft:durability</c> component data when present.</summary>
+    bool TryGetDurability(out int maxDurability, out int damageChanceMin, out int damageChanceMax);
 }
 
 public interface IItemStack
