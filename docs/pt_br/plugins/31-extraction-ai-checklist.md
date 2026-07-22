@@ -77,17 +77,18 @@ chore(first-run): default generator to void
   - Fase 25: traits de orientação de bloco extraídos (`block-direction` / `cardinal` / `facing`).
   - Fase 26: traits de item durability/debug extraídos (`item-durability` / `item-debug`).
   - Fase 27: traits de player chunk/debug extraídos (`player-chunk-rendering` / `player-debug`).
-- [ ] Zero conteúdo em `RegisterFromBedrockStates`.
+- [x] Zero conteúdo em `RegisterFromBedrockStates`.
 - [x] `GeneratorFactory` sem builtin superflat; void default.
 - [x] First-run / `scripts/fixtures` com `generator: void`.
-- [ ] Todos os novos plugins no padrão NuGet/CI.
-- [ ] First-party sem `ProjectReference` Orion (dogfood [17](17-sdk-vanilla-dogfood.md)).
+- [x] Todos os novos plugins no padrão NuGet/CI.
+- [x] First-party sem `ProjectReference` Orion (dogfood [17](17-sdk-vanilla-dogfood.md)).
 - [ ] Game.Tests + CI development verdes.
 - [x] Docs pt_br + en_us com Status atualizado quando cada fase for `implemented`.
   - Fase 24 marcada `implemented`.
   - Fase 25 marcada `implemented`.
   - Fase 26 marcada `implemented`.
   - Fase 27 marcada `implemented`.
+  - Fases 17 / 22 / 23 marcadas `implemented` (dogfood + overview/pré-reqs da extração).
 
 ## 8. Status
 

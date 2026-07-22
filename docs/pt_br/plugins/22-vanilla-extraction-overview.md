@@ -1,6 +1,6 @@
 # Fase 22 — Visão: extração Vanilla → plugins
 
-**Status:** `spec`  
+**Status:** `implemented`  
 **Language twin:** [`../../en_us/plugins/22-vanilla-extraction-overview.md`](../../en_us/plugins/22-vanilla-extraction-overview.md)  
 **Depende de:** [09](09-sdk-overview.md)–[18](18-sdk-ai-implementation-checklist.md) (SDK), [17](17-sdk-vanilla-dogfood.md), [19](19-manifest-v2.md)–[21](21-plugin-repo-layout.md)  
 **Ordem IA:** [31 — Checklist](31-extraction-ai-checklist.md)
@@ -153,11 +153,11 @@ Repetir em cada fase 24–29:
 
 ## 10. Acceptance (definição de pronto desta fase doc)
 
-- [ ] Docs 22–31 existem em pt_br + en_us.
-- [ ] README do hub lista a seção Extração Vanilla.
-- [ ] Grafo de ids e deps está consistente entre 22 e 24–29.
-- [ ] Nenhuma fase pede API async de generator como bloqueio duro.
+- [x] Docs 22–31 existem em pt_br + en_us.
+- [x] README do hub lista a seção Extração Vanilla.
+- [x] Grafo de ids e deps está consistente entre 22 e 24–29.
+- [x] Nenhuma fase pede API async de generator como bloqueio duro.
 
 ## 11. Status
 
-`spec` — documentação âncora; sem mudança de código só por esta fase.
+`implemented` — train de extração 24–30 entregue; dogfood [17](17-sdk-vanilla-dogfood.md) alinha first-party a PackageReferences do SDK. Série SDK 09–16 permanece documentação separada.

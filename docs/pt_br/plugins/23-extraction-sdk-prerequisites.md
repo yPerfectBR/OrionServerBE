@@ -1,6 +1,6 @@
 # Fase 23 — Pré-requisitos de SDK para extração
 
-**Status:** `spec`  
+**Status:** `implemented`  
 **Language twin:** [`../../en_us/plugins/23-extraction-sdk-prerequisites.md`](../../en_us/plugins/23-extraction-sdk-prerequisites.md)  
 **Depende de:** [09](09-sdk-overview.md)–[15](15-sdk-protocol-escape.md), [22](22-vanilla-extraction-overview.md)  
 **Bloqueia:** [24](24-entity-mechanics-plugins.md)–[29](29-worldgen-superflat-plugin.md) (estado final sem `Orion.csproj`)
@@ -80,12 +80,12 @@ Sem `Co-authored-by`.
 
 ## 7. Acceptance tests
 
-- [ ] `Orion.Api` e `Orion.Gameplay.Api` existem como projetos packable.
-- [ ] Interfaces de gameplay não vivem só em `Orion.dll`.
-- [ ] Trait base + detail types compilam a partir do NuGet Api.
-- [ ] Plugin sample externo (sem clone) registra um BlockTrait e um generator.
-- [ ] Documentado: async gen **não** é requisito.
+- [x] `Orion.Api` e `Orion.Gameplay.Api` existem como projetos packable.
+- [x] Interfaces de gameplay não vivem só em `Orion.dll`.
+- [x] Trait base + detail types compilam a partir do NuGet Api.
+- [x] Plugin sample externo (sem clone) registra um BlockTrait e um generator.
+- [x] Documentado: async gen **não** é requisito.
 
 ## 8. Status
 
-`spec` — pré-requisito documental da extração.
+`implemented` — gaps de Api/Gameplay.Api que bloqueavam a extração fechados (NuGet packable, registries de traits, detail types, generators sync). Docs da série SDK 09–16 permanecem `spec` onde ainda não reescritas.
