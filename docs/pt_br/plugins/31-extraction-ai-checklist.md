@@ -76,6 +76,7 @@ chore(first-run): default generator to void
   - Fase 24: traits de mecânica entity extraídos (`ItemEntity` permanece shell no core).
   - Fase 25: traits de orientação de bloco extraídos (`block-direction` / `cardinal` / `facing`).
   - Fase 26: traits de item durability/debug extraídos (`item-durability` / `item-debug`).
+  - Fase 27: traits de player chunk/debug extraídos (`player-chunk-rendering` / `player-debug`).
 - [ ] Zero conteúdo em `RegisterFromBedrockStates`.
 - [x] `GeneratorFactory` sem builtin superflat; void default.
 - [x] First-run / `scripts/fixtures` com `generator: void`.
@@ -86,6 +87,7 @@ chore(first-run): default generator to void
   - Fase 24 marcada `implemented`.
   - Fase 25 marcada `implemented`.
   - Fase 26 marcada `implemented`.
+  - Fase 27 marcada `implemented`.
 
 ## 8. Status
 

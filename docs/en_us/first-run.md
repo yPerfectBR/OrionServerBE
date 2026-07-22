@@ -97,6 +97,17 @@ dotnet build plugins/orion:item-debug/OrionItemDebug.csproj
 
 `item-durability` binds via `minecraft:durability` (`ProcessDamage` stub). `item-debug` does not auto-bind to item types (opt-in).
 
+## Player chunk / debug (phase 27)
+
+Core does **not** stream chunks or attach the debug tip HUD. **`orion:player-chunk-rendering` is required** for a playable world (without it, join works but no LevelChunk stream). `orion:player-debug` is optional (`/debughud`).
+
+```bash
+dotnet build plugins/orion:player-chunk-rendering/OrionPlayerChunkRendering.csproj
+dotnet build plugins/orion:player-debug/OrionPlayerDebug.csproj
+```
+
+Traits bind to `minecraft:player` via `PlayerTraits`. Host call sites use `IPlayerChunkView` / `IPlayerDebugHud` (Orion.Api **0.1.9**).
+
 ## Inventory, containers, building, and mining
 
 Core does **not** include player inventory, chest/barrel, block place, or mining. Build:

@@ -105,7 +105,7 @@ After teleport (full reload): hold until the client is at the destination (or ti
 | File | Role |
 |------|------|
 | `Player/Player.cs` | `Teleport`, `ResyncAfterRegionHandoff`. |
-| `Player/Traits/PlayerChunkRenderingTrait.cs` | Soft/full `OnTeleport`, hold, `AfterRegionHandoff`, visibility. |
+| `orion:player-chunk-rendering` (`IPlayerChunkView`) | Soft/full `OnTeleport`, hold, `AfterRegionHandoff`, visibility. |
 | `Network/Handlers/PlayerAuthInput.cs` | Movement accept, grace, `MoveActorDelta`, border. |
 | `Scheduling/AreaBorderTransfer.cs` | `TryAfterMove` / `TryAfterTeleport`. |
 | `Scheduling/CrossAreaTransferHandler.cs` | Prepare/complete + in-flight + resync. |

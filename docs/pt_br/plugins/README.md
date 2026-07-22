@@ -77,7 +77,7 @@ flowchart TB
 | 24 | [24 — Mecânicas Entity](24-entity-mechanics-plugins.md) | Gravity, collision, movement, … | `implemented` |
 | 25 | [25 — Mecânicas Block](25-block-mechanics-plugins.md) | Direction / facing / cardinal | `implemented` |
 | 26 | [26 — Mecânicas Item](26-item-mechanics-plugins.md) | Durability / debug | `implemented` |
-| 27 | [27 — Mecânicas Player](27-player-mechanics-plugins.md) | Chunk rendering / debug | `spec` |
+| 27 | [27 — Mecânicas Player](27-player-mechanics-plugins.md) | Chunk rendering / debug | `implemented` |
 | 28 | [28 — Conteúdo mínimo](28-minimal-content-and-empty-core.md) | 6 blocos → plugin; core vazio | `implemented` |
 | 29 | [29 — Superflat plugin](29-worldgen-superflat-plugin.md) | Superflat fora do core; void builtin | `implemented` |
 | 30 | [30 — First-run void](30-first-run-and-boot-order.md) | Default void + set mínimo | `implemented` |

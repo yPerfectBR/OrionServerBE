@@ -99,7 +99,7 @@ Converter no servidor: `ItemStack.FromNetworkStack(NetworkItemStackDescriptor)` 
 | Entidade | `src/Orion/Entity/ItemEntity.cs` |
 | Tick | `src/Orion/Scheduling/AreaWorker.cs` |
 | Broadcast | `src/Orion/Network/BroadcastService.cs`, `DimensionGameplayExtensions.GetPacketPosition` |
-| Visibilidade | `src/Orion/Player/Traits/PlayerChunkRenderingTrait.cs` |
+| Visibilidade | `orion:player-chunk-rendering` (`IPlayerChunkView`) |
 
 ## Checklist de regressão
 

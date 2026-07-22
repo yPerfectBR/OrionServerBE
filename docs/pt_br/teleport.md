@@ -105,7 +105,7 @@ Regra pós-teleport (full reload): hold até o cliente estar no destino (ou time
 | Arquivo | Papel |
 |---------|--------|
 | `Player/Player.cs` | `Teleport`, `ResyncAfterRegionHandoff`. |
-| `Player/Traits/PlayerChunkRenderingTrait.cs` | Soft/full `OnTeleport`, hold, `AfterRegionHandoff`, visibilidade. |
+| `orion:player-chunk-rendering` (`IPlayerChunkView`) | Soft/full `OnTeleport`, hold, `AfterRegionHandoff`, visibilidade. |
 | `Network/Handlers/PlayerAuthInput.cs` | Aceite de movimento, grace, `MoveActorDelta`, borda. |
 | `Scheduling/AreaBorderTransfer.cs` | `TryAfterMove` / `TryAfterTeleport`. |
 | `Scheduling/CrossAreaTransferHandler.cs` | Prepare/complete + in-flight + resync. |

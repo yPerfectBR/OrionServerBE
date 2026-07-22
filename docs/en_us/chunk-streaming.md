@@ -47,13 +47,13 @@ When the client sends `RequestChunkRadius`:
 2. `maxChebyshev = MaxChebyshevForClientCircle(clientMax)`.
 3. `R = clamp(requested, 4, min(server MaxViewDistance, maxChebyshev))`.
 4. Send `UpdateChunkRadius` (`ChunkRadiusUpdated`) with `SquareToCircle(R)`.
-5. Call `PlayerChunkRenderingTrait.ApplyViewDistance(R)`.
+5. Call `IPlayerChunkView.ApplyViewDistance(R)` (plugin trait `orion:player-chunk-rendering`).
 
 Changing render distance **while already logged in** re-runs this path. The high-distance void was not hot-reload itself: it was clamping only the circle to `clientMax` while keeping a Chebyshev stream that was too large.
 
 ## Publisher (`NetworkChunkPublisherUpdate`)
 
-Trait: `src/Orion/Player/Traits/PlayerChunkRenderingTrait.cs`
+Trait: plugin `orion:player-chunk-rendering` (`PlayerChunkRenderingTrait`, Api `IPlayerChunkView`).
 
 - Position = player's current block (X/Y/Z).
 - `Radius` = `PublisherRadiusBlocks(ViewDistance)`.
@@ -89,7 +89,7 @@ Ownership and peer details: [area-threading.md](area-threading.md). After `/tp` 
 
 ## Debug
 
-The tip HUD (`DebugTrait`) may show a line from `FormatDebugHudLine()`:
+The tip HUD (`orion:player-debug`) may show a line from `FormatDebugHudLine()`:
 
 ```text
 view vd=18 pub=432b chunk=(6,-1) loaded=1369/1369 req=0 ready=0 scan=19/18 started=True

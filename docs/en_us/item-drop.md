@@ -99,7 +99,7 @@ Server conversion: `ItemStack.FromNetworkStack(NetworkItemStackDescriptor)` (and
 | Entity | `src/Orion/Entity/ItemEntity.cs` |
 | Tick | `src/Orion/Scheduling/AreaWorker.cs` |
 | Broadcast | `src/Orion/Network/BroadcastService.cs`, `DimensionGameplayExtensions.GetPacketPosition` |
-| Visibility | `src/Orion/Player/Traits/PlayerChunkRenderingTrait.cs` |
+| Visibility | `orion:player-chunk-rendering` (`IPlayerChunkView`) |
 
 ## Regression checklist
 
