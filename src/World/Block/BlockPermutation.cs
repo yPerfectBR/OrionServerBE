@@ -5,6 +5,7 @@ namespace Orion.World.Block;
 
 /// <summary>
 /// Minimal block permutation wrapper over curated Bedrock runtime IDs.
+/// Unknown identifiers / network ids fail hard (no air / unknown fallback).
 /// </summary>
 public readonly struct BlockPermutation : IEquatable<BlockPermutation>
 {
@@ -28,15 +29,30 @@ public readonly struct BlockPermutation : IEquatable<BlockPermutation>
 
     public static BlockPermutation Air => Resolve(BedrockBlockStates.Air);
 
-    public static BlockPermutation Resolve(int networkId) =>
-        ByNetworkId.TryGetValue(networkId, out BlockPermutation known)
-            ? known
-            : new BlockPermutation { NetworkId = networkId, Identifier = "minecraft:unknown" };
+    public static BlockPermutation Resolve(int networkId)
+    {
+        if (ByNetworkId.TryGetValue(networkId, out BlockPermutation known))
+        {
+            return known;
+        }
 
-    public static BlockPermutation Resolve(string identifier) =>
-        ByIdentifier.TryGetValue(identifier, out BlockPermutation known)
-            ? known
-            : Air;
+        throw new InvalidOperationException($"Block network id '{networkId}' does not exist.");
+    }
+
+    public static BlockPermutation Resolve(string identifier)
+    {
+        if (string.IsNullOrWhiteSpace(identifier))
+        {
+            throw new InvalidOperationException("Block identifier is invalid: value is empty.");
+        }
+
+        if (ByIdentifier.TryGetValue(identifier, out BlockPermutation known))
+        {
+            return known;
+        }
+
+        throw new InvalidOperationException($"Block '{identifier}' does not exist.");
+    }
 
     public static CompoundTag ToCompound(BlockPermutation permutation)
     {

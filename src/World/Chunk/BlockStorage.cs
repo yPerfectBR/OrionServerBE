@@ -37,7 +37,10 @@ public sealed class BlockStorage
     public int GetState(int bx, int by, int bz)
     {
         int paletteIndex = Blocks[GetIndex(bx, by, bz)];
-        return (uint)paletteIndex < (uint)Palette.Count ? Palette[paletteIndex] : Air;
+        return (uint)paletteIndex < (uint)Palette.Count
+            ? Palette[paletteIndex]
+            : throw new InvalidOperationException(
+                $"Block storage palette index {paletteIndex} is out of range (size {Palette.Count}).");
     }
 
     public void SetState(int bx, int by, int bz, int state)

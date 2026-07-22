@@ -1,6 +1,5 @@
 using System.Buffers;
 using Orion.Config;
-using WorldLogger = Orion.Logger.Logger;
 using Orion.Protocol.Enums;
 using Orion.World.Provider.Storage;
 using BinaryReader = Basalt.Binary.BinaryReader;
@@ -29,12 +28,7 @@ internal sealed class ChunkStore
             }
         }
 
-        ChunkColumn? chunk = DecodeChunk(terrain, dimensionType, x, z);
-        if (chunk is null)
-        {
-            return null;
-        }
-
+        ChunkColumn chunk = DecodeChunk(terrain, dimensionType, x, z);
         chunk.Dirty = false;
         return chunk;
     }
@@ -59,13 +53,18 @@ internal sealed class ChunkStore
         return data is { Length: > 0 } ? data : null;
     }
 
-    private static ChunkColumn? DecodeChunk(byte[] terrain, DimensionType dimensionType, int x, int z)
+    private static ChunkColumn DecodeChunk(byte[] terrain, DimensionType dimensionType, int x, int z)
     {
         int offset = 0;
         BinaryReader reader = new(terrain, ref offset);
         try
         {
             return ChunkColumn.Deserialize(dimensionType, x, z, reader, nbt: true);
+        }
+        catch (InvalidOperationException)
+        {
+            // Unknown blocks / invalid content — do not soft-fallback or regenerate.
+            throw;
         }
         catch (Exception namedBiomeException)
         {
@@ -75,6 +74,10 @@ internal sealed class ChunkStore
             {
                 return ChunkColumn.Deserialize(dimensionType, x, z, reader, nbt: true, biomeNbt: false);
             }
+            catch (InvalidOperationException)
+            {
+                throw;
+            }
             catch
             {
                 offset = 0;
@@ -83,10 +86,15 @@ internal sealed class ChunkStore
                 {
                     return ChunkColumn.Deserialize(dimensionType, x, z, reader);
                 }
-                catch
+                catch (InvalidOperationException)
                 {
-                    WorldLogger.Warn(LogCategory.World, "Failed loading chunk {0},{1} in {2}: {3}", x, z, dimensionType, namedBiomeException.Message);
-                    return null;
+                    throw;
+                }
+                catch (Exception finalException)
+                {
+                    throw new InvalidOperationException(
+                        $"Failed loading chunk {x},{z} in {dimensionType}: {namedBiomeException.Message}",
+                        finalException);
                 }
             }
         }
