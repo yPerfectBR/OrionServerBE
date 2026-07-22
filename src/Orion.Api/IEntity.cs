@@ -68,6 +68,8 @@ public interface IPlayer : IEntity
     bool Spawned { get; }
     bool IsOperator { get; }
     bool IsFlying { get; }
+    float Yaw { get; }
+    float Pitch { get; }
     Gamemode Gamemode { get; }
     void SetGamemode(Gamemode gamemode);
     void SendMessage(string message);

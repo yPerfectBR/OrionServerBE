@@ -27,6 +27,11 @@ public interface IBlock
 
     /// <summary>Triggers host break side-effects (drops / block traits). Call after a successful break.</summary>
     void NotifyBroken(IPlayer breaker, BlockPos blockPosition);
+
+    bool TryGetStateInt(string key, out int value);
+    bool TryGetStateString(string key, out string value);
+    void SetStateInt(string key, int value);
+    void SetStateString(string key, string value);
 }
 
 /// <summary>Host-registered factory for creating blocks without referencing Orion.dll.</summary>
