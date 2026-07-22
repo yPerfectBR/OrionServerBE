@@ -111,6 +111,59 @@ public sealed class ItemType : Orion.Api.Items.IItemType
         return Components.TryGetComponentProperties(component, out properties);
     }
 
+    public bool TryGetFood(
+        out int nutrition,
+        out float saturationModifier,
+        out bool canAlwaysEat,
+        out string? usingConvertsTo)
+    {
+        ItemTypeFoodComponent? food = Components.GetComponent<ItemTypeFoodComponent>();
+        if (food is null)
+        {
+            nutrition = 0;
+            saturationModifier = 0f;
+            canAlwaysEat = false;
+            usingConvertsTo = null;
+            return false;
+        }
+
+        nutrition = food.GetNutrition();
+        saturationModifier = food.GetSaturationModifier();
+        canAlwaysEat = food.CanAlwaysEat();
+        string converts = food.GetUsingConvertsTo();
+        usingConvertsTo = string.IsNullOrWhiteSpace(converts) ? null : converts;
+        return true;
+    }
+
+    public bool TryGetUseDurationTicks(out ulong ticks)
+    {
+        ticks = 0UL;
+
+        if (TryGetComponentProperties("minecraft:use_duration", out CompoundTag durationTag))
+        {
+            int value = durationTag.Get<IntTag>("value")?.Value
+                        ?? durationTag.Get<IntTag>("use_duration")?.Value
+                        ?? 0;
+            if (value > 0)
+            {
+                ticks = (ulong)value;
+                return true;
+            }
+        }
+
+        CompoundTag? components = Properties.Get<CompoundTag>("components");
+        CompoundTag? itemProperties = components?.Get<CompoundTag>("item_properties")
+                                      ?? components?.Get<CompoundTag>("minecraft:item_properties");
+        IntTag? useDuration = itemProperties?.Get<IntTag>("use_duration");
+        if (useDuration is not null && useDuration.Value > 0)
+        {
+            ticks = (ulong)useDuration.Value;
+            return true;
+        }
+
+        return false;
+    }
+
     public static void EnsureRegistryCapacity(int capacity)
     {
         Registry.EnsureCapacity(capacity);

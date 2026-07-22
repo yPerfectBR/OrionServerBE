@@ -11,6 +11,7 @@ using ProtocolVec3f = Orion.Protocol.Types.Vec3f;
 using ApiSpawnOptions = Orion.Api.EntitySpawnOptions;
 using CoreSpawnOptions = Orion.Entity.Traits.Types.EntitySpawnOptions;
 using WorldInstance = Orion.World.World;
+using Tickable = Orion.World.Tickable;
 
 namespace Orion.Plugins.Api;
 
@@ -69,6 +70,11 @@ internal sealed class DimensionFacade(Dimension dimension) : IDimension
         dimension.World is null
             ? throw new InvalidOperationException("Dimension is not attached to a world.")
             : WorldApi.For(dimension.World);
+
+    public ulong CurrentTick =>
+        dimension.World is Tickable tickable ? tickable.TickValue : 0UL;
+
+    public int Difficulty => (int)dimension.GetDifficulty();
 
     public IBlock? GetBlock(int x, int y, int z, int layer = 0) =>
         dimension.GetBlock(x, y, z, layer);

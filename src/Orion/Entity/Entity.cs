@@ -465,6 +465,18 @@ public class Entity : IAreaStoredEntity, IAreaEntity, IEntity
 
     ApiVec3f IEntity.Position => new(Position.X, Position.Y, Position.Z);
 
+    ApiVec3f IEntity.Velocity
+    {
+        get => new(Velocity.X, Velocity.Y, Velocity.Z);
+        set => Velocity = new Vec3f(value.X, value.Y, value.Z);
+    }
+
+    bool IEntity.IsAlive => IsAlive;
+
+    bool IEntity.IsSprinting => IsSprinting;
+
+    bool IEntity.IsSwimming => IsSwimming;
+
     T? IEntity.GetTrait<T>() where T : class
     {
         for (int i = 0; i < _traits.Count; i++)
@@ -477,6 +489,87 @@ public class Entity : IAreaStoredEntity, IAreaEntity, IEntity
 
         return null;
     }
+
+    void IEntity.SetAttribute(string name, float min, float max, float current, float defaultValue)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(name);
+        AttributeName attributeName = AttributeNameHelper.FromProtocolString(name);
+        if (attributeName == AttributeName.Unknown)
+        {
+            throw new ArgumentException($"Unknown attribute '{name}'.", nameof(name));
+        }
+
+        float tMin = TruncateAttribute(min);
+        float tMax = TruncateAttribute(max);
+        float tDefault = TruncateAttribute(defaultValue);
+        float tCurrent = TruncateAttribute(Math.Clamp(current, tMin, tMax));
+
+        Protocol.Types.Attribute attribute = Attributes.GetAttribute(attributeName)
+            ?? new Protocol.Types.Attribute(tMin, tMax, tCurrent, tDefault, attributeName);
+        attribute.Min = tMin;
+        attribute.Max = tMax;
+        attribute.DefaultMin = tMin;
+        attribute.DefaultMax = tMax;
+        attribute.Default = tDefault;
+        attribute.Current = tCurrent;
+        Attributes.SetAttribute(attribute);
+        AttributesDirty = true;
+    }
+
+    bool IEntity.TryGetAttribute(
+        string name,
+        out float min,
+        out float max,
+        out float current,
+        out float defaultValue)
+    {
+        min = 0f;
+        max = 0f;
+        current = 0f;
+        defaultValue = 0f;
+
+        if (string.IsNullOrWhiteSpace(name))
+        {
+            return false;
+        }
+
+        AttributeName attributeName = AttributeNameHelper.FromProtocolString(name);
+        if (attributeName == AttributeName.Unknown)
+        {
+            return false;
+        }
+
+        Protocol.Types.Attribute? attribute = Attributes.GetAttribute(attributeName);
+        if (attribute is null)
+        {
+            return false;
+        }
+
+        min = attribute.Min;
+        max = attribute.Max;
+        current = attribute.Current;
+        defaultValue = attribute.Default;
+        return true;
+    }
+
+    void IEntity.SyncAttributes()
+    {
+        if (this is Player player)
+        {
+            player.SendAttributes();
+        }
+    }
+
+    void IEntity.Kill(IEntity? killer, int? damageCause)
+    {
+        Entity? killerEntity = killer as Entity;
+        ActorDamageCause? cause = damageCause.HasValue
+            ? (ActorDamageCause)damageCause.Value
+            : null;
+        Kill(new EntityDeathOptions(KillerSource: killerEntity, DamageCause: cause));
+    }
+
+    static float TruncateAttribute(float value) => MathF.Truncate(value * 10000f) / 10000f;
 
     public Vec3f GetHeadLocation()
     {

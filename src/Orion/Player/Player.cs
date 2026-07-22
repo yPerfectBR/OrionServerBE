@@ -697,6 +697,8 @@ public readonly string Username;
 
     Guid IPlayer.Uuid => Uuid;
 
+    bool IPlayer.IsFlying => Abilities.GetAbility(AbilityIndex.Flying);
+
     void IPlayer.SetGamemode(ApiGamemode gamemode) =>
         SetGamemode((ProtocolGamemode)(int)gamemode);
 
