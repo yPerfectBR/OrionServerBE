@@ -1,8 +1,8 @@
 namespace Orion.Block.Traits;
 
+using Orion.Api.Blocks;
+using Orion.Api.Traits;
 using Orion.Block.Components;
-using Orion.Block.Traits.Types;
-using Orion.Block.Types;
 
 
 public sealed class FacingDirectionTrait : DirectionTrait
@@ -30,7 +30,7 @@ public sealed class FacingDirectionTrait : DirectionTrait
             return;
         }
 
-        CardinalDirection direction = BlockTypeRotationComponent.GetCardinalDirection(details.Player.Yaw);
+        CardinalDirection direction = BlockRotation.GetCardinalDirection(details.Player.Yaw);
         switch (direction)
         {
             case CardinalDirection.North:
@@ -50,30 +50,11 @@ public sealed class FacingDirectionTrait : DirectionTrait
 
     public new FacingDirection GetDirection()
     {
-        if (!Block.Permutation.State.TryGetValue(State, out BlockStateValue value) || value.Kind != 0)
-        {
-            return FacingDirection.South;
-        }
-
-        return (FacingDirection)(int)value.AsNumber();
+        return Block.TryGetStateInt(State, out int value)
+            ? (FacingDirection)value
+            : FacingDirection.South;
     }
 
-    public void SetDirection(FacingDirection direction)
-    {
-        BlockState state = [];
-        foreach ((string key, BlockStateValue value) in Block.Permutation.State)
-        {
-            state[key] = value;
-        }
-
-        state[State] = (int)direction;
-        Block.SetPermutation(Block.Type.GetPermutation(state));
-    }
+    public void SetDirection(FacingDirection direction) =>
+        Block.SetStateInt(State, (int)direction);
 }
-
-
-
-
-
-
-

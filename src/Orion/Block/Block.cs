@@ -5,15 +5,18 @@ using Orion.Protocol.Enums;
 using Orion.Protocol.Types;
 using Orion.Entity;
 using Orion.Entity.Traits.Types;
+using Orion.Api.Traits;
 using Orion.Block.Traits;
 using Orion.Block.Traits.Types;
+using Orion.Block.Types;
 using Orion.Item;
+using ApiBlockPlaceDetails = Orion.Api.Traits.BlockPlaceDetails;
 
 
 
 public sealed class Block : Orion.Api.Blocks.IBlock
 {
-    private readonly List<BlockTrait> _traits = [];
+    private readonly List<BlockTraitBase> _traits = [];
 
     public BlockType Type { get; }
     public BlockPermutation Permutation { get; private set; }
@@ -34,6 +37,46 @@ public sealed class Block : Orion.Api.Blocks.IBlock
             new BlockPos { X = blockPosition.X, Y = blockPosition.Y, Z = blockPosition.Z }));
     }
 
+    public bool TryGetStateInt(string key, out int value)
+    {
+        if (Permutation.State.TryGetValue(key, out BlockStateValue state) && state.Kind == 0)
+        {
+            value = (int)state.AsNumber();
+            return true;
+        }
+
+        value = 0;
+        return false;
+    }
+
+    public bool TryGetStateString(string key, out string value)
+    {
+        if (Permutation.State.TryGetValue(key, out BlockStateValue state) && state.Kind == 1)
+        {
+            value = state.AsString();
+            return true;
+        }
+
+        value = "";
+        return false;
+    }
+
+    public void SetStateInt(string key, int value) => SetState(key, value);
+
+    public void SetStateString(string key, string value) => SetState(key, value);
+
+    void SetState(string key, BlockStateValue value)
+    {
+        BlockState state = [];
+        foreach ((string existingKey, BlockStateValue existing) in Permutation.State)
+        {
+            state[existingKey] = existing;
+        }
+
+        state[key] = value;
+        SetPermutation(Type.GetPermutation(state));
+    }
+
     public Block(BlockType type, BlockPermutation permutation)
     {
         Type = type;
@@ -41,7 +84,7 @@ public sealed class Block : Orion.Api.Blocks.IBlock
 
         foreach (Type traitType in Type.Traits.Values)
         {
-            if (Activator.CreateInstance(traitType, this) is BlockTrait trait)
+            if (Activator.CreateInstance(traitType, this) is BlockTraitBase trait)
             {
                 AddTrait(trait);
             }
@@ -67,7 +110,7 @@ public sealed class Block : Orion.Api.Blocks.IBlock
         Permutation = permutation;
     }
 
-    public T AddTrait<T>(T trait) where T : BlockTrait
+    public T AddTrait<T>(T trait) where T : BlockTraitBase
     {
         ArgumentNullException.ThrowIfNull(trait);
         if (GetTrait(trait.Identifier) is not null)
@@ -80,12 +123,12 @@ public sealed class Block : Orion.Api.Blocks.IBlock
         return trait;
     }
 
-    public bool HasTrait<T>() where T : BlockTrait
+    public bool HasTrait<T>() where T : BlockTraitBase
     {
         return GetTrait<T>() is not null;
     }
 
-    public T? GetTrait<T>() where T : BlockTrait
+    public T? GetTrait<T>() where T : BlockTraitBase
     {
         for (int i = 0; i < _traits.Count; i++)
         {
@@ -98,7 +141,7 @@ public sealed class Block : Orion.Api.Blocks.IBlock
         return null;
     }
 
-    public void OnPlace(BlockPlaceDetails details)
+    public void OnPlace(ApiBlockPlaceDetails details)
     {
         for (int i = 0; i < _traits.Count; i++)
         {
@@ -129,7 +172,10 @@ public sealed class Block : Orion.Api.Blocks.IBlock
 
         for (int i = 0; i < _traits.Count; i++)
         {
-            _traits[i].OnBreak(details);
+            if (_traits[i] is BlockTrait hostTrait)
+            {
+                hostTrait.OnBreak(details);
+            }
         }
     }
 
@@ -137,7 +183,10 @@ public sealed class Block : Orion.Api.Blocks.IBlock
     {
         for (int i = 0; i < _traits.Count; i++)
         {
-            _traits[i].OnInteract(details);
+            if (_traits[i] is BlockTrait hostTrait)
+            {
+                hostTrait.OnInteract(details);
+            }
         }
     }
 
@@ -145,7 +194,10 @@ public sealed class Block : Orion.Api.Blocks.IBlock
     {
         for (int i = 0; i < _traits.Count; i++)
         {
-            _traits[i].OnTick(details);
+            if (_traits[i] is BlockTrait hostTrait)
+            {
+                hostTrait.OnTick(details);
+            }
         }
     }
 
@@ -153,7 +205,10 @@ public sealed class Block : Orion.Api.Blocks.IBlock
     {
         for (int i = 0; i < _traits.Count; i++)
         {
-            _traits[i].OnRandomTick(details);
+            if (_traits[i] is BlockTrait hostTrait)
+            {
+                hostTrait.OnRandomTick(details);
+            }
         }
     }
 
@@ -161,7 +216,10 @@ public sealed class Block : Orion.Api.Blocks.IBlock
     {
         for (int i = 0; i < _traits.Count; i++)
         {
-            _traits[i].OnLandOn(details);
+            if (_traits[i] is BlockTrait hostTrait)
+            {
+                hostTrait.OnLandOn(details);
+            }
         }
     }
 
@@ -169,11 +227,14 @@ public sealed class Block : Orion.Api.Blocks.IBlock
     {
         for (int i = 0; i < _traits.Count; i++)
         {
-            _traits[i].OnRender(player, x, y, z);
+            if (_traits[i] is BlockTrait hostTrait)
+            {
+                hostTrait.OnRender(player, x, y, z);
+            }
         }
     }
 
-    public BlockTrait? GetTrait(string identifier)
+    public BlockTraitBase? GetTrait(string identifier)
     {
         for (int i = 0; i < _traits.Count; i++)
         {
@@ -193,17 +254,25 @@ public sealed class Block : Orion.Api.Blocks.IBlock
         ListTag traitsTag = new() { Name = "traits" };
         foreach (var trait in _traits)
         {
+            if (trait is not BlockTrait hostTrait)
+            {
+                continue;
+            }
+
             CompoundTag traitEntry = new();
-            traitEntry.Set("id", new StringTag { Value = trait.Identifier });
+            traitEntry.Set("id", new StringTag { Value = hostTrait.Identifier });
 
             CompoundTag traitData = new();
-            trait.OnWrite(traitData);
+            hostTrait.OnWrite(traitData);
             traitEntry.Set("data", traitData);
 
             traitsTag.Values.Add(traitEntry);
         }
 
-        nbt.Set("traits", traitsTag);
+        if (traitsTag.Values.Count > 0)
+        {
+            nbt.Set("traits", traitsTag);
+        }
     }
 
     public void ReadTraits(CompoundTag nbt)
@@ -213,7 +282,10 @@ public sealed class Block : Orion.Api.Blocks.IBlock
         {
             for (int i = 0; i < _traits.Count; i++)
             {
-                _traits[i].OnRead(nbt);
+                if (_traits[i] is BlockTrait hostTrait)
+                {
+                    hostTrait.OnRead(nbt);
+                }
             }
 
             return;
@@ -228,12 +300,12 @@ public sealed class Block : Orion.Api.Blocks.IBlock
 
             if (identifier == null || traitData == null) continue;
 
-            BlockTrait? trait = GetTrait(identifier);
+            BlockTraitBase? trait = GetTrait(identifier);
             if (trait == null)
             {
                 if (BlockTraitRegistry.RegisteredTraits.TryGetValue(identifier, out Type? traitType))
                 {
-                    if (Activator.CreateInstance(traitType, this) is BlockTrait newTrait)
+                    if (Activator.CreateInstance(traitType, this) is BlockTraitBase newTrait)
                     {
                         AddTrait(newTrait);
                         trait = newTrait;
@@ -241,14 +313,10 @@ public sealed class Block : Orion.Api.Blocks.IBlock
                 }
             }
 
-            trait?.OnRead(traitData);
+            if (trait is BlockTrait hostTrait)
+            {
+                hostTrait.OnRead(traitData);
+            }
         }
     }
 }
-
-
-
-
-
-
-

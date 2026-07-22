@@ -699,6 +699,10 @@ public readonly string Username;
 
     bool IPlayer.IsFlying => Abilities.GetAbility(AbilityIndex.Flying);
 
+    float IPlayer.Yaw => Yaw;
+
+    float IPlayer.Pitch => Pitch;
+
     void IPlayer.SetGamemode(ApiGamemode gamemode) =>
         SetGamemode((ProtocolGamemode)(int)gamemode);
 

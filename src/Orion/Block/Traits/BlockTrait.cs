@@ -26,6 +26,12 @@ public abstract class BlockTrait : BlockTraitBase
                 return identifier;
             }
 
+            FieldInfo? identifierField = GetType().GetField("Identifier", BindingFlags.Public | BindingFlags.Static);
+            if (identifierField?.GetValue(null) is string fieldIdentifier && !string.IsNullOrWhiteSpace(fieldIdentifier))
+            {
+                return fieldIdentifier;
+            }
+
             return GetType().FullName ?? GetType().Name;
         }
     }
@@ -40,10 +46,6 @@ public abstract class BlockTrait : BlockTraitBase
     }
 
     public virtual void OnWrite(CompoundTag tag)
-    {
-    }
-
-    public virtual void OnPlace(BlockPlaceDetails details)
     {
     }
 

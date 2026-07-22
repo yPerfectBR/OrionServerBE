@@ -1,8 +1,8 @@
 namespace Orion.Block.Traits;
 
+using Orion.Api.Blocks;
+using Orion.Api.Traits;
 using Orion.Block.Components;
-using Orion.Block.Traits.Types;
-using Orion.Block.Types;
 
 
 public class DirectionTrait : BlockTrait
@@ -17,7 +17,7 @@ public class DirectionTrait : BlockTrait
 
     public override void OnPlace(BlockPlaceDetails details)
     {
-        CardinalDirection direction = BlockTypeRotationComponent.GetCardinalDirection(details.Player.Yaw);
+        CardinalDirection direction = BlockRotation.GetCardinalDirection(details.Player.Yaw);
 
         switch (direction)
         {
@@ -38,30 +38,8 @@ public class DirectionTrait : BlockTrait
 
     public int GetDirection()
     {
-        if (!Block.Permutation.State.TryGetValue(State, out BlockStateValue value) || value.Kind != 0)
-        {
-            return 0;
-        }
-
-        return (int)value.AsNumber();
+        return Block.TryGetStateInt(State, out int value) ? value : 0;
     }
 
-    public void SetDirection(int direction)
-    {
-        BlockState state = [];
-        foreach ((string key, BlockStateValue value) in Block.Permutation.State)
-        {
-            state[key] = value;
-        }
-
-        state[State] = direction;
-        Block.SetPermutation(Block.Type.GetPermutation(state));
-    }
+    public void SetDirection(int direction) => Block.SetStateInt(State, direction);
 }
-
-
-
-
-
-
-

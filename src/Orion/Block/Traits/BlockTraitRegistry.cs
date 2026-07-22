@@ -85,6 +85,15 @@ public static class BlockTraitRegistry
             return true;
         }
 
+        string[] components = GetStringTargets(traitType, "Components");
+        for (int i = 0; i < components.Length; i++)
+        {
+            if (ContainsOrdinal(blockType.Components, components[i]))
+            {
+                return true;
+            }
+        }
+
         string[] tags = GetStringTargets(traitType, "Tags");
         for (int i = 0; i < tags.Length; i++)
         {
@@ -105,6 +114,11 @@ public static class BlockTraitRegistry
             !string.IsNullOrWhiteSpace(identifier))
         {
             return identifier;
+        }
+
+        if (GetStringMember(traitType, "Identifier") is string fieldIdentifier)
+        {
+            return fieldIdentifier;
         }
 
         return traitType.FullName ?? traitType.Name;
