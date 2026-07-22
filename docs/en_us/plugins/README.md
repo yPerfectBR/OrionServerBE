@@ -1,6 +1,6 @@
 # Orion plugin architecture
 
-**Status:** Phases 1–7 `implemented` (McMaster + events + registries + services + packet hooks + conflicts). SDK train (09–18) remains `spec`. Vanilla extraction (22–31) remains `spec`.
+**Status:** Phases 1–7 `implemented` (McMaster + events + registries + services + packet hooks + conflicts). SDK train (09–16, 18) remains `spec`; phase [17](17-sdk-vanilla-dogfood.md) dogfood `implemented`. Vanilla extraction (22–30) `implemented`; [31](31-extraction-ai-checklist.md) remains the runbook (`spec`).
 
 This hub describes how Orion becomes a **minimal Bedrock engine** whose gameplay surface grows through **third-party C# plugins**, loaded **exclusively** with **McMaster.NETCore.Plugins**, isolated by assembly load context, and coordinated through contracts, events, registries, services, messaging, and packet hooks. Deep gameplay without cloning the monorepo is specified in the **SDK series** ([09](09-sdk-overview.md)–[18](18-sdk-ai-implementation-checklist.md)). Migrating traits/content/worldgen still in core into first-party plugins is the **Vanilla extraction series** ([22](22-vanilla-extraction-overview.md)–[31](31-extraction-ai-checklist.md)).
 
@@ -67,13 +67,13 @@ flowchart TB
 | 14 | [14 — Gameplay services](14-sdk-gameplay-services.md) | Orion.Gameplay.Api + provides + packet ownership | `spec` |
 | 15 | [15 — Protocol escape](15-sdk-protocol-escape.md) | Helpers vs Protocol PackageReference | `spec` |
 | 16 | [16 — External plugin guide](16-sdk-external-plugin-guide.md) | Template + walkthroughs | `spec` |
-| 17 | [17 — Vanilla dogfood](17-sdk-vanilla-dogfood.md) | First-party plugins on same SDK | `spec` |
+| 17 | [17 — Vanilla dogfood](17-sdk-vanilla-dogfood.md) | First-party plugins on same SDK | `implemented` |
 | 18 | [18 — AI SDK checklist](18-sdk-ai-implementation-checklist.md) | Implementation order for SDK train | `spec` |
 | 19 | [19 — Manifest v2](19-manifest-v2.md) | Object deps, SemVer ranges, fatal validation | `implemented` |
 | 20 | [20 — Plugin developer guide](20-plugin-developer-guide.md) | Authoring, troubleshooting, best practices | `implemented` |
 | 21 | [21 — Plugin repo layout](21-plugin-repo-layout.md) | `orion:*` folders, NuGet/CI | `implemented` |
-| 22 | [22 — Vanilla extraction overview](22-vanilla-extraction-overview.md) | Traits/content/worldgen → plugins | `spec` |
-| 23 | [23 — Extraction SDK prerequisites](23-extraction-sdk-prerequisites.md) | Orion.Api / Gameplay.Api gaps | `spec` |
+| 22 | [22 — Vanilla extraction overview](22-vanilla-extraction-overview.md) | Traits/content/worldgen → plugins | `implemented` |
+| 23 | [23 — Extraction SDK prerequisites](23-extraction-sdk-prerequisites.md) | Orion.Api / Gameplay.Api gaps | `implemented` |
 | 24 | [24 — Entity mechanics](24-entity-mechanics-plugins.md) | Gravity, collision, movement, … | `implemented` |
 | 25 | [25 — Block mechanics](25-block-mechanics-plugins.md) | Direction / facing / cardinal | `implemented` |
 | 26 | [26 — Item mechanics](26-item-mechanics-plugins.md) | Durability / debug | `implemented` |

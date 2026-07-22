@@ -1,6 +1,6 @@
 # Fase 17 — Dogfooding Vanilla\* (final)
 
-**Status:** `spec`  
+**Status:** `implemented`  
 **Language twin:** [`../../en_us/plugins/17-sdk-vanilla-dogfood.md`](../../en_us/plugins/17-sdk-vanilla-dogfood.md)  
 **Depende de:** [10](10-sdk-packages-versioning.md)–[15](15-sdk-protocol-escape.md)
 
@@ -46,4 +46,4 @@ Novos first-party (traits, conteúdo mínimo, superflat) nascem já no padrão S
 
 ## 7. Status
 
-`spec` — **auditoria jul/2026:** parcial — 7 plugins migrados para ids `orion:*`, layout `src/`, manifest v2, externalizados em `Plugins-Orion/`; `InternalsVisibleTo` removido; **pendente** `PackageReference` NuGet e zero `ProjectReference` a `Orion.csproj`.
+`implemented` — first-party em `Plugins-Orion/` só com PackageReference (Orion.Api / PluginContracts / Gameplay.Api / Protocol conforme o plugin), pin **0.1.9**; zero `ProjectReference` a `Orion.csproj`; `InternalsVisibleTo` no Orion limitado a `Orion.Game.Tests`. ProjectReference entre plugins irmãos continua permitido.
