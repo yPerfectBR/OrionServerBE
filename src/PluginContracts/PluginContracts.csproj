@@ -6,7 +6,7 @@
     <Nullable>enable</Nullable>
     <RootNamespace>Orion.PluginContracts</RootNamespace>
     <AssemblyName>Orion.PluginContracts</AssemblyName>
-    <Version>0.1.6</Version>
+    <Version>0.1.7</Version>
     <PackageId>Orion.PluginContracts</PackageId>
     <Authors>OrionBedrock</Authors>
     <Company>OrionBedrock</Company>
