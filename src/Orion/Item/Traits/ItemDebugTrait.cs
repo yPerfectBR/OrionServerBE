@@ -1,11 +1,6 @@
 namespace Orion.Item.Traits;
 
-using Orion.Item.Traits.Types;
-using Player = Orion.Player.Player;
-using Orion.Protocol.Enums;
-using Orion.Protocol.Packets;
-using Orion.Protocol.Types;
-
+using Orion.Api.Traits;
 
 public sealed class ItemDebugTrait : ItemTrait
 {
@@ -15,52 +10,18 @@ public sealed class ItemDebugTrait : ItemTrait
     {
     }
 
-    public override void OnUseOnAir(ItemUseOnAirDetails details)
-    {
-        Send(details.Player, "OnUseOnAir");
-    }
+    public override void OnUseOnAir(ItemUseOnAirDetails details) =>
+        details.Player.SendMessage("ItemDebugTrait: OnUseOnAir");
 
-    public override void OnUseOnBlock(ItemUseOnBlockDetails details)
-    {
-        Send(details.Player, "OnUseOnBlock");
-    }
+    public override void OnUseOnBlock(ItemUseOnBlockDetails details) =>
+        details.Player.SendMessage("ItemDebugTrait: OnUseOnBlock");
 
-    public override void OnPlace(ItemPlaceDetails details)
-    {
-        Send(details.Player, "OnPlace");
-    }
+    public override void OnPlace(ItemPlaceDetails details) =>
+        details.Player.SendMessage("ItemDebugTrait: OnPlace");
 
-    public override void OnUseOnEntity(ItemUseOnEntityDetails details)
-    {
-        Send(details.Player, $"OnUseOnEntity target={details.Target.Identifier}");
-    }
+    public override void OnUseOnEntity(ItemUseOnEntityDetails details) =>
+        details.Player.SendMessage($"ItemDebugTrait: OnUseOnEntity target={details.Target.TypeIdentifier}");
 
-    public override void OnUseAttack(ItemUseAttackDetails details)
-    {
-        Send(details.Player, $"OnUseAttack target={details.Target.Identifier}");
-    }
-
-    private static void Send(Player player, string message)
-    {
-        player.Send(new TextPacket
-        {
-            NeedsTranslation = false,
-            VariantType = TextVariantType.MessageOnly,
-            Variant = new TextVariant
-            {
-                Type = TextType.Tip,
-                Message = $"ItemDebugTrait: {message}"
-            },
-            Xuid = string.Empty,
-            PlatformChatId = string.Empty,
-            FilteredMessage = null
-        });
-    }
+    public override void OnUseAttack(ItemUseAttackDetails details) =>
+        details.Player.SendMessage($"ItemDebugTrait: OnUseAttack target={details.Target.TypeIdentifier}");
 }
-
-
-
-
-
-
-

@@ -98,7 +98,7 @@ public sealed class ItemType : Orion.Api.Items.IItemType
 
     public void RegisterTrait(Type traitType, string identifier)
     {
-        if (!typeof(ItemTrait).IsAssignableFrom(traitType) || traitType.IsAbstract)
+        if (!typeof(Orion.Api.Traits.ItemTraitBase).IsAssignableFrom(traitType) || traitType.IsAbstract)
         {
             return;
         }
@@ -162,6 +162,22 @@ public sealed class ItemType : Orion.Api.Items.IItemType
         }
 
         return false;
+    }
+
+    public bool TryGetDurability(out int maxDurability, out int damageChanceMin, out int damageChanceMax)
+    {
+        ItemTypeDurabilityComponent? durability = Components.GetComponent<ItemTypeDurabilityComponent>();
+        if (durability is null)
+        {
+            maxDurability = 0;
+            damageChanceMin = 0;
+            damageChanceMax = 0;
+            return false;
+        }
+
+        maxDurability = durability.GetMaxDurability();
+        (damageChanceMin, damageChanceMax) = durability.GetDamageChance();
+        return true;
     }
 
     public static void EnsureRegistryCapacity(int capacity)

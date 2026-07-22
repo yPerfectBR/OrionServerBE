@@ -2,10 +2,10 @@ namespace Orion.Network.Handlers;
 
 using Orion;
 using Orion.Api.Containers;
+using Orion.Api.Traits;
 using Orion.Scheduling;
 using Orion.Gameplay;
 using Orion.Item;
-using Orion.Item.Traits.Types;
 using Orion.Plugins;
 
 using Orion.Protocol.Enums;
@@ -13,6 +13,7 @@ using Orion.Protocol.Packets;
 using Orion.Protocol.Types;
 using Orion.RakNet;
 using Orion.World;
+using ApiVec3f = Orion.Api.Math.Vec3f;
 
 /// <summary>
 /// Inventory transactions: Normal/entity stay inventory-gated; UseItem place/air dispatch to VanillaBuilding.
@@ -317,8 +318,8 @@ public static class InventoryTransaction
                     player,
                     target,
                     transaction.HotBarSlot,
-                    transaction.Position,
-                    transaction.ClickedPosition));
+                    ToApi(transaction.Position),
+                    ToApi(transaction.ClickedPosition)));
                 break;
 
             case 1:
@@ -328,8 +329,8 @@ public static class InventoryTransaction
                         player,
                         target,
                         transaction.HotBarSlot,
-                        transaction.Position,
-                        transaction.ClickedPosition));
+                        ToApi(transaction.Position),
+                        ToApi(transaction.ClickedPosition)));
                 }
 
                 if (!ReferenceEquals(target, player)
@@ -431,4 +432,6 @@ public static class InventoryTransaction
 
         return false;
     }
+
+    static ApiVec3f ToApi(Vec3f value) => new(value.X, value.Y, value.Z);
 }

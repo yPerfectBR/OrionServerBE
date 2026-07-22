@@ -3,7 +3,6 @@ namespace Orion.Item.Traits;
 using System.Reflection;
 using Orion.Api.Traits;
 using Orion.Protocol.Nbt;
-using Orion.Item.Traits.Types;
 
 public abstract class ItemTrait : ItemTraitBase
 {
@@ -26,6 +25,12 @@ public abstract class ItemTrait : ItemTraitBase
                 return identifier;
             }
 
+            FieldInfo? identifierField = GetType().GetField("Identifier", BindingFlags.Public | BindingFlags.Static);
+            if (identifierField?.GetValue(null) is string fieldIdentifier && !string.IsNullOrWhiteSpace(fieldIdentifier))
+            {
+                return fieldIdentifier;
+            }
+
             return GetType().FullName ?? GetType().Name;
         }
     }
@@ -40,30 +45,6 @@ public abstract class ItemTrait : ItemTraitBase
     }
 
     public virtual void OnWrite(CompoundTag tag)
-    {
-    }
-
-    public virtual void OnUseOnAir(ItemUseOnAirDetails details)
-    {
-    }
-
-    public virtual void OnUseOnBlock(ItemUseOnBlockDetails details)
-    {
-    }
-
-    public virtual void OnPlace(ItemPlaceDetails details)
-    {
-    }
-
-    public virtual void OnUseOnEntity(ItemUseOnEntityDetails details)
-    {
-    }
-
-    public virtual void OnUseAttack(ItemUseAttackDetails details)
-    {
-    }
-
-    public virtual void OnBreakBlock(ItemBreakBlockDetails details)
     {
     }
 }

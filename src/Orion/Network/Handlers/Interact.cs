@@ -2,13 +2,14 @@ namespace Orion.Network.Handlers;
 
 using Orion;
 using Orion.Api.Events;
+using Orion.Api.Traits;
 using Orion.Gameplay;
-using Orion.Item.Traits.Types;
 using Orion.Plugins;
 using Orion.Protocol.Enums;
 using Orion.Protocol.Packets;
 using Orion.Protocol.Types;
 using Orion.RakNet;
+using ApiVec3f = Orion.Api.Math.Vec3f;
 
 public static class Interact
 {
@@ -61,7 +62,12 @@ public static class Interact
                 }
 
                 Vec3f clicked = packet.Position.HasValue && packet.Position.Value is Vec3f value ? value : new Vec3f();
-                heldItem.OnUseOnEntity(new ItemUseOnEntityDetails(player, entity, 0, player.Position, clicked));
+                heldItem.OnUseOnEntity(new ItemUseOnEntityDetails(
+                    player,
+                    entity,
+                    0,
+                    new ApiVec3f(player.Position.X, player.Position.Y, player.Position.Z),
+                    new ApiVec3f(clicked.X, clicked.Y, clicked.Z)));
                 break;
             }
         }

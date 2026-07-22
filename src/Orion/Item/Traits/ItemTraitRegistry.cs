@@ -130,6 +130,16 @@ public static class ItemTraitRegistry
     {
         List<string> identifiers = [];
 
+        // Api-only plugins: string[] Components = ["minecraft:durability"]
+        string[] stringComponents = GetStringTargets(traitType, "Components");
+        for (int i = 0; i < stringComponents.Length; i++)
+        {
+            if (!string.IsNullOrWhiteSpace(stringComponents[i]))
+            {
+                identifiers.Add(stringComponents[i]);
+            }
+        }
+
         if (traitType.GetField("Component", BindingFlags.Public | BindingFlags.Static) is FieldInfo singleField &&
             singleField.GetValue(null) is Type singleComponentType)
         {

@@ -1,13 +1,20 @@
 namespace Orion.Item;
 
+using Orion.Api.Traits;
 using Orion.Protocol.Types;
 using Orion.Protocol.Nbt;
 using Orion.Item.Traits;
-using Orion.Item.Traits.Types;
+using ApiBlockPos = Orion.Api.Math.BlockPos;
+using ApiItemBreakBlockDetails = Orion.Api.Traits.ItemBreakBlockDetails;
+using ApiItemPlaceDetails = Orion.Api.Traits.ItemPlaceDetails;
+using ApiItemUseAttackDetails = Orion.Api.Traits.ItemUseAttackDetails;
+using ApiItemUseOnAirDetails = Orion.Api.Traits.ItemUseOnAirDetails;
+using ApiItemUseOnBlockDetails = Orion.Api.Traits.ItemUseOnBlockDetails;
+using ApiItemUseOnEntityDetails = Orion.Api.Traits.ItemUseOnEntityDetails;
 
 public sealed class ItemStack : Orion.Api.Items.IItemStack {
     private static int _nextNetworkStackId;
-    private readonly List<Traits.ItemTrait> _traits = [];
+    private readonly List<ItemTraitBase> _traits = [];
 
     public ItemType Type { get; }
     public string Identifier => Type.Identifier;
@@ -35,19 +42,14 @@ public sealed class ItemStack : Orion.Api.Items.IItemStack {
 
     void Orion.Api.Items.IItemStack.NotifyBrokeBlock(
         Orion.Api.IPlayer player,
-        Orion.Api.Math.BlockPos blockPosition,
+        ApiBlockPos blockPosition,
         int blockFace,
         int hotBarSlot)
     {
-        if (player is not Orion.Player.Player hostPlayer)
-        {
-            throw new ArgumentException("Player must be a host player instance.", nameof(player));
-        }
-
-        OnBreakBlock(new ItemBreakBlockDetails(
-            hostPlayer,
+        OnBreakBlock(new ApiItemBreakBlockDetails(
+            player,
             hotBarSlot,
-            new BlockPos { X = blockPosition.X, Y = blockPosition.Y, Z = blockPosition.Z },
+            blockPosition,
             blockFace));
     }
 
@@ -61,17 +63,9 @@ public sealed class ItemStack : Orion.Api.Items.IItemStack {
 
         foreach (Type traitType in Type.Traits.Values)
         {
-            object? created = Activator.CreateInstance(traitType, this);
-            if (created is Traits.ItemTrait trait)
+            if (Activator.CreateInstance(traitType, this) is ItemTraitBase trait)
             {
                 AddTrait(trait);
-            }
-            else if (created is Orion.Api.Traits.ItemTraitBase)
-            {
-                // Plugin traits that only subclass ItemTraitBase are tracked via Type.Traits
-                // for registration; host ItemStack currently only hosts ItemTrait instances.
-                // ItemTraitBase-only plugins should use gameplay services instead of stack traits
-                // until full TraitBase hosting lands.
             }
         }
     }
@@ -295,7 +289,7 @@ public sealed class ItemStack : Orion.Api.Items.IItemStack {
         return stack;
     }
 
-    public T AddTrait<T>(T trait) where T : Traits.ItemTrait
+    public T AddTrait<T>(T trait) where T : ItemTraitBase
     {
         ArgumentNullException.ThrowIfNull(trait);
         if (GetTrait(trait.Identifier) is not null)
@@ -326,7 +320,7 @@ public sealed class ItemStack : Orion.Api.Items.IItemStack {
         return Deserialize(serialized) ?? throw new InvalidOperationException("Failed to clone item stack.");
     }
 
-    public void OnUseOnAir(ItemUseOnAirDetails details)
+    public void OnUseOnAir(ApiItemUseOnAirDetails details)
     {
         for (int i = 0; i < _traits.Count; i++)
         {
@@ -334,7 +328,7 @@ public sealed class ItemStack : Orion.Api.Items.IItemStack {
         }
     }
 
-    public void OnUseOnBlock(ItemUseOnBlockDetails details)
+    public void OnUseOnBlock(ApiItemUseOnBlockDetails details)
     {
         for (int i = 0; i < _traits.Count; i++)
         {
@@ -342,7 +336,7 @@ public sealed class ItemStack : Orion.Api.Items.IItemStack {
         }
     }
 
-    public void OnPlace(ItemPlaceDetails details)
+    public void OnPlace(ApiItemPlaceDetails details)
     {
         for (int i = 0; i < _traits.Count; i++)
         {
@@ -350,7 +344,7 @@ public sealed class ItemStack : Orion.Api.Items.IItemStack {
         }
     }
 
-    public void OnUseOnEntity(ItemUseOnEntityDetails details)
+    public void OnUseOnEntity(ApiItemUseOnEntityDetails details)
     {
         for (int i = 0; i < _traits.Count; i++)
         {
@@ -358,7 +352,7 @@ public sealed class ItemStack : Orion.Api.Items.IItemStack {
         }
     }
 
-    public void OnUseAttack(ItemUseAttackDetails details)
+    public void OnUseAttack(ApiItemUseAttackDetails details)
     {
         for (int i = 0; i < _traits.Count; i++)
         {
@@ -366,7 +360,7 @@ public sealed class ItemStack : Orion.Api.Items.IItemStack {
         }
     }
 
-    public void OnBreakBlock(ItemBreakBlockDetails details)
+    public void OnBreakBlock(ApiItemBreakBlockDetails details)
     {
         for (int i = 0; i < _traits.Count; i++)
         {
@@ -375,12 +369,12 @@ public sealed class ItemStack : Orion.Api.Items.IItemStack {
     }
 
 
-    public bool HasTrait<T>() where T : Traits.ItemTrait
+    public bool HasTrait<T>() where T : ItemTraitBase
     {
         return GetTrait<T>() is not null;
     }
 
-    public T? GetTrait<T>() where T : Traits.ItemTrait
+    public T? GetTrait<T>() where T : ItemTraitBase
     {
         for (int i = 0; i < _traits.Count; i++)
         {
@@ -400,17 +394,25 @@ public sealed class ItemStack : Orion.Api.Items.IItemStack {
         ListTag traitsTag = new() { Name = "traits" };
         foreach (var trait in _traits)
         {
+            if (trait is not ItemTrait hostTrait)
+            {
+                continue;
+            }
+
             CompoundTag traitEntry = new();
-            traitEntry.Set("id", new StringTag { Value = trait.Identifier });
+            traitEntry.Set("id", new StringTag { Value = hostTrait.Identifier });
 
             CompoundTag traitData = new();
-            trait.OnWrite(traitData);
+            hostTrait.OnWrite(traitData);
             traitEntry.Set("data", traitData);
 
             traitsTag.Values.Add(traitEntry);
         }
 
-        nbt.Set("traits", traitsTag);
+        if (traitsTag.Values.Count > 0)
+        {
+            nbt.Set("traits", traitsTag);
+        }
     }
 
     private void ReadTraits(CompoundTag nbt)
@@ -427,12 +429,12 @@ public sealed class ItemStack : Orion.Api.Items.IItemStack {
 
             if (identifier == null || traitData == null) continue;
 
-            Traits.ItemTrait? trait = GetTrait(identifier);
+            ItemTraitBase? trait = GetTrait(identifier);
             if (trait == null)
             {
                 if (ItemTraitRegistry.RegisteredTraits.TryGetValue(identifier, out Type? traitType))
                 {
-                    if (Activator.CreateInstance(traitType, this) is Traits.ItemTrait newTrait)
+                    if (Activator.CreateInstance(traitType, this) is ItemTraitBase newTrait)
                     {
                         AddTrait(newTrait);
                         trait = newTrait;
@@ -440,13 +442,16 @@ public sealed class ItemStack : Orion.Api.Items.IItemStack {
                 }
             }
 
-            trait?.OnRead(traitData);
+            if (trait is ItemTrait hostTrait)
+            {
+                hostTrait.OnRead(traitData);
+            }
         }
     }
 
     // AddTrait methods are now defined above
 
-    public Traits.ItemTrait? GetTrait(string identifier)
+    public ItemTraitBase? GetTrait(string identifier)
     {
         for (int i = 0; i < _traits.Count; i++)
         {
