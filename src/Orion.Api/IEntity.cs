@@ -57,6 +57,16 @@ public interface IEntity
     /// follow-up behavior (e.g. item pickup/merge). No-op unless the host overrides it.
     /// </summary>
     void NotifyPhysicsTick(bool grounded) { }
+
+    /// <summary>
+    /// Whether the entity is queued for despawn (between death and removal from the dimension).
+    /// </summary>
+    bool IsPendingDespawn => false;
+
+    /// <summary>
+    /// Sends spawn packets so <paramref name="observer"/> can see this entity client-side.
+    /// </summary>
+    void PresentTo(IPlayer observer) { }
 }
 
 public interface IPlayer : IEntity
