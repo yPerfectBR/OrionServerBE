@@ -88,6 +88,25 @@ public sealed class ApiEventsTests
         public int NetworkId => 1;
         public int MaxStackSize => 64;
         public IReadOnlyList<string> Tags { get; } = [];
+
+        public bool TryGetFood(
+            out int nutrition,
+            out float saturationModifier,
+            out bool canAlwaysEat,
+            out string? usingConvertsTo)
+        {
+            nutrition = 1;
+            saturationModifier = 0.1f;
+            canAlwaysEat = false;
+            usingConvertsTo = null;
+            return true;
+        }
+
+        public bool TryGetUseDurationTicks(out ulong ticks)
+        {
+            ticks = 32UL;
+            return true;
+        }
     }
 
     sealed class StubFoodStack : IItemStack
