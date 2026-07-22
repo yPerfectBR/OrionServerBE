@@ -58,8 +58,17 @@ public static class GeneratorFactory
         }
     }
 
+    /// <summary>
+    /// Resolves a registered plugin generator or the builtin <c>void</c> generator.
+    /// Empty/whitespace names are invalid; unknown names fail (no silent void fallback).
+    /// </summary>
     public static Generator Create(string identifier)
     {
+        if (string.IsNullOrWhiteSpace(identifier))
+        {
+            throw new InvalidOperationException("World generator is invalid: value is empty.");
+        }
+
         lock (Sync)
         {
             if (PluginGenerators.TryGetValue(identifier, out Type? type))
@@ -69,11 +78,12 @@ public static class GeneratorFactory
             }
         }
 
-        return identifier.ToLowerInvariant() switch
+        if (identifier.Equals("void", StringComparison.OrdinalIgnoreCase))
         {
-            "void" => new VoidGenerator(),
-            _ => new VoidGenerator()
-        };
+            return new VoidGenerator();
+        }
+
+        throw new InvalidOperationException($"World generator '{identifier}' does not exist.");
     }
 
     public static void ResetForTests()
