@@ -1,6 +1,6 @@
 # Phase 25 — Block mechanics plugins
 
-**Status:** `spec`  
+**Status:** `implemented`  
 **Language twin:** [`../../pt_br/plugins/25-block-mechanics-plugins.md`](../../pt_br/plugins/25-block-mechanics-plugins.md)  
 **Depends on:** [22](22-vanilla-extraction-overview.md), [23](23-extraction-sdk-prerequisites.md)  
 **Code prerequisite:** `BlockTrait` base + detail types + `IBlockTraits` registry in `Orion.Api`
@@ -49,11 +49,11 @@ No `Co-authored-by`.
 
 ## 7. Acceptance tests
 
-- [ ] Orientation traits exist only in plugins.
-- [ ] Facing/cardinal place behavior matches previous when content uses them.
-- [ ] Core does not `RegisterFromAssembly` BlockTraits from Orion.dll.
-- [ ] Package/CI match phase [22](22-vanilla-extraction-overview.md) §8.
+- [x] Orientation traits exist only in plugins.
+- [x] Facing/cardinal place behavior matches previous when content uses them (Api `OnPlace` + permutation state).
+- [x] Core no longer ships those three BlockTraits (assembly scan finds none).
+- [x] Package/CI match phase [22](22-vanilla-extraction-overview.md) §8 (`0.1.7` Api-only).
 
 ## 8. Status
 
-`spec`
+`implemented` — `orion:block-direction` / `block-cardinal` / `block-facing`; enums + `BlockRotation` + `BlockPlaceDetails`/`OnPlace` in Orion.Api **0.1.7**; `BlockTypeRotationComponent` stays in core.

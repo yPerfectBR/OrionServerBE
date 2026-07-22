@@ -56,6 +56,18 @@ dotnet build plugins/orion:entity-air-supply/OrionEntityAirSupply.csproj
 
 Sem o conjunto movement (+ collision/gravity), drops de item não simulam física. Sem `orion:entity-air-supply` + `orion:attributes`, afogamento é no-op.
 
+## Orientação de blocos (fase 25)
+
+O core **não** inclui traits direction / cardinal / facing. Quando blocos colocados precisam da orientação pelo look:
+
+```bash
+dotnet build plugins/orion:block-direction/OrionBlockDirection.csproj
+dotnet build plugins/orion:block-cardinal/OrionBlockCardinal.csproj
+dotnet build plugins/orion:block-facing/OrionBlockFacing.csproj
+```
+
+`block-cardinal` e `block-facing` softdepend `block-direction` (referência em compile-time). Sem eles, blocos com esses states ficam na permutação default.
+
 ## Inventário, containers, building e mining
 
 ```bash

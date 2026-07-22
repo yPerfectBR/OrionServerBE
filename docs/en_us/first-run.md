@@ -74,6 +74,18 @@ dotnet build plugins/orion:entity-air-supply/OrionEntityAirSupply.csproj
 
 Without the entity-movement (+ collision/gravity) set, item drops do not simulate physics. Without `orion:entity-air-supply` + `orion:attributes`, drowning damage is a no-op.
 
+## Block orientation (phase 25)
+
+Core does **not** include direction / cardinal / facing block traits. When placed blocks must pick orientation from look direction:
+
+```bash
+dotnet build plugins/orion:block-direction/OrionBlockDirection.csproj
+dotnet build plugins/orion:block-cardinal/OrionBlockCardinal.csproj
+dotnet build plugins/orion:block-facing/OrionBlockFacing.csproj
+```
+
+`block-cardinal` and `block-facing` softdepend `block-direction` (compile-time reference). Without them, blocks with those states keep the default permutation.
+
 ## Inventory, containers, building, and mining
 
 Core does **not** include player inventory, chest/barrel, block place, or mining. Build:
