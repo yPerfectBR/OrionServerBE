@@ -58,7 +58,7 @@ Core does **not** include gameplay health or hunger. For vanilla behavior:
 dotnet build plugins/orion:attributes/OrionAttributes.csproj
 ```
 
-With `Plugins.Enabled: true`, the plugin registers traits + services (`provides: orion:attributes`, `orion:health`, `orion:hunger`). Other plugins consume via `IAttributesApi` / `IEntityHealthService` / `IPlayerHungerService`. Without it, there is no HP/hunger/food use. Prefer loading alongside `orion:inventory` (softdepend).
+With `Plugins.Enabled: true`, the plugin registers **Api-only** traits (`EntityHealthTrait`, `PlayerHungerTrait`) plus services (`provides: orion:attributes`, `orion:health`, `orion:hunger`). On join it re-enables Health/Hunger HUD and syncs Bedrock attributes (`minecraft:health`, `minecraft:player.hunger`, …). Other plugins consume via `IAttributesApi` / `IEntityHealthService` / `IPlayerHungerService` / `IPlayerItemUseHandler`. Without it, vitals stay hidden and host health/hunger/food bridges are no-ops. Prefer loading alongside `orion:inventory` (softdepend) so food use can decrement stacks.
 
 ## Inventory, containers, building, and mining
 

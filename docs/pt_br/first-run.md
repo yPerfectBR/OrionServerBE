@@ -41,7 +41,7 @@ O plugin registra os seis blocos Bedrock, Nature (grass/dirt/bedrock) e fillers 
 dotnet build plugins/orion:attributes/OrionAttributes.csproj
 ```
 
-Com plugins ativos: `provides: orion:attributes`, `orion:health`, `orion:hunger`. Consuma via `IAttributesApi` / `IEntityHealthService` / `IPlayerHungerService`. Prefira carregar com `orion:inventory` (softdepend).
+Com plugins ativos, registra traits **só via Orion.Api** (`EntityHealthTrait`, `PlayerHungerTrait`) e serviços (`provides: orion:attributes`, `orion:health`, `orion:hunger`). No join, reexibe as barras Health/Hunger e sincroniza atributos Bedrock (`minecraft:health`, `minecraft:player.hunger`, …). Consuma via `IAttributesApi` / `IEntityHealthService` / `IPlayerHungerService` / `IPlayerItemUseHandler`. Sem o plugin, HUD de vida/fome permanece oculto e as bridges do host são no-op. Prefira carregar com `orion:inventory` (softdepend) para decrementar stacks ao comer.
 
 ## Inventário, containers, building e mining
 
