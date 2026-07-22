@@ -10,7 +10,7 @@ using Orion.Entity.Traits;
 using Orion.Entity.Traits.Types;
 using Orion.Gameplay;
 using Orion.Item;
-using Orion.Player.Traits;
+using Orion.Api;
 using Orion.Plugins;
 
 using Orion.Protocol.Enums;
@@ -108,7 +108,7 @@ public static class PlayerAuthInput
             else if (player.Session?.TransferState != TransferState.Transferring)
             {
                 MovePlayer(server, player, packet);
-                player.GetTrait<PlayerChunkRenderingTrait>()?.NotifyClientAtTeleportDestination();
+                player.GetTrait<IPlayerChunkView>()?.NotifyClientAtTeleportDestination();
             }
             else
             {
@@ -460,7 +460,7 @@ public static class PlayerAuthInput
 
             if (positionChanged || rotationChanged)
             {
-                int viewDistance = player.GetTrait<PlayerChunkRenderingTrait>()?.ViewDistance ?? 16;
+                int viewDistance = player.GetTrait<IPlayerChunkView>()?.ViewDistance ?? 16;
                 int simulationDistance = Math.Clamp(server.Properties.SimulationDistance, 0, 120);
                 float broadcastRadius = Math.Max(viewDistance, simulationDistance) * 16f;
 

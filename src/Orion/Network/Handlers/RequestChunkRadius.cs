@@ -1,10 +1,10 @@
 namespace Orion.Network.Handlers;
 
 using Orion;
-using Orion.Player.Traits;
+using Orion.Api;
+using Orion.Api.Math;
 using Orion.Protocol.Packets;
 using Orion.RakNet;
-using Orion.World.Coordinates;
 
 
 public static class RequestChunkRadius
@@ -39,12 +39,6 @@ public static class RequestChunkRadius
             return;
         }
 
-        PlayerChunkRenderingTrait? chunkRendering = player.GetTrait<PlayerChunkRenderingTrait>();
-        if (chunkRendering is null)
-        {
-            return;
-        }
-
-        chunkRendering.ApplyViewDistance(radius);
+        player.GetTrait<IPlayerChunkView>()?.ApplyViewDistance(radius);
     }
 }

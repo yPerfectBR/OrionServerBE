@@ -3,7 +3,10 @@ using Orion.Api;
 using Orion.Api.Blocks;
 using Orion.Api.Network;
 using Orion.Block;
+using Orion.Scheduling;
 using Orion.World;
+using Orion.World.Block;
+using Orion.World.Coordinates;
 using GameplayBlock = Orion.Block.Block;
 using GameplayEntity = Orion.Entity.Entity;
 using ApiVec3f = Orion.Api.Math.Vec3f;
@@ -12,6 +15,9 @@ using ApiSpawnOptions = Orion.Api.EntitySpawnOptions;
 using CoreSpawnOptions = Orion.Entity.Traits.Types.EntitySpawnOptions;
 using WorldInstance = Orion.World.World;
 using Tickable = Orion.World.Tickable;
+using ChunkColumn = Orion.World.Chunk.Chunk;
+using BlockPos = Orion.Protocol.Types.BlockPos;
+using BlockPermutation = Orion.Block.BlockPermutation;
 
 namespace Orion.Plugins.Api;
 
@@ -27,6 +33,12 @@ internal sealed class WorldFacade(WorldInstance world) : IWorld
     internal WorldInstance Inner => world;
 
     public string Name => world.Name;
+
+    public double TickWork => world.TickWork;
+
+    public int? AttachedWorkerId => world.AttachedWorkerId;
+
+    public IServer? Server => world.Server as IServer;
 
     public IDimension? GetDimension(string name)
     {
@@ -135,4 +147,99 @@ internal sealed class DimensionFacade(Dimension dimension) : IDimension
 
         dimension.Broadcast(OutboundPacketAdapter.ToDataPacket(packet), broadcastOptions);
     }
+
+    public int ChunkCount => dimension.ChunkCount;
+
+    public int DimensionNetworkId => (int)dimension.Type;
+
+    public bool IsSessionThreadingEnabled =>
+        dimension.World?.Server is Server server && server.Properties.SessionThreadingEnabled;
+
+    public void RequestChunkPayloads(ReadOnlySpan<(int X, int Z)> chunks, Action<int, int, byte[], uint> onReady)
+    {
+        dimension.RequestChunks(chunks, chunk =>
+        {
+            byte[] payload = ChunkColumn.Serialize(chunk);
+            onReady(chunk.X, chunk.Z, payload, (uint)chunk.GetSubChunkSendCount());
+        });
+    }
+
+    public void AddChunkViewer(int x, int z) => dimension.AddChunkViewer(x, z);
+
+    public bool RemoveChunkViewer(int x, int z) => dimension.RemoveChunkViewer(x, z);
+
+    public bool HasChunkViewers(int x, int z) => dimension.HasChunkViewers(x, z);
+
+    public bool UnloadChunk(int x, int z) => dimension.UnloadChunk(x, z);
+
+    public void SetPlayerChunkIndex(IPlayer player, int chunkX, int chunkZ)
+    {
+        if (player is not global::Orion.Player.Player host || host.Session is null)
+        {
+            return;
+        }
+
+        dimension.GetSpatialIndex().SetPlayerChunk(host.Session, new ChunkCoord(chunkX, chunkZ));
+    }
+
+    public void RemovePlayerChunkIndex(IPlayer player)
+    {
+        if (player is not global::Orion.Player.Player host || host.Session is null)
+        {
+            return;
+        }
+
+        dimension.GetSpatialIndex().RemovePlayer(host.Session);
+    }
+
+    public void UpdateSimulationChunksFor(IPlayer player, int centerChunkX, int centerChunkZ, int simulationDistance)
+    {
+        _ = player;
+        int distance = Math.Clamp(simulationDistance, 0, 120);
+        for (int dx = -distance; dx <= distance; dx++)
+        {
+            for (int dz = -distance; dz <= distance; dz++)
+            {
+                ChunkColumn? chunk = dimension.GetChunk(centerChunkX + dx, centerChunkZ + dz);
+                if (chunk is not null)
+                {
+                    chunk.Simulated = true;
+                }
+            }
+        }
+    }
+
+    public void SyncPlayerViewHalo(IPlayer player, int viewDistanceChunks, int simulationDistanceChunks)
+    {
+        if (player is not global::Orion.Player.Player host || dimension.World?.Server is not Server server)
+        {
+            return;
+        }
+
+        AreaPlayerPresence.SyncViewHalo(server, dimension, host, viewDistanceChunks, simulationDistanceChunks);
+    }
+
+    public void NotifyChunkPresented(IPlayer player, int chunkX, int chunkZ)
+    {
+        if (player is not global::Orion.Player.Player host)
+        {
+            return;
+        }
+
+        ChunkColumn? chunk = dimension.GetChunk(chunkX, chunkZ);
+        if (chunk is null)
+        {
+            return;
+        }
+
+        foreach (BlockLevelStorage storage in chunk.GetAllBlockStorages())
+        {
+            BlockPos position = storage.GetPosition();
+            var block = dimension.GetBlock(position.X, position.Y, position.Z);
+            block?.OnRender(host, position.X, position.Y, position.Z);
+        }
+    }
+
+    public bool IsEntityTransferInFlight(ulong runtimeId) =>
+        CrossAreaTransferHandler.IsTransferInFlight(runtimeId);
 }

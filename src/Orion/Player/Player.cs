@@ -19,7 +19,6 @@ using Orion.Entity.Traits;
 using Orion.Gameplay;
 using Orion.Plugins;
 using Orion.Entity.Traits.Types;
-using Orion.Player.Traits;
 using Orion.Api;
 using Orion.Api.Items;
 using Orion.Api.Network;
@@ -519,7 +518,7 @@ public readonly string Username;
             startedAreaTransfer,
             Session?.TransferState.ToString() ?? "no-session",
             inputTick,
-            GetTrait<PlayerChunkRenderingTrait>()?.FormatDebugHudLine() ?? "none");
+            GetTrait<IPlayerChunkView>()?.FormatDebugHudLine() ?? "none");
     }
 
     /// <summary>
@@ -542,7 +541,7 @@ public readonly string Username;
 
         Teleport(Position, targetDimension, forceDimensionChange: useDimensionChange);
 
-        GetTrait<PlayerChunkRenderingTrait>()?.ForceReloadViewDistance();
+        GetTrait<IPlayerChunkView>()?.ForceReloadViewDistance();
 
         ScheduleClientWorldStateSync();
         PlayerAuthInput.ResetMovementValidation(RuntimeId);
@@ -555,7 +554,7 @@ public readonly string Username;
     /// </summary>
     public void ResyncAfterRegionHandoff()
     {
-        GetTrait<PlayerChunkRenderingTrait>()?.AfterRegionHandoff();
+        GetTrait<IPlayerChunkView>()?.AfterRegionHandoff();
     }
 
     public void RegisterOpenContainer(int windowId, CoreContainer container)

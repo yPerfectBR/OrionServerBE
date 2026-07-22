@@ -1,19 +1,19 @@
 namespace Orion.Network.Handlers;
 
 using Orion;
-using Orion.Entity.Traits;
+using Orion.Api;
+using Orion.Api.Math;
 using Orion.Gameplay;
 using Orion.Player;
-using Orion.Player.Traits;
 using Orion.Plugins;
 using Orion.Protocol.Enums;
 using Orion.Protocol.Packets;
 using Orion.RakNet;
 using Orion.Scheduling;
-using Orion.Entity.Traits.Types;
 using Orion.World;
-using Orion.World.Coordinates;
 using Dimension = Orion.World.Dimension;
+using HudVisibility = Orion.Protocol.Enums.HudVisibility;
+using HudElement = Orion.Protocol.Enums.HudElement;
 
 
 public static class SetLocalPlayerAsInitialized
@@ -35,18 +35,7 @@ public static class SetLocalPlayerAsInitialized
         player.Session?.Send(player.CreateActorDataPacket(tick));
         player.SendAttributes();
 
-        PlayerChunkRenderingTrait? chunkRendering = player.GetTrait<PlayerChunkRenderingTrait>();
-        if (chunkRendering is not null)
-        {
-            chunkRendering.StartChunkLoad();
-        }
-
-        DebugTrait? debugTrait = player.GetTrait<DebugTrait>();
-        if (debugTrait is null)
-        {
-            debugTrait = player.AddTrait(new DebugTrait(player));
-            debugTrait.OnSpawn(new EntitySpawnOptions(InitialSpawn: false));
-        }
+        player.GetTrait<IPlayerChunkView>()?.StartChunkLoad();
 
         player.SetSpawned(true);
 

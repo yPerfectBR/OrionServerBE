@@ -107,6 +107,14 @@ public sealed class ApiEventsTests
             ticks = 32UL;
             return true;
         }
+
+        public bool TryGetDurability(out int maxDurability, out int damageChanceMin, out int damageChanceMax)
+        {
+            maxDurability = 0;
+            damageChanceMin = 0;
+            damageChanceMax = 0;
+            return false;
+        }
     }
 
     sealed class StubFoodStack : IItemStack

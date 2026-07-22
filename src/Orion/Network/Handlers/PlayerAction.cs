@@ -2,9 +2,9 @@ namespace Orion.Network.Handlers;
 
 using Orion.Protocol.Enums;
 using Orion;
+using Orion.Api;
 using Orion.Protocol.Packets;
 using Orion.RakNet;
-using Orion.Player.Traits;
 
 
 public static class PlayerAction
@@ -23,8 +23,7 @@ public static class PlayerAction
 
         if (packet.ActionType == PlayerActionType.ChangeDimensionAck)
         {
-            PlayerChunkRenderingTrait? chunkRendering = player.GetTrait<PlayerChunkRenderingTrait>();
-            chunkRendering?.ForceReloadViewDistance();
+            player.GetTrait<IPlayerChunkView>()?.ForceReloadViewDistance();
             player.FlushClientWorldStateSyncIfPending(force: true);
             return;
         }

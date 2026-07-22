@@ -4,7 +4,6 @@ using Orion.Api.Traits;
 using Orion.Config;
 using Orion.Network;
 using Orion.Player;
-using Orion.Player.Traits;
 using Orion.Scheduling.Messages;
 using Log = Orion.Logger.Logger;
 

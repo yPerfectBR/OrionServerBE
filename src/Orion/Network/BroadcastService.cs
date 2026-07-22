@@ -1,10 +1,10 @@
 using Orion.Player;
 namespace Orion.Network;
 
+using Orion.Api;
 using Orion.Protocol.Packets;
 using Orion.Protocol.Types;
 using Orion.Player;
-using Orion.Player.Traits;
 using Orion.World;
 
 
@@ -26,16 +26,13 @@ public static class BroadcastService
 
         if (packet is RemoveActorPacket removeActor)
         {
-            PlayerChunkRenderingTrait.InvalidateVisibleEntityForRemove(
-                dimension,
-                removeActor.EntityUniqueId,
-                resolved.Except);
+            InvalidateVisibleEntityForRemove(dimension, server, removeActor.EntityUniqueId, resolved.Except);
         }
         else if (packet is TakeItemActorPacket takeItem)
         {
             // TakeItemActor removes the item client-side; drop visibility tracking so we
             // do not leave a stale entry that skips a later RemoveActor.
-            PlayerChunkRenderingTrait.InvalidateVisibleEntity(dimension, takeItem.ItemEntityRuntimeId, resolved.Except);
+            InvalidateVisibleEntity(dimension, server, takeItem.ItemEntityRuntimeId, resolved.Except);
         }
 
         // Always enumerate live sessions. The spatial index is an optimization that can miss
@@ -117,5 +114,49 @@ public static class BroadcastService
         }
 
         return results;
+    }
+
+    static void InvalidateVisibleEntityForRemove(
+        Dimension dimension,
+        global::Orion.Server server,
+        long entityUniqueId,
+        global::Orion.Entity.Entity[]? except)
+    {
+        foreach (PlayerSession session in server.Sessions.Values)
+        {
+            if (session.ActiveEntity is not Player observer || observer.Dimension != dimension)
+            {
+                continue;
+            }
+
+            if (except is not null && Array.IndexOf(except, observer) >= 0)
+            {
+                continue;
+            }
+
+            observer.GetTrait<IPlayerChunkView>()?.InvalidateVisibleEntityByUniqueId(entityUniqueId);
+        }
+    }
+
+    static void InvalidateVisibleEntity(
+        Dimension dimension,
+        global::Orion.Server server,
+        ulong runtimeId,
+        global::Orion.Entity.Entity[]? except)
+    {
+        foreach (PlayerSession session in server.Sessions.Values)
+        {
+            if (session.ActiveEntity is not Player observer || observer.Dimension != dimension)
+            {
+                continue;
+            }
+
+            if (except is not null && Array.IndexOf(except, observer) >= 0)
+            {
+                continue;
+            }
+
+            observer.GetTrait<IPlayerChunkView>()?.InvalidateVisibleEntity(runtimeId);
+        }
     }
 }

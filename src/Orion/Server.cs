@@ -44,6 +44,10 @@ public sealed class Server : IServer
 
     public double Tps { get; private set; } = 20.0;
 
+    public int SessionCount => Sessions.Count;
+
+    public int SimulationDistance => Math.Clamp(Properties.SimulationDistance, 0, 120);
+
     public IReadOnlyCollection<IPlayer> OnlinePlayers
     {
         get

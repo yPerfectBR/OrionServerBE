@@ -1,7 +1,7 @@
 namespace Orion.Commands.List.Operator;
 
+using Orion.Api;
 using Orion.Commands;
-using Orion.Player.Traits;
 using Player = global::Orion.Player.Player;
 
 public sealed class DebugHudModeEnum : CustomEnum
@@ -42,12 +42,12 @@ public sealed class DebugHudCommand : Command
             return CommandResult.Message(GetHelpMessage() ?? "§cInvalid mode.", false);
         }
 
-        DebugHudMode mode = modeArgument.Value.ToLowerInvariant() switch
+        PlayerDebugHudMode mode = modeArgument.Value.ToLowerInvariant() switch
         {
-            "off" => DebugHudMode.Off,
-            "simplified" or "simple" => DebugHudMode.Simplified,
-            "full" => DebugHudMode.Full,
-            _ => DebugHudMode.Full
+            "off" => PlayerDebugHudMode.Off,
+            "simplified" or "simple" => PlayerDebugHudMode.Simplified,
+            "full" => PlayerDebugHudMode.Full,
+            _ => PlayerDebugHudMode.Full
         };
 
         List<Player> players = ResolveTargets(state, target);
@@ -56,21 +56,28 @@ public sealed class DebugHudCommand : Command
             return CommandResult.Message("§cNo online player matched target.", false);
         }
 
+        int updated = 0;
         for (int i = 0; i < players.Count; i++)
         {
             Player player = players[i];
-            DebugTrait? debugTrait = player.GetTrait<DebugTrait>();
-            if (debugTrait is null)
+            IPlayerDebugHud? debugHud = player.GetTrait<IPlayerDebugHud>();
+            if (debugHud is null)
             {
-                debugTrait = player.AddTrait(new DebugTrait(player));
-                debugTrait.OnSpawn(new Orion.Entity.Traits.Types.EntitySpawnOptions(InitialSpawn: false));
+                player.SendMessage("§cDebug HUD plugin (orion:player-debug) is not loaded.");
+                continue;
             }
 
-            debugTrait.SetMode(mode);
+            debugHud.SetMode(mode);
             player.SendMessage($"§7Debug HUD mode set to §a{ModeLabel(mode)}§7.");
+            updated++;
         }
 
-        return CommandResult.Message($"§7Set Debug HUD to §a{ModeLabel(mode)} §7for §a{players.Count}§7 player(s).", true);
+        if (updated == 0)
+        {
+            return CommandResult.Message("§cNo player had the debug HUD trait available.", false);
+        }
+
+        return CommandResult.Message($"§7Set Debug HUD to §a{ModeLabel(mode)} §7for §a{updated}§7 player(s).", true);
     }
 
     private static List<Player> ResolveTargets(CommandExecutionState state, TargetEnum? target)
@@ -88,11 +95,11 @@ public sealed class DebugHudCommand : Command
         return [];
     }
 
-    private static string ModeLabel(DebugHudMode mode) => mode switch
+    private static string ModeLabel(PlayerDebugHudMode mode) => mode switch
     {
-        DebugHudMode.Off => "off",
-        DebugHudMode.Simplified => "simplified",
-        DebugHudMode.Full => "full",
+        PlayerDebugHudMode.Off => "off",
+        PlayerDebugHudMode.Simplified => "simplified",
+        PlayerDebugHudMode.Full => "full",
         _ => "full"
     };
 }

@@ -183,7 +183,14 @@ public class Entity : IAreaStoredEntity, IAreaEntity, IEntity
         dimension.AddEntity(this);
         for (int i = 0; i < _traits.Count; i++)
         {
-            if (_traits[i] is EntityTrait spawnTrait) spawnTrait.OnSpawn(options);
+            if (_traits[i] is EntityTrait spawnTrait)
+            {
+                spawnTrait.OnSpawn(options);
+            }
+            else if (_traits[i] is EntityTraitBase apiTrait)
+            {
+                apiTrait.OnSpawn(new Orion.Api.EntitySpawnOptions(options.InitialSpawn));
+            }
         }
 
         SetActorDataPacket actorData = CreateActorDataPacket(Dimension.World is Tickable tickable ? tickable.TickValue : 0);
@@ -226,7 +233,14 @@ public class Entity : IAreaStoredEntity, IAreaEntity, IEntity
 
         for (int i = 0; i < _traits.Count; i++)
         {
-            if (_traits[i] is EntityTrait despawnTrait) despawnTrait.OnDespawn(options);
+            if (_traits[i] is EntityTrait despawnTrait)
+            {
+                despawnTrait.OnDespawn(options);
+            }
+            else if (_traits[i] is EntityTraitBase apiTrait)
+            {
+                apiTrait.OnDespawn(new EntityDespawnDetails(options.IsRemoval, options.Disconnected));
+            }
         }
     }
 
@@ -281,7 +295,17 @@ public class Entity : IAreaStoredEntity, IAreaEntity, IEntity
     {
         for (int i = 0; i < _traits.Count; i++)
         {
-            if (_traits[i] is EntityTrait teleportTrait) teleportTrait.OnTeleport(options);
+            if (_traits[i] is EntityTrait teleportTrait)
+            {
+                teleportTrait.OnTeleport(options);
+            }
+            else if (_traits[i] is EntityTraitBase apiTrait)
+            {
+                apiTrait.OnTeleport(new EntityTeleportDetails(
+                    new ApiVec3f(options.From.X, options.From.Y, options.From.Z),
+                    new ApiVec3f(options.To.X, options.To.Y, options.To.Z),
+                    options.ForceFullChunkReload));
+            }
         }
     }
 
@@ -289,7 +313,28 @@ public class Entity : IAreaStoredEntity, IAreaEntity, IEntity
     {
         for (int i = 0; i < _traits.Count; i++)
         {
-            if (_traits[i] is EntityTrait moveTrait) moveTrait.OnMove(options);
+            if (_traits[i] is EntityTrait moveTrait)
+            {
+                moveTrait.OnMove(options);
+            }
+            else if (_traits[i] is EntityTraitBase apiTrait)
+            {
+                apiTrait.OnMove(new EntityMoveDetails(
+                    new ApiVec3f(options.From.X, options.From.Y, options.From.Z),
+                    new ApiVec3f(options.To.X, options.To.Y, options.To.Z),
+                    new EntityMovementRotation
+                    {
+                        Yaw = options.FromRotation.Yaw,
+                        Pitch = options.FromRotation.Pitch,
+                        HeadYaw = options.FromRotation.HeadYaw
+                    },
+                    new EntityMovementRotation
+                    {
+                        Yaw = options.ToRotation.Yaw,
+                        Pitch = options.ToRotation.Pitch,
+                        HeadYaw = options.ToRotation.HeadYaw
+                    }));
+            }
         }
     }
 
@@ -472,6 +517,8 @@ public class Entity : IAreaStoredEntity, IAreaEntity, IEntity
     }
 
     bool IEntity.IsAlive => IsAlive;
+
+    bool IEntity.IsPendingDespawn => PendingDespawn;
 
     bool IEntity.IsSprinting => IsSprinting;
 
@@ -718,6 +765,17 @@ public class Entity : IAreaStoredEntity, IAreaEntity, IEntity
             EntityProperties = new EntityProperties(),
             EntityLinks = []
         });
+    }
+
+    void IEntity.PresentTo(IPlayer observer)
+    {
+        if (observer is not Player player)
+        {
+            return;
+        }
+
+        ulong tick = Dimension?.World is Tickable tickable ? tickable.TickValue : 0;
+        SpawnTo(player, tick);
     }
 
     public virtual void OnPhysicsTick(ulong currentTick, bool grounded)
