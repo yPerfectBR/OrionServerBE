@@ -8,6 +8,16 @@ public interface IItemType
     int NetworkId { get; }
     int MaxStackSize { get; }
     IReadOnlyList<string> Tags { get; }
+
+    /// <summary>Reads <c>minecraft:food</c> component data when present.</summary>
+    bool TryGetFood(
+        out int nutrition,
+        out float saturationModifier,
+        out bool canAlwaysEat,
+        out string? usingConvertsTo);
+
+    /// <summary>Reads <c>minecraft:use_duration</c> ticks; returns false when absent.</summary>
+    bool TryGetUseDurationTicks(out ulong ticks);
 }
 
 public interface IItemStack
