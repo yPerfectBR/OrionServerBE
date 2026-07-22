@@ -86,7 +86,7 @@ flowchart TB
 | `EntityGravityTrait` | `orion:entity-gravity` |
 | `EntityCollisionTrait` | `orion:entity-collision` |
 | `EntityMovementTrait` | `orion:entity-movement` (`softdepend` gravity + collision) |
-| `EntityAttributeTrait` (base runtime) | `orion:entity-attributes` — **base**; `orion:attributes` `depend`s it |
+| `EntityAttributeTrait` (base runtime) | `orion:entity-attributes` — **optional** AttributeName bag base for third-party traits; **`orion:attributes` does not depend on it** (vitals are Api-only `EntityTraitBase`) |
 | `EntityAirSupplyTrait` | `orion:entity-air-supply` (`depend` `orion:attributes`) |
 | `EntityEquipmentTrait` | `orion:entity-equipment` |
 | `ItemEntity` | `orion:item-entity` |
@@ -114,12 +114,12 @@ flowchart LR
 
   mov -.-> grav
   mov -.-> col
-  attr --> eattr
   air --> attr
   flat --> minB
   itemEnt -.-> mov
 ```
 
+Note: `attributes` is independent of `entity-attributes` (Api `SetAttribute` / health+hunger traits).
 ## 7. Hard rules (extraction)
 
 1. **End state:** zero `ProjectReference` to `Orion.csproj` in any plugin.

@@ -16,6 +16,7 @@ Ordem executável para uma IA (ou humano) implementar a extração **sem** pular
 - Deixar `RegisterFromBedrockStates` com conteúdo após a fase 28.
 - Manter `superflat` como builtin após a fase 29.
 - Criar `orion:entity-damage` paralelo a `orion:attributes`.
+- Forçar `orion:attributes` a hard-depend de `orion:entity-attributes` (vitals são Api-only).
 - Exigir API async de `Generator.Generate`.
 
 ## 3. Gate: SDK antes da extração limpa
@@ -71,7 +72,8 @@ chore(first-run): default generator to void
 
 ## 7. DoD global da série 22–30
 
-- [ ] Traits Entity/Block/Item/Player listados nas fases 24–27 não existem no Orion.dll.
+- [x] Traits Entity/Block/Item/Player listados nas fases 24–27 não existem no Orion.dll.
+  - Fase 24: traits de mecânica entity extraídos (`ItemEntity` permanece shell no core).
 - [ ] Zero conteúdo em `RegisterFromBedrockStates`.
 - [x] `GeneratorFactory` sem builtin superflat; void default.
 - [x] First-run / `scripts/fixtures` com `generator: void`.
@@ -79,6 +81,7 @@ chore(first-run): default generator to void
 - [ ] First-party sem `ProjectReference` Orion (dogfood [17](17-sdk-vanilla-dogfood.md)).
 - [ ] Game.Tests + CI development verdes.
 - [x] Docs pt_br + en_us com Status atualizado quando cada fase for `implemented`.
+  - Fase 24 marcada `implemented`.
 
 ## 8. Status
 

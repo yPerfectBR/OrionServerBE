@@ -86,7 +86,7 @@ flowchart TB
 | `EntityGravityTrait` | `orion:entity-gravity` |
 | `EntityCollisionTrait` | `orion:entity-collision` |
 | `EntityMovementTrait` | `orion:entity-movement` (`softdepend` gravity + collision) |
-| `EntityAttributeTrait` (runtime base) | `orion:entity-attributes` — **base**; `orion:attributes` faz `depend` |
+| `EntityAttributeTrait` (runtime base) | `orion:entity-attributes` — base **opcional** AttributeName; **`orion:attributes` não depende** (vitals Api-only `EntityTraitBase`) |
 | `EntityAirSupplyTrait` | `orion:entity-air-supply` (`depend` `orion:attributes`) |
 | `EntityEquipmentTrait` | `orion:entity-equipment` |
 | `ItemEntity` | `orion:item-entity` |
@@ -114,11 +114,12 @@ flowchart LR
 
   mov -.-> grav
   mov -.-> col
-  attr --> eattr
   air --> attr
   flat --> minB
   itemEnt -.-> mov
 ```
+
+Nota: `attributes` é independente de `entity-attributes` (`SetAttribute` Api / traits de vida e fome).
 
 ## 7. Regras duras (extração)
 

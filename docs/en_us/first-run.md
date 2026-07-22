@@ -58,7 +58,21 @@ Core does **not** include gameplay health or hunger. For vanilla behavior:
 dotnet build plugins/orion:attributes/OrionAttributes.csproj
 ```
 
-With `Plugins.Enabled: true`, the plugin registers **Api-only** traits (`EntityHealthTrait`, `PlayerHungerTrait`) plus services (`provides: orion:attributes`, `orion:health`, `orion:hunger`). On join it re-enables Health/Hunger HUD and syncs Bedrock attributes (`minecraft:health`, `minecraft:player.hunger`, …). Other plugins consume via `IAttributesApi` / `IEntityHealthService` / `IPlayerHungerService` / `IPlayerItemUseHandler`. Without it, vitals stay hidden and host health/hunger/food bridges are no-ops. Prefer loading alongside `orion:inventory` (softdepend) so food use can decrement stacks.
+With `Plugins.Enabled: true`, the plugin registers **Api-only** traits (`EntityHealthTrait`, `PlayerHungerTrait`) plus services (`provides: orion:attributes`, `orion:health`, `orion:hunger`). On join it re-enables Health/Hunger HUD and syncs Bedrock attributes (`minecraft:health`, `minecraft:player.hunger`, …). Other plugins consume via `IAttributesApi` / `IEntityHealthService` / `IPlayerHungerService` / `IPlayerItemUseHandler`. Without it, vitals stay hidden and host health/hunger/food bridges are no-ops. Prefer loading alongside `orion:inventory` (softdepend) so food use can decrement stacks. Does **not** require `orion:entity-attributes`.
+
+## Entity mechanics (phase 24)
+
+Core used to ship gravity / collision / movement / air-supply / equipment on `minecraft:item` and players. Those traits move to first-party plugins:
+
+```bash
+dotnet build plugins/orion:entity-gravity/OrionEntityGravity.csproj
+dotnet build plugins/orion:entity-collision/OrionEntityCollision.csproj
+dotnet build plugins/orion:entity-movement/OrionEntityMovement.csproj
+dotnet build plugins/orion:entity-air-supply/OrionEntityAirSupply.csproj
+# plus entity-equipment, item-entity, entity-attributes as extracted
+```
+
+Without the entity-movement (+ collision/gravity) set, item drops do not simulate physics. Without `orion:entity-air-supply` + `orion:attributes`, drowning damage is a no-op.
 
 ## Inventory, containers, building, and mining
 

@@ -16,6 +16,7 @@ Executable order for an AI (or human) to implement extraction **without** skippi
 - Leaving content in `RegisterFromBedrockStates` after phase 28.
 - Keeping `superflat` as a builtin after phase 29.
 - Creating `orion:entity-damage` parallel to `orion:attributes`.
+- Forcing `orion:attributes` to hard-depend on `orion:entity-attributes` (vitals are Api-only).
 - Requiring an async `Generator.Generate` API.
 
 ## 3. Gate: SDK before clean extraction
@@ -71,7 +72,8 @@ chore(first-run): default generator to void
 
 ## 7. Series 22–30 global DoD
 
-- [ ] Entity/Block/Item/Player traits listed in 24–27 no longer live in Orion.dll.
+- [x] Entity/Block/Item/Player traits listed in 24–27 no longer live in Orion.dll.
+  - Phase 24 entity mechanic traits extracted (ItemEntity class remains core shell).
 - [ ] No content in `RegisterFromBedrockStates`.
 - [x] `GeneratorFactory` without superflat builtin; void default.
 - [x] First-run / `scripts/fixtures` use `generator: void`.
@@ -79,7 +81,7 @@ chore(first-run): default generator to void
 - [ ] First-party has no Orion `ProjectReference` (dogfood [17](17-sdk-vanilla-dogfood.md)).
 - [ ] Game.Tests + development CI green.
 - [x] pt_br + en_us docs Status updated when each phase becomes `implemented`.
-
+  - Phase 24 marked `implemented`.
 ## 8. Status
 
 `spec` — use this page as the runbook; check items off as PRs merge.

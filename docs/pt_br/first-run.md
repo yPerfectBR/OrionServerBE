@@ -41,7 +41,20 @@ O plugin registra os seis blocos Bedrock, Nature (grass/dirt/bedrock) e fillers 
 dotnet build plugins/orion:attributes/OrionAttributes.csproj
 ```
 
-Com plugins ativos, registra traits **só via Orion.Api** (`EntityHealthTrait`, `PlayerHungerTrait`) e serviços (`provides: orion:attributes`, `orion:health`, `orion:hunger`). No join, reexibe as barras Health/Hunger e sincroniza atributos Bedrock (`minecraft:health`, `minecraft:player.hunger`, …). Consuma via `IAttributesApi` / `IEntityHealthService` / `IPlayerHungerService` / `IPlayerItemUseHandler`. Sem o plugin, HUD de vida/fome permanece oculto e as bridges do host são no-op. Prefira carregar com `orion:inventory` (softdepend) para decrementar stacks ao comer.
+Com plugins ativos, registra traits **só via Orion.Api** (`EntityHealthTrait`, `PlayerHungerTrait`) e serviços (`provides: orion:attributes`, `orion:health`, `orion:hunger`). No join, reexibe as barras Health/Hunger e sincroniza atributos Bedrock (`minecraft:health`, `minecraft:player.hunger`, …). Consuma via `IAttributesApi` / `IEntityHealthService` / `IPlayerHungerService` / `IPlayerItemUseHandler`. Sem o plugin, HUD de vida/fome permanece oculto e as bridges do host são no-op. Prefira carregar com `orion:inventory` (softdepend) para decrementar stacks ao comer. **Não** exige `orion:entity-attributes`.
+
+## Mecânicas de entity (fase 24)
+
+Gravity / collision / movement / air-supply / equipment saem do core para plugins:
+
+```bash
+dotnet build plugins/orion:entity-gravity/OrionEntityGravity.csproj
+dotnet build plugins/orion:entity-collision/OrionEntityCollision.csproj
+dotnet build plugins/orion:entity-movement/OrionEntityMovement.csproj
+dotnet build plugins/orion:entity-air-supply/OrionEntityAirSupply.csproj
+```
+
+Sem o conjunto movement (+ collision/gravity), drops de item não simulam física. Sem `orion:entity-air-supply` + `orion:attributes`, afogamento é no-op.
 
 ## Inventário, containers, building e mining
 

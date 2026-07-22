@@ -74,7 +74,7 @@ flowchart TB
 | 21 | [21 — Layout de repositório](21-plugin-repo-layout.md) | Pastas `orion:*`, NuGet/CI | `implemented` |
 | 22 | [22 — Extração Vanilla (visão)](22-vanilla-extraction-overview.md) | Traits/conteúdo/worldgen → plugins | `spec` |
 | 23 | [23 — Pré-requisitos SDK extração](23-extraction-sdk-prerequisites.md) | Gaps Orion.Api / Gameplay.Api | `spec` |
-| 24 | [24 — Mecânicas Entity](24-entity-mechanics-plugins.md) | Gravity, collision, movement, … | `spec` |
+| 24 | [24 — Mecânicas Entity](24-entity-mechanics-plugins.md) | Gravity, collision, movement, … | `implemented` |
 | 25 | [25 — Mecânicas Block](25-block-mechanics-plugins.md) | Direction / facing / cardinal | `spec` |
 | 26 | [26 — Mecânicas Item](26-item-mechanics-plugins.md) | Durability / debug | `spec` |
 | 27 | [27 — Mecânicas Player](27-player-mechanics-plugins.md) | Chunk rendering / debug | `spec` |
