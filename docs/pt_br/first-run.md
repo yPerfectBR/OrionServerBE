@@ -4,7 +4,7 @@ Orion inicia com menu criativo **vazio** e **sem** blocos nativos de conteúdo. 
 
 ## Gerador de mundo (default: void)
 
-Mundos novos usam o generator **`void`** (chunks vazios). Spawn padrão: `[0, -57, 0]`. Ids desconhecidos também caem em void — o core não inclui mais superflat builtin.
+Mundos novos usam o generator **`void`** (chunks vazios). Spawn padrão: `[0, -57, 0]`. O core só tem o builtin **`void`** — não há fallback silencioso para void em outros ids.
 
 Para terreno plano (bedrock / dirt / grass em Y −64…−60):
 
@@ -15,7 +15,7 @@ Para terreno plano (bedrock / dirt / grass em Y −64…−60):
 "generator": "superflat"
 ```
 
-Sem o plugin, `generator: "superflat"` sobe o servidor mas gera terreno **void** (sem crash).
+Sem o plugin, `generator: "superflat"` (ou qualquer generator desconhecido / vazio) **recusa subir** com erro claro. O `identifier` da dimensão precisa ser conhecido (`overworld` / `nether` / `the_end`); vazio ou desconhecido também aborta o boot. Chunks LevelDB com blocos desconhecidos falham de forma dura (sem reescrever para air).
 
 ## Menu criativo vazio
 

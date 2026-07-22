@@ -9,7 +9,7 @@
 
 1. Remove `SuperFlatGenerator` from [`GeneratorFactory`](../../../src/World/Generation/GeneratorFactory.cs) builtins.
 2. Ship `orion:superflat` registering generator id `superflat` via `IGeneratorRegistry` in **`Load`** (before freeze).
-3. Core keeps only the **`void`** builtin (unknown → void fallback).
+3. Core keeps only the **`void`** builtin (unknown / empty generator → **fatal boot error**, no void fallback).
 4. Generation stays **synchronous** via `Orion.Api.Worldgen.WorldGeneratorBase`.
 
 ## 2. Non-goals
@@ -37,7 +37,7 @@ Register: `context.Registries.Generators.Register("superflat", typeof(SuperFlatW
 ```csharp
 // GeneratorFactory builtins
 "void" => new VoidGenerator(),
-_ => new VoidGenerator()
+_ => throw // does not exist / empty is invalid
 ```
 
 - Plugin types subclass `WorldGeneratorBase`; host wraps with `ApiGeneratorAdapter`.
@@ -45,7 +45,8 @@ _ => new VoidGenerator()
 
 ## 5. Acceptance tests
 
-- [x] Without plugin: `Create("superflat")` → `VoidGenerator`.
+- [x] Without plugin: `Create("superflat")` → fatal (does not exist).
+- [x] Empty generator → fatal (invalid).
 - [x] With Api registration: layers match previous behavior.
 - [ ] `depend` `orion:minimal-items` (after plugin ships).
 - [x] Plugin CI: PackageReferenceTests + smoke boot.

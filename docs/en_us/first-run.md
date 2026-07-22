@@ -4,7 +4,7 @@ Orion starts with an **empty** creative menu and **no** native content blocks. N
 
 ## World generator (default: void)
 
-New worlds use generator **`void`** (empty chunks). Default spawn is `[0, -57, 0]`. Unknown generator ids also fall back to void — the core no longer ships a builtin superflat.
+New worlds use generator **`void`** (empty chunks). Default spawn is `[0, -57, 0]`. The core ships only the **`void`** builtin — there is no silent fallback to void for other ids.
 
 To get flat terrain (bedrock / dirt / grass at Y −64…−60):
 
@@ -15,7 +15,7 @@ To get flat terrain (bedrock / dirt / grass at Y −64…−60):
 "generator": "superflat"
 ```
 
-Without the plugin, `generator: "superflat"` still boots but yields **void** terrain (no crash).
+Without the plugin, `generator: "superflat"` (or any unknown / empty generator) **refuses to boot** with a clear error. Dimension `identifier` must be a known Bedrock dimension (`overworld` / `nether` / `the_end`); empty or unknown values also fail boot. LevelDB chunks with unknown blocks fail hard instead of rewriting to air.
 
 ## Empty creative menu
 
